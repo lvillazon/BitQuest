@@ -5,6 +5,10 @@ import editor
 import interpreter
 import scenery
 import sprite_sheet
+'''
+https://wiki.libsdl.org/Installation
+https://github.com/pygame/pygame/issues/1722
+'''
 
 pygame.init()
 pygame.display.set_caption("BIT Quest")
@@ -110,8 +114,9 @@ class Character:
 
 
 #######################################################
+print('Started.')
 # load scenery layers
-scenery = scenery.Scenery('day', 'field')
+scenery = scenery.Scenery('Day', 'Field')
 true_scroll = {'x': 0.0, 'y': 0.0}
 # location of the game area on the window
 # used to scroll the game area out of the way of the code editor

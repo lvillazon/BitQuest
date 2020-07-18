@@ -18,7 +18,7 @@ class Scenery:
             print('loading', path + file_name)
             image = pygame.image.load(path + file_name).convert()
             # use white as the alpha transparency color
-            image.set_colorkey((255, 255, 255), pygame.RLEACCEL)
+            image.set_colorkey((0, 0, 0), pygame.RLEACCEL)
             tiles = []
             for j in range(10):
                 tiles.append(image)
