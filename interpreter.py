@@ -5,11 +5,33 @@ from io import StringIO
 
 
 class Interpreter:
-    def __init__(self):
-        self.source = []
+    def __init__(self, source):
+        self.source = source  # a list of lines of source code
         self.byte_code = []
         self.stack = []
         self.executable = {'instructions': [], 'values': []}
+        self.f_locals = {}
+
+    # Data stack manipulation
+    def top(self):
+        return self.stack[-1]
+
+    def pop(self):
+        return self.stack.pop()
+
+    def push(self, *vals):
+        self.stack.extend(vals)
+
+    def popn(self, n):
+        """Pop a number of values from the value stack.
+        A list of `n` values is returned, the deepest value first.
+        """
+        if n:
+            ret = self.stack[-n:]
+            self.stack[-n:] = []
+            return ret
+        else:
+            return []
 
     def add_code(self, line):
         # add a single line of code to the interpreter's source
@@ -20,10 +42,39 @@ class Interpreter:
         return chr(13).join(self.source)
 
     # the functions for the instruction set
-    def LOAD(self, number):
-        # add an operand to the stack
-        self.stack.append(number)
+    def byte_LOAD_CONST(self, const):
+        # add a literal to the stack
+        self.push(const)
 
+    def byte_POP_TOP(self):
+        self.pop()  # discard top item on the stack?
+
+    def byte_LOAD_NAME(self, name):
+        # the LOAD_ and STORE_NAME functions directly manipulate the live variables of the program
+        # this will eventually switch to accessing the vaiables of the current frame
+        if name in self.f_locals:
+            val = self.f_locals[name]
+            self.push(val)
+        else:
+            print("NAME ERROR:", name, "is not defined.")
+
+    def byte_STORE_NAME(self, name):
+        self.f_locals[name] = self.pop()
+
+    def byte_LOAD_FAST(self, name):
+        if name in self.f_locals:
+            val = self.f_locals[name]
+            self.push(val)
+        else:
+            print("NAME ERROR:", name, "referenced before assignment.")
+
+    def byte_STORE_FAST(self, name):
+        self.f_locals[name] = self.pop()
+
+    def byte_RETURN_VALUE(self):
+        print("Returning", self.pop())
+
+#### legacy op codes for the much simpler proof-of-concept
     def ADD(self):
         # pop the top 2 values, add them and push the result
         first_num = self.stack.pop()
@@ -35,6 +86,7 @@ class Interpreter:
         print(self.stack.pop())
 
     def write_program(self):
+        # allow simple instructions to be typed in directly
         print("Enter instructions:")
         line = input(">").upper()
         while line != "END":
@@ -57,7 +109,7 @@ class Interpreter:
 
     def lex(self):
         # tokenise the source using the standard dis module
-
+        print("Lexing:")
         try:
             # first redirect sys.stdout to our own StringIO object
             # this avoids the need for a temporary file to capture the dis
@@ -66,7 +118,7 @@ class Interpreter:
             sys.stdout = token_output
             # dis will output to sys.stdout, which is now redirected
 #            dis.dis(self.get_code())
-            bytecode = dis.Bytecode(self.get_code())
+            token_list = dis.Bytecode(self.get_code())
         except:
             # restore the original stdout
             sys.stdout = sys.__stdout__
@@ -78,15 +130,24 @@ class Interpreter:
             # restore the original stdout
             sys.stdout = sys.__stdout__
 
-        # output tokens
-        print(">>>")
-        #print(token_output.getvalue())
-        #self.write_program()  # allow simple instructions to be typed in directly
-        for instruction in bytecode:
+        # DEBUG output the bytecode instructions
+        for instruction in token_list:
             print(instruction.opname, instruction.argval)
 
+        #print("Parsing:")
+        # parse bytecode into separate lists of instructions and operands
+        #for instruction in bytecode:
+        #    self.executable['instructions'].append(instruction.opname)
+        #    self.executable['values'].append(instruction.argval)
+        #print(self.executable)  # DEBUG
+        print("Building opcode strings:")
+        for instruction in token_list:
+            self.byte_code.append(instruction.opname + " " + str(instruction.argval))
+        print(self.byte_code)
+
     def run(self):
-        # parse source code into executable instructions
+        # parse source code into separate lists of instructions and operands
+        print("Parsing:")
         operand_counter = 0
         for line in self.byte_code:
             fragments = line.split()
@@ -97,18 +158,23 @@ class Interpreter:
             if len(fragments) > 1:
                 self.executable['values'].append(fragments[1])
                 operand_counter += 1
-        print(self.executable)  # DEBUG
+        print("Executable:")
+        print(self.executable)
 
         # execute instructions
+        print("Executing:")
         instructions = self.executable['instructions']  # used as shorthand
         values = self.executable['values']
         for each_step in instructions:
             instruction, argument = each_step
             print("Step:", instruction, argument)
-            if instruction == "LOAD":
+            if instruction == "LOAD_CONST":
                 number = values[argument]
-                self.LOAD(number)
-            elif instruction == "ADD":
-                self.ADD()
-            elif instruction == "PRINT":
-                self.PRINT()
+                self.byte_LOAD_CONST(number)
+            elif instruction == "STORE_NAME":
+                name = values[argument]
+                self.byte_STORE_NAME(name)
+            elif instruction == "RETURN_VALUE":
+                self.byte_RETURN_VALUE()
+            else:
+                print("UNRECOGNISED INSTRUCTION:", instruction)

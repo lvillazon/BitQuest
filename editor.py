@@ -19,7 +19,7 @@ class Editor:
             pygame.font.init()
         if pygame.scrap.get_init() is False:
             pygame.scrap.init()
-        self.code_font = pygame.font.SysFont("consolas", 18)
+        self.code_font = pygame.font.SysFont("dejavusansmono", 18)
         self.screen = screen
         self.width = screen.get_size()[X]
         self.height = height
@@ -359,8 +359,10 @@ class Editor:
         self.buttons.draw(self.get_fg_color(), self.get_bg_color())
 
     def run_program(self):
-        i = interpreter.Interpreter()
+        # convert the raw editor characters into lines of source code for the interpreter
+        source = []
         for line in self.text:
-            i.add_code(''.join(line))
-        print("Lexing code:")
+            source.append(''.join(line))
+        i = interpreter.Interpreter(source)
         i.lex()
+        i.run()

@@ -130,7 +130,6 @@ dog.location = {'x': player.location['x'] + 50,
                 'y': player.location['y']}
 
 # intialise the python interpreter
-code = interpreter.Interpreter()
 editor = editor.Editor(screen, 300)
 
 game_running = True
