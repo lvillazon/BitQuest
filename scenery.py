@@ -1,5 +1,5 @@
 import pygame
-
+import constants
 
 class Scenery:
     GROUND_LEVEL_OFFSET = -86  # offset for background layers
@@ -15,7 +15,8 @@ class Scenery:
         for i in range(1, 11):
             # build the filename for each scenery image
             file_name = '{0} Layer {1:0>2}.png'.format(landscape, i)
-            print('loading', path + file_name)
+            if constants.CONSOLE_VERBOSE:
+                print('loading', path + file_name)
             image = pygame.image.load(path + file_name).convert()
             # use white as the alpha transparency color
             image.set_colorkey((0, 0, 0), pygame.RLEACCEL)
@@ -25,7 +26,7 @@ class Scenery:
             # parallax is scaled to make distant layers *much* slower
             layer = {'tiles': tiles, 'parallax': (i - 1) ** 2 / 100}
             scenery.append(layer)
-        print("Layers = ", len(scenery))
+        print(len(scenery), "scenery layers loaded")
         return scenery
 
     def draw_background(self, surface, scroll):

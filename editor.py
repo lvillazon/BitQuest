@@ -14,15 +14,12 @@ CURSOR_LINE_WRAP = 2
 
 class Editor:
     # on-screen editor for writing programs
-    def __init__(self, screen, height):
-        if pygame.font.get_init() is False:
-            pygame.font.init()
-        if pygame.scrap.get_init() is False:
-            pygame.scrap.init()
-        self.code_font = pygame.font.SysFont("dejavusansmono", 18)
+    def __init__(self, screen, height, code_font, dog):
+        self.code_font = code_font
         self.screen = screen
         self.width = screen.get_size()[X]
         self.height = height
+        self.dog = dog  # a link tot he dog character, to allow programs to access the game state
         self.v_scroll = 0  # line offset to allow text to be scrolled
         self.surface = pygame.Surface((self.width, self.height))
         self.top_margin = 8
@@ -59,7 +56,7 @@ class Editor:
         self.cursor_col = 0
         self.buttons = button_tray.ButtonTray('editor icons.png', self.surface)
 
-        print("row width =", self.row_width)
+        print("Editor row width =", self.row_width)
 
     def show(self):
         pygame.key.set_repeat(500, 50)
@@ -270,6 +267,7 @@ class Editor:
                       pygame.K_RIGHT: self.cursor_right,
                       pygame.K_PAGEUP: self.page_up,
                       pygame.K_PAGEDOWN: self.page_down,
+                      pygame.K_F5: self.run_program,
                       }
         shifted = {lower: upper for lower, upper in
                    zip("1234567890-=[]#;',./abcdefghijklmnopqrstuvwxyz ",
@@ -363,6 +361,10 @@ class Editor:
         source = []
         for line in self.text:
             source.append(''.join(line))
-        i = interpreter.Interpreter(source)
-        i.lex()
-        i.run()
+        i = interpreter.Interpreter(self.dog)
+        i.load(source)
+        if i.lex() is True:  # don't run code unless there are no errors
+            if i.run() is True:
+                print("Program complete.")
+            else:
+                print("Program failed.")

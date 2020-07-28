@@ -5,16 +5,23 @@ import editor
 import interpreter
 import scenery
 import sprite_sheet
+import constants
 '''
 https://wiki.libsdl.org/Installation
 https://github.com/pygame/pygame/issues/1722
 '''
 
+# set environment variables to request the window manager to position the top left of the game window
+import os
+position = 0, 0
+os.environ['SDL_VIDEO_WINDOW_POS'] = str(position[0]) + "," + str(position[1])
+
 pygame.init()
 pygame.display.set_caption("BIT Quest")
-WINDOW_SIZE = (1024, 768)
+WINDOW_SIZE = (908, 680)
 EDITOR_HEIGHT = 300
 DISPLAY_SIZE = (227, 170)
+SCALING_FACTOR = 4
 EDITOR_POPUP_SPEED = 25  # how fast the editor scrolls into view
 # the actual game window
 screen = pygame.display.set_mode(WINDOW_SIZE)
@@ -39,6 +46,8 @@ clock = pygame.time.Clock()
 class Character:
     ANIMATION_LENGTH = 8  # number of frames per movement
     STANDING_FRAME = 7  # the run frame used when standing still
+    BUBBLE_MARGIN = 10  # 10-pixel border around text in the speech bubble
+    MAX_TEXT_LINES = 10  # 10 lines maximum in a speech bubble
 
     def __init__(self, sprite_file, run_speed=2):
         # load character animation frames
@@ -62,6 +71,9 @@ class Character:
         self.frame_count = len(self.run_right_frames)
         self.jumping = False
         self.run_speed = run_speed
+        self.speaking = False
+        self.text = []
+        self.text_size = [0,0]
 
     def update(self, surface, scroll):
         f = int(self.frame_number) % self.frame_count
@@ -112,6 +124,47 @@ class Character:
     def stop_moving(self):
         self.moving = False
 
+    def say(self, t):
+        # show a speak-bubble above the character with the text in it
+        new_text = str(t)
+        self.text.append(new_text)
+        print('Bit says: "', new_text, '"', sep='')
+        size = code_font.size(new_text)
+        if size[X] > self.text_size[X]:
+            self.text_size[X] = size[X]
+        if len(self.text) < self.MAX_TEXT_LINES:
+            self.text_size[Y] += size[Y]
+        bubble_rect = pygame.Rect((0, 0),
+                                  (self.text_size[X] + self.BUBBLE_MARGIN * 2,
+                                   self.text_size[Y] + self.BUBBLE_MARGIN * 2)
+                                  )
+        self.bubble = pygame.Surface(bubble_rect.size)
+        # fill with red to use as the transparency key
+        self.bubble.fill((255,0,0))
+        self.bubble.set_colorkey((255,0,0))
+        # create a rectangle with clipped corners for the speech bubble
+        # (rounded corners aren't available until pygame 2.0)
+        w = bubble_rect.width
+        h = bubble_rect.height
+        m = self.BUBBLE_MARGIN
+        pygame.draw.polygon(self.bubble, editor.get_bg_color(),
+                            ((m , 0)   , (w - m, 0),
+                             (w, m)    , (w, h - m),
+                             (w - m, h), (m, h),
+                             (0, h - m), (0, m)
+                            )
+                           )
+        # draw the lines working upwards from the most recent,
+        # until the bubble is full
+        output_line = len(self.text) - 1
+        line_y_pos = h - m - size[Y]
+        color = editor.get_fg_color()
+        while line_y_pos >= m and output_line >= 0:
+            line = code_font.render(self.text[output_line], True, color)
+            self.bubble.blit(line, (m, line_y_pos))
+            output_line -= 1
+            line_y_pos -= size[Y]
+        self.speaking = True
 
 #######################################################
 print('Started.')
@@ -130,7 +183,12 @@ dog.location = {'x': player.location['x'] + 50,
                 'y': player.location['y']}
 
 # intialise the python interpreter
-editor = editor.Editor(screen, 300)
+if pygame.font.get_init() is False:
+    pygame.font.init()
+if pygame.scrap.get_init() is False:
+    pygame.scrap.init()
+code_font = pygame.font.SysFont("dejavusansmono", 18)
+editor = editor.Editor(screen, 300, code_font, dog)
 
 game_running = True
 frame_draw_time = 1
@@ -215,6 +273,13 @@ while game_running:
     # blit the editor underneath the game surface
     editor_position = (game_origin[X], game_origin[Y] + WINDOW_SIZE[Y])
     screen.blit(editor.surface, editor_position)
+
+    # overlay all text at the native resolution to avoid scaling ugliness
+    if dog.speaking:
+        # position the tip of the speak bubble at the middle of the top edge of the sprite box
+        position = ((dog.location['x'] - scroll['x'] + 16)* SCALING_FACTOR + game_origin[X],
+                    (dog.location['y'] - scroll['y'])* SCALING_FACTOR  + game_origin[Y] - dog.text_size[Y])
+        screen.blit(dog.bubble, position)
 
     pygame.display.update()  # actually display
 
