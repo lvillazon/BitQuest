@@ -5,12 +5,40 @@ from io import StringIO
 
 
 class Interpreter:
-    def __init__(self, source):
-        self.source = source  # a list of lines of source code
+    def __init__(self, dog):
+        self.BIT = dog  # a link back to the game state of the dog character
+        self.source = []  # a list of lines of source code
         self.byte_code = []
         self.stack = []
         self.executable = {'instructions': [], 'values': []}
         self.f_locals = {}
+        self.f_builtins = {'abs': abs,
+                           'all': all,
+                           'any': any,
+                           'ascii': ascii,
+                           'bin': bin,
+                           'bool': bool,
+                           # breakpoint skipped (not implementing a debugged yet!)
+                           'bytearray': bytearray,
+                           'bytes': bytes,
+                           'callable': callable,
+                           'chr': chr,
+                           'classmethod': classmethod,
+                           # compile skipped (inception!)
+                           'complex': complex,
+                           'delattr': delattr,
+                           'dict': dict,
+                           # dir skipped
+                           'divmod': divmod,
+                           
+
+                          
+                           
+                           'print': self.BIT.say}
+
+    def load(self, source):
+        # set the source code to interpret
+        self.source = source
 
     # Data stack manipulation
     def top(self):
@@ -42,6 +70,13 @@ class Interpreter:
         return chr(13).join(self.source)
 
     # the functions for the instruction set
+    def byte_CALL_FUNCTION(self, param_count):
+        print(param_count)
+        params = self.popn(int(param_count))
+        function_name = self.pop()
+        print("trying to call function:", function_name, "with", params)
+        self.push(function_name(*params))
+
     def byte_LOAD_CONST(self, const):
         # add a literal to the stack
         self.push(const)
@@ -51,12 +86,17 @@ class Interpreter:
 
     def byte_LOAD_NAME(self, name):
         # the LOAD_ and STORE_NAME functions directly manipulate the live variables of the program
-        # this will eventually switch to accessing the vaiables of the current frame
+        # this will eventually switch to accessing the variables of the current frame
+        found = True
         if name in self.f_locals:
             val = self.f_locals[name]
-            self.push(val)
+        elif name in self.f_builtins:
+            val = self.f_builtins[name]
         else:
             print("NAME ERROR:", name, "is not defined.")
+            found = False
+        if found:
+            self.push(val)
 
     def byte_STORE_NAME(self, name):
         self.f_locals[name] = self.pop()
@@ -140,23 +180,24 @@ class Interpreter:
         #    self.executable['instructions'].append(instruction.opname)
         #    self.executable['values'].append(instruction.argval)
         #print(self.executable)  # DEBUG
-        print("Building opcode strings:")
+        print("Building bytecode:")
         for instruction in token_list:
-            self.byte_code.append(instruction.opname + " " + str(instruction.argval))
+            #self.byte_code.append(instruction.opname + " " + str(instruction.argval))
+            print("string value:", instruction.opname, str(instruction.argval))
+            self.byte_code.append((instruction.opname, instruction.argval))
         print(self.byte_code)
 
     def run(self):
         # parse source code into separate lists of instructions and operands
         print("Parsing:")
         operand_counter = 0
-        for line in self.byte_code:
-            fragments = line.split()
+        for op_code in self.byte_code:
             # for now this adds every operand to the operand list
             # TODO check if it is already there and reference it, if so
-            instruction = (fragments[0], operand_counter)
+            instruction = (op_code[0], operand_counter)
             self.executable['instructions'].append(instruction)
-            if len(fragments) > 1:
-                self.executable['values'].append(fragments[1])
+            if len(op_code) > 1:
+                self.executable['values'].append(op_code[1])
                 operand_counter += 1
         print("Executable:")
         print(self.executable)
@@ -167,14 +208,22 @@ class Interpreter:
         values = self.executable['values']
         for each_step in instructions:
             instruction, argument = each_step
-            print("Step:", instruction, argument)
-            if instruction == "LOAD_CONST":
+            print("Step:", instruction, values[argument], "Stack:", self.stack)
+            if instruction == 'CALL_FUNCTION':
+                number = values[argument]
+                self.byte_CALL_FUNCTION(number)
+            elif instruction == 'LOAD_CONST':
                 number = values[argument]
                 self.byte_LOAD_CONST(number)
-            elif instruction == "STORE_NAME":
+            elif instruction == 'LOAD_NAME':
+                name = values[argument]
+                self.byte_LOAD_NAME(name)
+            elif instruction == 'POP_TOP':
+                self.byte_POP_TOP()
+            elif instruction == 'STORE_NAME':
                 name = values[argument]
                 self.byte_STORE_NAME(name)
-            elif instruction == "RETURN_VALUE":
+            elif instruction == 'RETURN_VALUE':
                 self.byte_RETURN_VALUE()
             else:
                 print("UNRECOGNISED INSTRUCTION:", instruction)
