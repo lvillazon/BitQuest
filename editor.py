@@ -361,7 +361,7 @@ class Editor:
         source = []
         for line in self.text:
             source.append(''.join(line))
-        i = interpreter.Interpreter(self.dog)
+        i = interpreter.VirtualMachine(self.dog)
         i.load(source)
         if i.lex() is True:  # don't run code unless there are no errors
             if i.run() is True:
