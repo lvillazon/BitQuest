@@ -1,6 +1,8 @@
 <component name="ProjectDictionaryState">
   <dictionary name="Luis">
     <words>
+      <w>abcdefghijklmnopqrstuvwxyz</w>
+      <w>autorepeat</w>
       <w>blits</w>
       <w>colorkey</w>
       <w>consolas</w>
@@ -10,6 +12,7 @@
       <w>pygame</w>
       <w>rects</w>
       <w>spritesheet</w>
+      <w>unclick</w>
     </words>
   </dictionary>
 </component>
