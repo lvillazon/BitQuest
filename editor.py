@@ -404,11 +404,7 @@ class Editor:
             if p.compile_time_error:
                 error_msg = p.compile_time_error['error']
                 error_line = p.compile_time_error['line']
-                print('SYNTAX ERROR:')
-                print('\tBIT found a', end='')
-                # correctly deal with a/an situation
-                if error_msg[0] in 'aeiouAEIOU':
-                    print("n", end='')
-                print(" ", error_msg, " on line ", error_line, sep='')
+                print('BIT found a SYNTAX ERROR:')
+                print(error_msg, "on line", error_line)
         else:
             p.run()  # set the program going

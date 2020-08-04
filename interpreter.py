@@ -34,47 +34,49 @@ class Frame(object):
         self.last_instruction = 0
         self.block_stack = []
 
-    class Function(object):
-        """ calling a function creates a new frame on the call stack"""
-        '''
-        this doesn't work, so I've commented it out for now.
-        from what I understand, __slots__ is just a performance optimisation
-        __slots__ = [
-            'func_code', 'func_name', 'func_defaults', 'func_globals',
-            'func_locals', 'func_dict', 'func_closure',
-            '__name__', '__dict__', '__doc__',
-            '_vm', '_func',
-        ]
+class Function(object):
+    """ calling a function creates a new frame on the call stack"""
+    '''
+    this doesn't work, so I've commented it out for now.
+    from what I understand, __slots__ is just a performance optimisation
+    
+    __slots__ = [
+        'func_code', 'func_name', 'func_defaults', 'func_globals',
+        'func_locals', 'func_dict', 'func_closure',
+        '__name__', '__dict__', '__doc__',
+        '_vm', '_func',
+    ]
 '''
 
-        def __init__(self, name, code, globs, defaults, closure, vm):
-            """ opaque stuff copied directly from Allison Kaptur"""
-            self._vm = vm
-            self.func_code = code
-            self.func_name = self.__name__ = name or code.co_name
-            self.func_defaults = tuple(defaults)
-            self.func_globals = globs
-            self.func_locals = self._vm.frame.f_locals
-            self.__dict__ = {}
-            self.func_closure = closure
-            self.__doc__ = code.co_consts[0] if code.co_consts else None
+    def __init__(self, name, code, globs, defaults, closure, vm):
+        """ opaque stuff copied directly from Allison Kaptur"""
+        self._vm = vm
+        self.func_code = code
+        self.func_name = self.__name__ = name or code.co_name
+        self.func_defaults = tuple(defaults)
+        self.func_globals = globs
+        self.func_locals = self._vm.frame.local_names
+#        self.__dict__ = {}  # crashes if uncommented - may be due to new function call types since 3.7
+        self.func_closure = closure
+        self.__doc__ = code.co_consts[0] if code.co_consts else None
 
-            # sometimes we need a 'real' Python function. This is for that
-            kw = {
-                'argdefs': self.func_defaults,
-            }
-            if closure:
-                kw['closure'] = tuple(make_cell(0) for _ in closure)
-            self._func = types.FunctionType(code, globs, **kw)
+        # sometimes we need a 'real' Python function. This is for that
+        kw = {
+            'argdefs': self.func_defaults,
+        }
+        if closure:
+            kw['closure'] = tuple(make_cell(0) for _ in closure)
+        self._func = types.FunctionType(code, globs, **kw)
 
-        def __call__(self, *args, **kwargs):
-            """ constructs and runs the call frame """
-            callargs = inspect.getcallargs(self._func, *args, **kwargs)
-            # callargs provides a mapping of arguments to pass into the frame
-            frame = self._vm.make_frame(
-                self.func_code, callargs, self.func_globals, {}
-            )
-            return self._vm.run_frame(frame)
+
+    def __call__(self, *args, **kwargs):
+        """ constructs and runs the call frame """
+        callargs = inspect.getcallargs(self._func, *args, **kwargs)
+        # callargs provides a mapping of arguments to pass into the frame
+        frame = self._vm.make_frame(
+            self.func_code, callargs, self.func_globals, {}
+        )
+        return self._vm.run_frame(frame)
 
 
 def make_cell(value):
@@ -271,7 +273,7 @@ class VirtualMachine:
             elif byte_code in dis.hasname:  # look up a name
                 arg = f.code_obj.co_names[arg_val]
             elif byte_code in dis.haslocal:  # look up a local name
-                arg = f.code_obj.co_var_names[arg_val]
+                arg = f.code_obj.co_varnames[arg_val]
             elif byte_code in dis.hasjrel:  # calculate relative jump
                 # +2 so the jump does not include the current instruction
                 arg = f.last_instruction + arg_val + 2
@@ -380,7 +382,35 @@ class VirtualMachine:
         a, b = self.popn(2)
         self.push(self.BINARY_OPERATORS[op](a, b))
 
-    def byte_CALL_FUNCTION(self, param_count):
+    def byte_BUILD_CONST_KEY_MAP(self, size):
+        keys = self.pop()
+        vals = self.popn(size)
+        new_dictionary = {}
+        for i in range(size):
+            new_dictionary[keys[i]] = vals[i]
+        self.push(new_dictionary)
+
+    def byte_BUILD_LIST(self, count):
+        elts = self.popn(count)  # why is this called elts?
+        self.push(elts)
+
+    def byte_BUILD_MAP(self, size):
+        new_dictionary = {}
+        for i in range(size):
+            key, val = self.popn(2)
+            new_dictionary[key] = val
+        self.push(new_dictionary)
+
+    def byte_CALL_FUNCTION(self, arg):
+        lenKw, lenPos = divmod(arg, 256)  # KW args not supported
+        posargs = self.popn(lenPos)
+
+        func = self.pop()
+        frame = self.frame
+        retval = func(*posargs)
+        self.push(retval)
+
+    def oldbyte_CALL_FUNCTION(self, param_count):
         params = self.popn(int(param_count))
         function_name = self.pop()
         if CONSOLE_VERBOSE:
@@ -431,6 +461,11 @@ class VirtualMachine:
         self.push(val)
     """
 
+    def byte_LIST_APPEND(self, count):
+        val = self.pop()
+        list = self.frame.stack[-count]  # peek without popping
+        list.append(val)
+
     def byte_LOAD_CONST(self, const):
         # add a literal to the stack
         self.push(const)
@@ -445,6 +480,7 @@ class VirtualMachine:
     def byte_LOAD_GLOBAL(self, name):
         frame = self.frame
         found = True
+        val = None
         if name in frame.global_names:
             val = frame.global_names[name]
         elif name in self.overridden_builtins:
@@ -478,6 +514,28 @@ class VirtualMachine:
         if found:
             self.push(val)
 
+    def byte_MAKE_FUNCTION(self, arg_count):
+        name = self.pop()
+        code = self.pop()
+        defaults = self.popn(arg_count)
+        globs = self.frame.global_names
+        print("gonna try making...")
+        new_function = Function(name, code, globs, defaults, None, self)
+        print("here's what we made:")
+        print("func_name:", new_function.func_name)
+        print("func_defaults:", new_function.func_defaults)
+        print("func_globals:", new_function.func_globals)
+        print("func_locals", new_function.func_locals)
+        print("__dict__", new_function.__dict__)
+        print("func_closure:", new_function.func_closure)
+        print("__doc__:", new_function.__doc__)
+        print("_func:", new_function._func)
+        print("_vm:", new_function._vm)
+        print("func_code:", new_function.func_code)
+
+        print("let's try running it...")
+        self.push(new_function)
+
     def byte_POP_JUMP_IF_FALSE(self, target):
         val = self.pop()
         if not val:
@@ -503,6 +561,11 @@ class VirtualMachine:
         val, obj = self.popn(2)
         setattr(obj, name, val)
 """
+
+    def byte_STORE_MAP(self):
+        map, val, key = self.popn(3)
+        map[key] = val
+        self.push(map)
 
     def byte_STORE_NAME(self, name):
         self.frame.local_names[name] = self.pop()
@@ -561,19 +624,6 @@ class VirtualMachine:
                 for i in unrecognised:
                     print("\t%s" % i)
                 success = False
-
-#                    if byte_name.startswith('UNARY_'):
-#                        self.unaryOperator(byte_name[6:])
-#                    elif byte_name.startswith('BINARY_'):
-#                        self.binaryOperator(byte_name[7:])
-#                    else:
-                        # raise VirtualMachineError(
-                        #    "unsupported bytecode type: %s" % byte_name
-                        # )
-#                        print("BIT doesn't recognise the bytecode", byte_name)
-#                        stack_unwind_reason = 'quit'
-#                else:
-#                    stack_unwind_reason = bytecode_fn(*argument)
 
         if success:
             self.byte_code = code_object
