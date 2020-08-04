@@ -256,8 +256,6 @@ class VirtualMachine:
         f = self.frame  # for brevity
         op_offset = f.last_instruction
         byte_code = f.code_obj.co_code[op_offset]
-
-        f.last_instruction += 1
         byte_name = dis.opname[byte_code]
 
         # this uses the lists included in the dis module to check the meaning
@@ -266,7 +264,8 @@ class VirtualMachine:
         # than exhaustively testing for each individual instruction
         if byte_code >= dis.HAVE_ARGUMENT:
             # index into the byte code
-            arg_val = f.code_obj.co_code[f.last_instruction]
+            # +1, so we access the argument, not the op_code
+            arg_val = f.code_obj.co_code[f.last_instruction + 1]
             if byte_code in dis.hasconst:  # look up a constant
                 arg = f.code_obj.co_consts[arg_val]
             elif byte_code in dis.hasname:  # look up a name
@@ -274,14 +273,17 @@ class VirtualMachine:
             elif byte_code in dis.haslocal:  # look up a local name
                 arg = f.code_obj.co_var_names[arg_val]
             elif byte_code in dis.hasjrel:  # calculate relative jump
-                arg = f.last_instruction + arg_val
+                # +2 so the jump does not include the current instruction
+                arg = f.last_instruction + arg_val + 2
             else:
                 arg = arg_val
             argument = [arg]
         else:
             argument = []
 
-        f.last_instruction += 1
+        # move to next instruction
+        # all byte codes are exactly 2 bytes, since Python 3.6
+        f.last_instruction += 2
         return byte_name, argument
 
     def dispatch(self, byte_name, argument):
@@ -403,6 +405,18 @@ class VirtualMachine:
     def byte_COMPARE_OP(self, opnum):
         a, b = self.popn(2)
         self.push(self.COMPARE_OPERATORS[opnum](a, b))
+
+    def byte_FOR_ITER(self, jump):
+        iter_object = self.top()
+        try:
+            v = next(iter_object)  # v is the current value of the loop var
+            self.push(v)
+        except StopIteration:
+            self.pop()
+            self.jump(jump)
+
+    def byte_GET_ITER(self):
+        self.push(iter(self.pop()))
 
     def byte_JUMP_FORWARD(self, target):
         self.jump(target)
