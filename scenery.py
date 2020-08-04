@@ -21,7 +21,7 @@ class Scenery:
             # use white as the alpha transparency color
             image.set_colorkey((0, 0, 0), pygame.RLEACCEL)
             tiles = []
-            for j in range(10):
+            for j in range(2):  # 2 copies of each tile to allow infini-scroll
                 tiles.append(image)
             # parallax is scaled to make distant layers *much* slower
             layer = {'tiles': tiles, 'parallax': (i - 1) ** 2 / 100}

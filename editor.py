@@ -1,6 +1,5 @@
 import pygame
 import button_tray
-import interpreter
 
 # used to index into (x,y) tuples
 X = 0
@@ -14,12 +13,12 @@ CURSOR_LINE_WRAP = 2
 
 class Editor:
     # on-screen editor for writing programs
-    def __init__(self, screen, height, code_font, dog):
+    def __init__(self, screen, height, code_font, program):
+        self.program = program
         self.code_font = code_font
         self.screen = screen
         self.width = screen.get_size()[X]
         self.height = height
-        self.dog = dog  # a link tot he dog character, to allow programs to access the game state
         self.v_scroll = 0  # line offset to allow text to be scrolled
         self.surface = pygame.Surface((self.width, self.height))
         self.top_margin = 8
@@ -201,6 +200,12 @@ class Editor:
             if not self.cursor_down():
                 break
 
+    def tab(self):
+        # insert 4 spaces
+        TAB = '    '
+        for i in TAB:
+            self.add_keystroke(i)
+
     def clipboard_cut(self):
         print("CUT")
 
@@ -236,11 +241,12 @@ class Editor:
             elif button_result == button_tray.RUN:
                 self.run_program()
             elif button_result == button_tray.STOP:
-                print("Stop")
+                print("Execution halted.")
+                self.program.halt()
             elif button_result == button_tray.LOAD:
-                print("Load")
+                self.load_program()
             elif button_result == button_tray.SAVE:
-                print("Save")
+                self.save_program()
             elif button_result == button_tray.CHANGE_COLOR:
                 self.color_switch()
 
@@ -267,6 +273,7 @@ class Editor:
                       pygame.K_RIGHT: self.cursor_right,
                       pygame.K_PAGEUP: self.page_up,
                       pygame.K_PAGEDOWN: self.page_down,
+                      pygame.K_TAB: self.tab,
                       pygame.K_F5: self.run_program,
                       }
         shifted = {lower: upper for lower, upper in
@@ -282,6 +289,8 @@ class Editor:
                     shortcuts = {pygame.K_x: self.clipboard_cut,
                                  pygame.K_c: self.clipboard_copy,
                                  pygame.K_v: self.clipboard_paste,
+                                 pygame.K_s: self.save_program,
+                                 pygame.K_o: self.load_program,
                                  }
                     if event.key in shortcuts:
                         shortcuts[event.key]()
@@ -305,7 +314,7 @@ class Editor:
                     mouse_button[event.button]()
             elif event.type == pygame.MOUSEBUTTONUP:
             #    self.stop_selection()  # any button release cancels selection
-                self.buttons.release() # also unclick any clicked buttons
+                self.buttons.release()  # also unclick any clicked buttons
 
             # we also have to handle the quit event, since the main loop
             # isn't watching events while the editor is open
@@ -313,6 +322,8 @@ class Editor:
             # TODO prompt user to save code
             elif event.type == pygame.QUIT:
                 print("WARNING: Save code before quitting?")
+
+            # finally, if there is a program running, we must update that too
 
     def print(self, s, pos):
         # renders a string s onto the editor surface at [x, y] position p
@@ -356,15 +367,48 @@ class Editor:
         # draw UI buttons
         self.buttons.draw(self.get_fg_color(), self.get_bg_color())
 
-    def run_program(self):
-        # convert the raw editor characters into lines of source code for the interpreter
+    def convert_to_lines(self):
+        """ convert the raw editor characters into lines of source code
+         so that they can be saved/parsed etc conveniently"""
         source = []
         for line in self.text:
             source.append(''.join(line))
-        i = interpreter.VirtualMachine(self.dog)
-        i.load(source)
-        if i.lex() is True:  # don't run code unless there are no errors
-            if i.run() is True:
-                print("Program complete.")
-            else:
-                print("Program failed.")
+        return source
+
+    def save_program(self):
+        """save source code to a default filename"""
+        # TODO add save dialogue to change name/folder
+        with open('BitQuest_user_program.py', 'w') as file:
+            for line in self.convert_to_lines():
+                file.write(line + '\n')
+
+    def load_program(self):
+        """load source code from a default filename"""
+        # TODO add open dialogue to change name/folder
+        with open('BitQuest_user_program.py', 'r') as file:
+            lines = file.readlines()
+            self.text = []
+            for file_line in lines:
+                line = list(file_line)  # convert string to a list of chars
+                if line[-1] == '\n':  # strip carriage return from each line
+                    line.pop()
+                self.text.append(line)
+
+    def run_program(self):
+        """ pass the text in the editor to the interpreter"""
+        p = self.program
+        p.load(self.convert_to_lines())
+        result = p.compile()
+        if result is False:  # check for syntax errors
+            # TODO display these using in-game dialogs
+            if p.compile_time_error:
+                error_msg = p.compile_time_error['error']
+                error_line = p.compile_time_error['line']
+                print('SYNTAX ERROR:')
+                print('\tBIT found a', end='')
+                # correctly deal with a/an situation
+                if error_msg[0] in 'aeiouAEIOU':
+                    print("n", end='')
+                print(" ", error_msg, " on line ", error_line, sep='')
+        else:
+            p.run()  # set the program going
