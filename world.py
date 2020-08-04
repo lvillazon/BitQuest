@@ -5,7 +5,7 @@ import editor
 import interpreter
 import scenery
 import sprite_sheet
-import constants
+from constants import *
 '''
 https://wiki.libsdl.org/Installation
 https://github.com/pygame/pygame/issues/1722
@@ -27,11 +27,6 @@ EDITOR_POPUP_SPEED = 25  # how fast the editor scrolls into view
 screen = pygame.display.set_mode(WINDOW_SIZE)
 # the rendering surface for the game (heavily scaled)
 display = pygame.Surface(DISPLAY_SIZE)
-
-# general constants
-X = 0  # index values into a variety of positional tuples
-Y = 1
-DEBUG = False  # when true enables extra debug messages in the console
 
 # character animation constants
 STANDING_FRAME = 7
@@ -174,7 +169,7 @@ class World:
     def __init__(self):
         print('Started.')
         # load scenery layers
-        self.scenery = scenery.Scenery('Day', 'Field')
+        self.scenery = scenery.Scenery('Day', 'Desert')
         self.true_scroll = {'x': 0.0, 'y': 0.0}
         # location of the game area on the window
         # used to scroll the game area out of the way of the code editor
@@ -209,7 +204,7 @@ class World:
                              - self.true_scroll['x'] - PLAYER_X_OFFSET) / 16
         if self.true_scroll['x'] < 0:
             # can't scroll past the start of the world
-            self.self.true_scroll['x'] = 0
+            self.true_scroll['x'] = 0
         self.true_scroll['y'] += (self.player.location['y']
                              - self.true_scroll['y'] - PLAYER_Y_OFFSET) / 16
         scroll = {'x': int(self.true_scroll['x']),
@@ -246,7 +241,7 @@ class World:
             pressed = pygame.key.get_pressed()
             if pressed[K_a]:
                 self.player.move_left()
-            elif pressed[K_d] or True:  # DEBUG ensure the scene is always moving to check multitasking works
+            elif pressed[K_d]: # or True:  # DEBUG ensure the scene is always moving to check multitasking works
 
                 self.player.move_right()
             else:
