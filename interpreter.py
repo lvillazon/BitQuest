@@ -99,7 +99,7 @@ class VirtualMachine:
     def __init__(self, world):
         self.world = world  # link back to the state of the game world
         self.BIT = world.dog  # shortcut to the game state of the dog character
-        self.source = []  # a list of lines of source code
+        self.source = []
         self.frames = []  # the call stack of frames
         self.frame = None  # current frame
         self.return_value = None
@@ -117,6 +117,8 @@ class VirtualMachine:
     def load(self, source):
         # set the source code to interpret
         self.source = source
+        #self.source.insert(0, 'import world_access')  # invisible import present for all programs to allow access to game vars]  # a list of lines of source code
+
 
     def is_running(self):
         return self.running
@@ -151,12 +153,14 @@ class VirtualMachine:
             global_names = self.frame.global_names
             local_names = {}
         else:
+            __builtins__['dogX'] = 6
             global_names = local_names = {
                 '__builtins__': __builtins__,
                 '__name__': '__main__',
                 '__doc__': None,
                 '__package__': None,
             }
+            print(__builtins__['dogX'])  # TODO testing ideas for access to game variables
         local_names.update(callargs)
         frame = Frame(code, global_names, local_names, self.frame)
         return frame
@@ -305,6 +309,8 @@ class VirtualMachine:
                     self.unaryOperator(byte_name[6:])
                 elif byte_name.startswith('BINARY_'):
                     self.binaryOperator(byte_name[7:])
+                elif byte_name.startswith('INPLACE_'):
+                    self.inplaceOperator(byte_name[8:])
                 else:
                     # raise VirtualMachineError(
                     #    "unsupported bytecode type: %s" % byte_name
@@ -341,7 +347,7 @@ class VirtualMachine:
             exc, val, tb = self.last_exception
             e = exc(val)
             e.__traceback__ = tb
-            raise e
+            raise e  # TODO replace this with in-game error message
         elif stack_unwind_reason == 'quit':
             # this option allows us to quit gracefully
             # with a console error that doesn't crash the game
@@ -357,221 +363,6 @@ class VirtualMachine:
     def jump(self, target):
         """Set bytecode pointer to "target", so this instruction is next"""
         self.frame.last_instruction = target
-
-    ##############################################
-    # the functions for the instruction set
-
-    BINARY_OPERATORS = {
-        'POWER': pow,
-        'MULTIPLY': operator.mul,
-        'FLOOR_DIVIDE': operator.floordiv,
-        'TRUE_DIVIDE': operator.truediv,
-        'MODULO': operator.mod,
-        'ADD': operator.add,
-        'SUBTRACT': operator.sub,
-        'SUBSCR': operator.getitem,
-        'LSHIFT': operator.lshift,
-        'RSHIFT': operator.rshift,
-        'AND': operator.and_,
-        'XOR': operator.xor,
-        'OR': operator.or_,
-    }
-
-    def binaryOperator(self, op):
-        # handles all the operations that take the form 'a [op] b', eg 2 + 4
-        a, b = self.popn(2)
-        self.push(self.BINARY_OPERATORS[op](a, b))
-
-    def byte_BUILD_CONST_KEY_MAP(self, size):
-        keys = self.pop()
-        vals = self.popn(size)
-        new_dictionary = {}
-        for i in range(size):
-            new_dictionary[keys[i]] = vals[i]
-        self.push(new_dictionary)
-
-    def byte_BUILD_LIST(self, count):
-        elts = self.popn(count)  # why is this called elts?
-        self.push(elts)
-
-    def byte_BUILD_MAP(self, size):
-        new_dictionary = {}
-        for i in range(size):
-            key, val = self.popn(2)
-            new_dictionary[key] = val
-        self.push(new_dictionary)
-
-    def byte_CALL_FUNCTION(self, arg):
-        lenKw, lenPos = divmod(arg, 256)  # KW args not supported
-        posargs = self.popn(lenPos)
-
-        func = self.pop()
-        frame = self.frame
-        retval = func(*posargs)
-        self.push(retval)
-
-    def oldbyte_CALL_FUNCTION(self, param_count):
-        params = self.popn(int(param_count))
-        function_name = self.pop()
-        if CONSOLE_VERBOSE:
-            print("\t trying to call function:", function_name)
-            print("\t with parameters:", params)
-        self.push(function_name(*params))
-
-    COMPARE_OPERATORS = [
-        operator.lt,
-        operator.le,
-        operator.eq,
-        operator.ne,
-        operator.gt,
-        operator.ge,
-        lambda x, y: x in y,
-        lambda x, y: x not in y,
-        lambda x, y: x is y,
-        lambda x, y: x is not y,
-        lambda x, y: issubclass(x, Exception) and issubclass(x, y),
-    ]
-
-    def byte_COMPARE_OP(self, opnum):
-        a, b = self.popn(2)
-        self.push(self.COMPARE_OPERATORS[opnum](a, b))
-
-    def byte_FOR_ITER(self, jump):
-        iter_object = self.top()
-        try:
-            v = next(iter_object)  # v is the current value of the loop var
-            self.push(v)
-        except StopIteration:
-            self.pop()
-            self.jump(jump)
-
-    def byte_GET_ITER(self):
-        self.push(iter(self.pop()))
-
-    def byte_JUMP_FORWARD(self, target):
-        self.jump(target)
-
-    def byte_JUMP_ABSOLUTE(self, target):
-        self.jump(target)
-
-    """
-    def byte_LOAD_ATTR(self, attr):
-        obj = self.pop()
-        val = getattr(obj, attr)
-        self.push(val)
-    """
-
-    def byte_LIST_APPEND(self, count):
-        val = self.pop()
-        list = self.frame.stack[-count]  # peek without popping
-        list.append(val)
-
-    def byte_LOAD_CONST(self, const):
-        # add a literal to the stack
-        self.push(const)
-
-    def byte_LOAD_FAST(self, name):
-        if name in self.frame.local_names:
-            val = self.frame.local_names[name]
-            self.push(val)
-        else:
-            print("NAME ERROR:", name, "referenced before assignment.")
-
-    def byte_LOAD_GLOBAL(self, name):
-        frame = self.frame
-        found = True
-        val = None
-        if name in frame.global_names:
-            val = frame.global_names[name]
-        elif name in self.overridden_builtins:
-            val = self.overridden_builtins[name]
-        elif name in frame.builtin_names:
-            val = frame.builtin_names[name]
-        else:
-            print("NAME ERROR: global '", name, "' is not defined.", sep='')
-            found = False
-        if found:
-            self.push(val)
-
-    def byte_LOAD_NAME(self, name):
-        # the LOAD_ and STORE_NAME functions directly manipulate the
-        # live variables of the program
-        # this will eventually switch to accessing the variables of the
-        # current frame
-        frame = self.frame
-        found = True
-        if name in frame.local_names:
-            val = frame.local_names[name]
-        elif name in frame.global_names:
-            val = frame.globals[name]
-        elif name in self.overridden_builtins:
-            val = self.overridden_builtins[name]
-        elif name in frame.builtin_names:
-            val = frame.builtin_names[name]
-        else:
-            print("NAME ERROR: '", name, "' is not defined.", sep='')
-            found = False
-        if found:
-            self.push(val)
-
-    def byte_MAKE_FUNCTION(self, arg_count):
-        name = self.pop()
-        code = self.pop()
-        defaults = self.popn(arg_count)
-        globs = self.frame.global_names
-        print("gonna try making...")
-        new_function = Function(name, code, globs, defaults, None, self)
-        print("here's what we made:")
-        print("func_name:", new_function.func_name)
-        print("func_defaults:", new_function.func_defaults)
-        print("func_globals:", new_function.func_globals)
-        print("func_locals", new_function.func_locals)
-        print("__dict__", new_function.__dict__)
-        print("func_closure:", new_function.func_closure)
-        print("__doc__:", new_function.__doc__)
-        print("_func:", new_function._func)
-        print("_vm:", new_function._vm)
-        print("func_code:", new_function.func_code)
-
-        print("let's try running it...")
-        self.push(new_function)
-
-    def byte_POP_JUMP_IF_FALSE(self, target):
-        val = self.pop()
-        if not val:
-            self.jump(target)
-
-    def byte_POP_JUMP_IF_TRUE(self, target):
-        val = self.pop()
-        if val:
-            self.jump(target)
-
-    def byte_POP_TOP(self):
-        self.pop()  # discard top item on the stack?
-
-    def byte_RETURN_VALUE(self):
-        if CONSOLE_VERBOSE:
-            r = self.top()  # look at the top of stack, but don't pop it
-            print("\t Returning:", r)
-        self.return_value = self.pop()
-        return 'return'  # set the value of stack_unwind_reason
-
-    """
-    def byte_STORE_ATTR(self, name):
-        val, obj = self.popn(2)
-        setattr(obj, name, val)
-"""
-
-    def byte_STORE_MAP(self):
-        map, val, key = self.popn(3)
-        map[key] = val
-        self.push(map)
-
-    def byte_STORE_NAME(self, name):
-        self.frame.local_names[name] = self.pop()
-
-    def byte_STORE_FAST(self, name):
-        self.frame.local_names[name] = self.pop()
 
     def get_code(self):
         # converts all the source into a single string with carriage returns
@@ -616,6 +407,12 @@ class VirtualMachine:
                 elif (instruction.opname.startswith('BINARY_') and
                       instruction.opname[7:] in self.BINARY_OPERATORS.keys()):
                     defined = True
+                elif (instruction.opname.startswith('INPLACE_') and
+                    instruction.opname[8:] in self.INPLACE_OPERATORS.keys()):
+                    defined = True
+                elif (instruction.opname.startswith('UNARY_') and
+                      instruction.opname[6:] in self.UNARY_OPERATORS.keys()):
+                    defined = True
 
                 if not defined:
                     unrecognised.append(instruction.opname)
@@ -632,5 +429,284 @@ class VirtualMachine:
             for c in code_object.co_code:
                 print(c, ', ', sep='', end='')
             print()
+        else:
+            error_msg = self.compile_time_error['error']
+            error_line = self.compile_time_error['line']
+            msg = error_msg + " on line " + str(error_line)
+            self.world.dog.syntax_error(msg)
 
         return success
+
+    ##############################################
+    # the functions for the instruction set
+
+    BINARY_OPERATORS = {
+        'POWER': pow,
+        'MULTIPLY': operator.mul,
+        'FLOOR_DIVIDE': operator.floordiv,
+        'TRUE_DIVIDE': operator.truediv,
+        'MODULO': operator.mod,
+        'ADD': operator.add,
+        'SUBTRACT': operator.sub,
+        'SUBSCR': operator.getitem,
+        'LSHIFT': operator.lshift,
+        'RSHIFT': operator.rshift,
+        'AND': operator.and_,
+        'XOR': operator.xor,
+        'OR': operator.or_,
+    }
+
+    def unaryOperator(self, op):
+        # handles all the operations that take the form '[op] a', eg 'not a'
+        a = self.pop()
+        self.push(self.UNARY_OPERATORS[op](a))
+
+    def binaryOperator(self, op):
+        # handles all the operations that take the form 'a [op] b', eg 2 + 4
+        a, b = self.popn(2)
+        self.push(self.INPLACE_OPERATORS[op](a, b))
+
+    def inplaceOperator(self, op):
+        # handles all the in-place operators
+        # that perform a = a [op] b, eg a += 1
+        a, b = self.popn(2)
+
+        self.push(self.BINARY_OPERATORS[op](a, b))
+
+    def byte_BUILD_CONST_KEY_MAP(self, size):
+        keys = self.pop()
+        vals = self.popn(size)
+        new_dictionary = {}
+        for i in range(size):
+            new_dictionary[keys[i]] = vals[i]
+        self.push(new_dictionary)
+
+    def byte_BUILD_LIST(self, count):
+        elts = self.popn(count)  # why is this called elts?
+        self.push(elts)
+
+    def byte_BUILD_MAP(self, size):
+        new_dictionary = {}
+        for i in range(size):
+            key, val = self.popn(2)
+            new_dictionary[key] = val
+        self.push(new_dictionary)
+
+    def byte_CALL_FUNCTION(self, arg):
+        lenKw, lenPos = divmod(arg, 256)  # KW args not supported
+        posargs = self.popn(lenPos)
+
+        func = self.pop()
+        frame = self.frame
+        retval = func(*posargs)
+        self.push(retval)
+
+    def byte_CALL_METHOD(self, arg_count):
+        args = self.popn(arg_count)
+        obj, method = self.popn(2)
+        result = method(*args)
+        self.push(result)
+
+    COMPARE_OPERATORS = [
+        operator.lt,
+        operator.le,
+        operator.eq,
+        operator.ne,
+        operator.gt,
+        operator.ge,
+        lambda x, y: x in y,
+        lambda x, y: x not in y,
+        lambda x, y: x is y,
+        lambda x, y: x is not y,
+        lambda x, y: issubclass(x, Exception) and issubclass(x, y),
+    ]
+
+    def byte_COMPARE_OP(self, opnum):
+        a, b = self.popn(2)
+        self.push(self.COMPARE_OPERATORS[opnum](a, b))
+
+    def byte_FOR_ITER(self, jump):
+        iter_object = self.top()
+        try:
+            v = next(iter_object)  # v is the current value of the loop var
+            self.push(v)
+        except StopIteration:
+            self.pop()
+            self.jump(jump)
+
+    def byte_GET_ITER(self):
+        self.push(iter(self.pop()))
+
+    INPLACE_OPERATORS = {
+        'POWER': operator.ipow,
+        'MULTIPLY': operator.imul,
+        'MATRIX_MULTIPLY': operator.imatmul,
+        'FLOOR_DIVIDE': operator.ifloordiv,
+        'TRUE_DIVIDE': operator.itruediv,
+        'MODULO': operator.imod,
+        'ADD': operator.iadd,
+        'SUBTRACT': operator.isub,
+        'LSHIFT': operator.ilshift,
+        'RSHIFT': operator.irshift,
+        'AND': operator.iand,
+        'XOR': operator.ixor,
+        'OR': operator.ior,
+    }
+
+    def byte_IMPORT_NAME(self, name):
+        level, fromlist = self.popn(2)
+        frame = self.frame
+        self.push(
+            __import__(name, frame.global_names, frame.local_names, fromlist, level)
+        )
+
+    def byte_IMPORT_STAR(self):
+        # TODO: this doesn't use __all__ properly.
+        mod = self.pop()
+        for attr in dir(mod):
+            if attr[0] != '_':
+                self.frame.local_names[attr] = getattr(mod, attr)
+
+    def byte_IMPORT_FROM(self, name):
+        mod = self.top()
+        self.push(getattr(mod, name))
+
+    def byte_JUMP_FORWARD(self, target):
+        self.jump(target)
+
+    def byte_JUMP_ABSOLUTE(self, target):
+        self.jump(target)
+
+    def byte_LOAD_ATTR(self, attr):
+        obj = self.pop()
+        val = getattr(obj, attr)
+        self.push(val)
+
+    def byte_LIST_APPEND(self, count):
+        val = self.pop()
+        list = self.frame.stack[-count]  # peek without popping
+        list.append(val)
+
+    def byte_LOAD_CONST(self, const):
+        # add a literal to the stack
+        self.push(const)
+
+    def byte_LOAD_FAST(self, name):
+        if name in self.frame.local_names:
+            val = self.frame.local_names[name]
+            self.push(val)
+        else:
+            print("NAME ERROR:", name, "referenced before assignment.")
+
+    def byte_LOAD_GLOBAL(self, name):
+        frame = self.frame
+        found = True
+        val = None
+        if name in frame.global_names:
+            val = frame.global_names[name]
+        elif name in self.overridden_builtins:
+            val = self.overridden_builtins[name]
+        elif name in frame.builtin_names:
+            val = frame.builtin_names[name]
+        else:
+            print("NAME ERROR: global '", name, "' is not defined.", sep='')
+            found = False
+        if found:
+            self.push(val)
+
+    def byte_LOAD_METHOD(self, name):
+        object = self.pop()
+        method = getattr(object, name, None)
+        if method is not None:  # make sure the object actually has a method with this name
+            self.push(object)
+            self.push(method)
+        else:
+            # push NULL and the object returned by the attribute lookup, otherwise
+            print("ERROR: '{0}' is unrecognised.".format(name))
+            self.push(None)
+            self.push(method)
+
+    def byte_LOAD_NAME(self, name):
+        # the LOAD_ and STORE_NAME functions directly manipulate the
+        # live variables of the program
+        # this will eventually switch to accessing the variables of the
+        # current frame
+        frame = self.frame
+        found = True
+        if name in frame.local_names:
+            val = frame.local_names[name]
+        elif name in frame.global_names:
+            val = frame.globals[name]
+        elif name in self.overridden_builtins:
+            val = self.overridden_builtins[name]
+        elif name in frame.builtin_names:
+            val = frame.builtin_names[name]
+        else:
+            print("NAME ERROR: '", name, "' is not defined.", sep='')
+            found = False
+        if found:
+            self.push(val)
+
+    def byte_MAKE_FUNCTION(self, arg_count):
+        name = self.pop()
+        code = self.pop()
+        defaults = self.popn(arg_count)
+        globs = self.frame.global_names
+        new_function = Function(name, code, globs, defaults, None, self)
+        # print("here's what we made:")
+        # print("func_name:", new_function.func_name)
+        # print("func_defaults:", new_function.func_defaults)
+        # print("func_globals:", new_function.func_globals)
+        # print("func_locals", new_function.func_locals)
+        # print("__dict__", new_function.__dict__)
+        # print("func_closure:", new_function.func_closure)
+        # print("__doc__:", new_function.__doc__)
+        # print("_func:", new_function._func)
+        # print("_vm:", new_function._vm)
+        # print("func_code:", new_function.func_code)
+        self.push(new_function)
+
+    def byte_POP_JUMP_IF_FALSE(self, target):
+        val = self.pop()
+        if not val:
+            self.jump(target)
+
+    def byte_POP_JUMP_IF_TRUE(self, target):
+        val = self.pop()
+        if val:
+            self.jump(target)
+
+    def byte_POP_TOP(self):
+        self.pop()  # discard top item on the stack?
+
+    def byte_RETURN_VALUE(self):
+        if CONSOLE_VERBOSE:
+            r = self.top()  # look at the top of stack, but don't pop it
+            print("\t Returning:", r)
+        self.return_value = self.pop()
+        return 'return'  # set the value of stack_unwind_reason
+
+    """
+    def byte_STORE_ATTR(self, name):
+        val, obj = self.popn(2)
+        setattr(obj, name, val)
+"""
+
+    def byte_STORE_MAP(self):
+        map, val, key = self.popn(3)
+        map[key] = val
+        self.push(map)
+
+    def byte_STORE_NAME(self, name):
+        self.frame.local_names[name] = self.pop()
+
+    def byte_STORE_FAST(self, name):
+        self.frame.local_names[name] = self.pop()
+
+    UNARY_OPERATORS = {
+        'POSITIVE': operator.pos,
+        'NEGATIVE': operator.neg,
+        'NOT': operator.not_,
+        'INVERT': operator.inv,
+    }
+

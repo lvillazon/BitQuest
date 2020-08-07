@@ -405,6 +405,7 @@ class Editor:
                 error_msg = p.compile_time_error['error']
                 error_line = p.compile_time_error['line']
                 print('BIT found a SYNTAX ERROR:')
-                print(error_msg, "on line", error_line)
+                msg = error_msg + " on line " + str(error_line)
+                print(msg)
         else:
             p.run()  # set the program going

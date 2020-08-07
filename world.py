@@ -1,6 +1,9 @@
+import contextlib
+import io
 import time
 import pygame
 from pygame.locals import *
+
 import editor
 import interpreter
 import scenery
@@ -120,11 +123,10 @@ class Character:
     def stop_moving(self):
         self.moving = False
 
-    def say(self, t):
+    def speech_bubble(self, title, text, fg_col, bg_col):
         # show a speak-bubble above the character with the text in it
-        new_text = str(t)
+        new_text = str(text)
         self.text.append(new_text)
-        print('Bit says: "', new_text, '"', sep='')
         size = self.world.code_font.size(new_text)
         if size[X] > self.text_size[X]:
             self.text_size[X] = size[X]
@@ -143,7 +145,7 @@ class Character:
         w = bubble_rect.width
         h = bubble_rect.height
         m = self.BUBBLE_MARGIN
-        pygame.draw.polygon(self.bubble, self.world.editor.get_bg_color(),
+        pygame.draw.polygon(self.bubble, bg_col,
                             ((m , 0)   , (w - m, 0),
                              (w, m)    , (w, h - m),
                              (w - m, h), (m, h),
@@ -154,7 +156,7 @@ class Character:
         # until the bubble is full
         output_line = len(self.text) - 1
         line_y_pos = h - m - size[Y]
-        color = self.world.editor.get_fg_color()
+        color = fg_col
         while line_y_pos >= m and output_line >= 0:
             line = self.world.code_font.render(self.text[output_line],
                                                True, color)
@@ -162,6 +164,22 @@ class Character:
             output_line -= 1
             line_y_pos -= size[Y]
         self.speaking = True
+
+    def say(self, *t):
+        # show the message t in a speak-bubble above the character
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f):
+            print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still us the end= keyword
+            speech = f.getvalue()
+        self.speech_bubble("BIT says:", speech,
+                           self.world.editor.get_fg_color(),
+                           self.world.editor.get_bg_color())
+
+    def syntax_error(self, msg):
+        # show the error in a speak-bubble above the character
+        self.speech_bubble("Syntax error!", msg,
+                           (0,0,0),
+                           (254,0,0))  # red, but not 255 because that's the alpha
 
 #######################################################
 
@@ -197,6 +215,7 @@ class World:
 
     def update(self):
         '''update all the game world stuff'''''
+
         frame_start_time = time.time_ns()  # used to calculate fps
 
         # track the camera with the player, but with a bit of lag
