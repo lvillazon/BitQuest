@@ -153,14 +153,12 @@ class VirtualMachine:
             global_names = self.frame.global_names
             local_names = {}
         else:
-            __builtins__['dogX'] = 6
             global_names = local_names = {
                 '__builtins__': __builtins__,
                 '__name__': '__main__',
                 '__doc__': None,
                 '__package__': None,
             }
-            print(__builtins__['dogX'])  # TODO testing ideas for access to game variables
         local_names.update(callargs)
         frame = Frame(code, global_names, local_names, self.frame)
         return frame
@@ -330,7 +328,16 @@ class VirtualMachine:
         """ frames run until they return a value or raise an exception"""
         self.push_frame(frame)
         while self.running:
+
+            # request to set any game variables
+            # that were changed by the running program
+            if 'dogX' in frame.global_names:
+                self.world.bit_x = frame.global_names['dogX']
+
+            # now let the game world update to reflect keyboard input
+            # and physics
             self.world.update()
+
             byte_name, arguments = self.parse_byte_and_args()
             stack_unwind_reason = self.dispatch(byte_name, arguments)
 
