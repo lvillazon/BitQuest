@@ -30,7 +30,8 @@ class Character:
                                 for sprite in self.die_right_frames]
         self.moving = False
         self.facing_right = True
-        self.location = {'x': 0, 'y': 0}
+        self.location = pygame.Rect(0, 0, CHARACTER_SIZE, CHARACTER_SIZE)
+        self.collider = pygame.Rect(0,0, 24, 24)
         self.frame_number = 0
         self.frame_count = len(self.run_right_frames)
         self.jumping = False
@@ -42,14 +43,16 @@ class Character:
     def update(self, surface, scroll):
         f = int(self.frame_number) % self.frame_count
         self.frame_number = self.frame_number + .25
+        movement = [0,0]
         if self.moving:
             if self.facing_right:
-                self.location['x'] += self.run_speed
+                    movement[X] = self.run_speed
+#                    self.location.x += self.run_speed
             else:
-                self.location['x'] -= self.run_speed
+ #               self.location.x -= self.run_speed
                 # can't move past start of the world
-                if self.location['x'] < 0:
-                    self.location['x'] = 0
+                if self.location.x > 0:
+                    movement[X] = -self.run_speed
 
         if self.jumping:
             if self.facing_right:
@@ -70,8 +73,25 @@ class Character:
             else:
                 frame = self.run_left_frames[self.STANDING_FRAME]
 
-        surface.blit(frame, (self.location['x'] - scroll['x'],
-                             self.location['y'] - scroll['y']))
+        # check collisions with the world blocks - pillars etc
+        self.collider.centerx = self.location.centerx - scroll['x']
+        self.collider.centery = self.location.centery - scroll['y'] + 6
+        collisions = self.world.blocks.collision_test(self.collider, movement)
+        if collisions == []:
+            self.location.x += movement[X]
+            self.location.y += movement[Y]
+ #       else:
+            # even if there is a collision, we still allow
+            # movement away from the block
+            # this prevents the character getting stuck to a block
+#            for block in collisions:
+#                if self.facing_right:
+#                    self.location.x = self.location.x -1
+#                else:
+#                    self.location.x = self.location.x +1
+
+        surface.blit(frame, (self.location.x - scroll['x'],
+                             self.location.y - scroll['y']))
 
     def move_left(self):
         self.facing_right = False

@@ -7,6 +7,7 @@ import time
 import pygame
 from pygame.locals import *
 
+import blocks
 import characters
 import editor
 import interpreter
@@ -30,12 +31,16 @@ class World:
         # used to scroll the game area out of the way of the code editor
         self.game_origin = [0, 0]
 
+        # load puzzle blocks
+        self.blocks = blocks.Blocks(self)
+
         # load character sprites
         self.player = characters.Character(self, 'character.png')
         self.dog = characters.Character(self, 'dog basic.png', run_speed=2)
-        self.player.location = {'x': 150, 'y': 170 - 32 - 2}
-        self.dog.location = {'x': self.player.location['x'] + 50,
-                        'y': self.player.location['y']}
+        self.player.location.x = 150
+        self.player.location.y = 170 - 32 - 2
+        self.dog.location.x = self.player.location.x + 50
+        self.dog.location.y = self.player.location.y
         self.debug_mode = False
 
         # intialise the python interpreter and editor
@@ -52,27 +57,22 @@ class World:
         self.clock = pygame.time.Clock()
 
     def get_bit_x(self):
-        #        return 6
-        return self.dog.location['x']
+        return self.dog.location.x
 
     def set_bit_x(self, new_x):
-#        self.dog.location['x'] = new_x
-
-        if new_x < self.dog.location['x']:
-            while (abs(self.dog.location['x'] - new_x) >= self.dog.run_speed):
+        # attempt to move the dog to the new position
+        if new_x < self.dog.location.x:
+            while (abs(self.dog.location.x - new_x) >= self.dog.run_speed):
                 self.dog.move_left()
                 self.update()
-        elif new_x > self.dog.location['x']:
-            while (abs(self.dog.location['x'] - new_x) >= self.dog.run_speed):
+        elif new_x > self.dog.location.x:
+            while (abs(self.dog.location.x - new_x) >= self.dog.run_speed):
                 self.dog.move_right()
                 self.update()
 
         self.dog.stop_moving()
 
     bit_x = property(get_bit_x, set_bit_x)
-
-    def get_dog_X(self):
-        return self.dog.location['x']
 
     def update(self):
         '''update all the game world stuff'''''
@@ -81,12 +81,12 @@ class World:
         frame_start_time = time.time_ns()  # used to calculate fps
 
         # track the camera with the player, but with a bit of lag
-        self.true_scroll['x'] += (self.player.location['x']
+        self.true_scroll['x'] += (self.player.location.x
                              - self.true_scroll['x'] - PLAYER_X_OFFSET) / 16
         if self.true_scroll['x'] < 0:
             # can't scroll past the start of the world
             self.true_scroll['x'] = 0
-        self.true_scroll['y'] += (self.player.location['y']
+        self.true_scroll['y'] += (self.player.location.y
                              - self.true_scroll['y'] - PLAYER_Y_OFFSET) / 16
         scroll = {'x': int(self.true_scroll['x']),
                   'y': int(self.true_scroll['y'])}
@@ -108,7 +108,7 @@ class World:
         #    self.dog.stop_moving()
 
         # draw the foreground scenery on top of the characters
-        self.scenery.draw_foreground(display, scroll)
+        self.blocks.update(display, scroll)
 
         # allocate some cpu time to the in-game interpreter running player's code
         if self.program.is_running():
@@ -174,6 +174,8 @@ class World:
         # scale the rendering area to the actual game window
         self.screen.blit(pygame.transform.scale(display, WINDOW_SIZE),
                     self.game_origin)
+        self.scenery.draw_foreground(self.screen, scroll)
+
         # blit the editor underneath the game surface
         editor_position = (self.game_origin[X],
                            self.game_origin[Y] + WINDOW_SIZE[Y])
@@ -183,9 +185,9 @@ class World:
         if self.dog.speaking:
             # position the tip of the speak bubble at the middle
             # of the top edge of the sprite box
-            position = ((self.dog.location['x'] - scroll['x'] + 16)
+            position = ((self.dog.location.x - scroll['x'] + 16)
                         * SCALING_FACTOR + self.game_origin[X],
-                        (self.dog.location['y'] - scroll['y'])
+                        (self.dog.location.y - scroll['y'])
                         * SCALING_FACTOR  + self.game_origin[Y]
                         - self.dog.text_size[Y])
             self.screen.blit(self.dog.bubble, position)
