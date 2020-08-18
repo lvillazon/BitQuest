@@ -76,20 +76,13 @@ class Character:
         # check collisions with the world blocks - pillars etc
         self.collider.centerx = self.location.centerx - scroll['x']
         self.collider.centery = self.location.centery - scroll['y'] + 6
-        collisions = self.world.blocks.collision_test(self.collider, movement)
-        if collisions == []:
+        collisions = self.world.blocks.collision_test(self.collider,
+                                                      movement, scroll)
+        if collisions == []:  # no collisions, so free to move
             self.location.x += movement[X]
             self.location.y += movement[Y]
- #       else:
-            # even if there is a collision, we still allow
-            # movement away from the block
-            # this prevents the character getting stuck to a block
-#            for block in collisions:
-#                if self.facing_right:
-#                    self.location.x = self.location.x -1
-#                else:
-#                    self.location.x = self.location.x +1
 
+        # draw the sprite at the new location
         surface.blit(frame, (self.location.x - scroll['x'],
                              self.location.y - scroll['y']))
 

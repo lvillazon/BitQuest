@@ -32,7 +32,7 @@ class World:
         self.game_origin = [0, 0]
 
         # load puzzle blocks
-        self.blocks = blocks.Blocks(self)
+        self.blocks = blocks.BlockMap(self)
 
         # load character sprites
         self.player = characters.Character(self, 'character.png')
