@@ -77,16 +77,25 @@ class Editor:
             self.cursor_col += 1
 
     def backspace(self):
-        # back up the cursor and remove the character at that pos
-        move = self.cursor_left()
-        if move == CURSOR_OK:
-            del self.text[self.cursor_line][self.cursor_col]
-        if move == CURSOR_LINE_WRAP:
-            # if we backspace at the start of a line,
-            # merge this line with the one above
-            self.text[self.cursor_line].extend(self.text[self.cursor_line + 1])
-            # delete empty line
-            del self.text[self.cursor_line + 1]
+        """ back up the cursor and remove the character at that pos """
+
+        # if there are 4 spaces to the left of the cursor,
+        # remove them in one go, since we treat this as a tab
+        if (self.text[self.cursor_line][self.cursor_col-4: self.cursor_col]
+            == [' ', ' ', ' ', ' ']):
+            for i in range(4):
+                move = self.cursor_left()
+                del self.text[self.cursor_line][self.cursor_col]
+        else:  # otherwise just delete one char
+            move = self.cursor_left()
+            if move == CURSOR_OK:
+                del self.text[self.cursor_line][self.cursor_col]
+            if move == CURSOR_LINE_WRAP:
+                # if we backspace at the start of a line,
+                # merge this line with the one above
+                self.text[self.cursor_line].extend(self.text[self.cursor_line + 1])
+                # delete empty line
+                del self.text[self.cursor_line + 1]
 
     def delete(self):
         # suck up text at the cursor
@@ -100,12 +109,27 @@ class Editor:
             del self.text[self.cursor_line + 1]
 
     def carriage_return(self):
+        """break the line at the cursor"""
+
+        # we want to match the indentation of the current line
+        # so we must check for spaces at the start of the current line
+        # which we do by comparing the length of the line with the length
+        # of the lstripped string version of the line
+        indent = (len(self.text[self.cursor_line]) -
+                  len(''.join(self.text[self.cursor_line]).lstrip()))
+
+        # if the previous line ends in a :, we increase the indent by 4 spaces
+        if self.text[self.cursor_line][self.cursor_col-1] == ':':
+            indent += 4
+
         # at the cursor, split the line into two
-        # then put the cursor at the start of the new line
-        new_line = self.text[self.cursor_line][self.cursor_col:]
+        # beginning with indentation spaces as required
+        new_line = [' '] * indent
+        new_line.extend(self.text[self.cursor_line][self.cursor_col:])
         self.text.insert(self.cursor_line + 1, new_line)
         del self.text[self.cursor_line][self.cursor_col:]
-        self.cursor_col = 0
+        # then put the cursor at the (indented) start of the new line
+        self.cursor_col = indent
         self.cursor_line += 1
         # scroll if necessary
         if self.get_cursor_xy()[Y] > self.max_lines - 2:
@@ -279,6 +303,8 @@ class Editor:
         shifted = {lower: upper for lower, upper in
                    zip("1234567890-=[]#;',./abcdefghijklmnopqrstuvwxyz ",
                        '!"£$%^&*()_+{}~:@<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ ')}
+        printable = "1234567890-=[]#;',./abcdefghijklmnopqrstuvwxyz " \
+                    '!"£$%^&*()_+{}~:@<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key in key_action:
@@ -296,12 +322,14 @@ class Editor:
                         shortcuts[event.key]()
                 else:
                     # handle all the printable characters
-                    if chr(event.key) in shifted:
-                        if pygame.key.get_mods() & pygame.KMOD_SHIFT:
-                            char = shifted[chr(event.key)]
-                        else:
-                            char = chr(event.key)
-                        self.add_keystroke(char)
+                    if event.unicode != '' and event.unicode in printable:
+                        self.add_keystroke(event.unicode)
+#                    if event.unicode in shifted:  # chr(event.key) in shifted:
+#                        if pygame.key.get_mods() & pygame.KMOD_SHIFT:
+#                            char = shifted[event.unicode]  # shifted[chr(event.key)]
+#                        else:
+#                            char = event.unicode  # chr(event.key)
+#                        self.add_keystroke(char)
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_button = {1: self.left_click,

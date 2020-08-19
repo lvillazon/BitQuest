@@ -2,7 +2,7 @@
  BitQuest module to handle the game world rendering
  and character movement
 """
-
+import random
 import time
 import pygame
 from pygame.locals import *
@@ -39,7 +39,7 @@ class World:
         self.dog = characters.Character(self, 'dog basic.png', run_speed=2)
         self.player.location.x = 150
         self.player.location.y = 170 - 32 - 2
-        self.dog.location.x = self.player.location.x + 50
+        self.dog.location.x = self.player.location.x + 300
         self.dog.location.y = self.player.location.y
         self.debug_mode = False
 
@@ -52,6 +52,7 @@ class World:
         self.program = interpreter.VirtualMachine(self)
         self.editor = editor.Editor(screen, 300, self.code_font, self.program)
 
+        self.camera_shake = False
         self.game_running = True
         self.frame_draw_time = 1
         self.clock = pygame.time.Clock()
@@ -90,6 +91,9 @@ class World:
                              - self.true_scroll['y'] - PLAYER_Y_OFFSET) / 16
         scroll = {'x': int(self.true_scroll['x']),
                   'y': int(self.true_scroll['y'])}
+        if self.camera_shake:
+            scroll['x'] += random.randint(-1,1)
+            scroll['y'] += random.randint(-1,1)
 
         # render the background
         self.scenery.draw_background(display, scroll)

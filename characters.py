@@ -31,7 +31,7 @@ class Character:
         self.moving = False
         self.facing_right = True
         self.location = pygame.Rect(0, 0, CHARACTER_SIZE, CHARACTER_SIZE)
-        self.collider = pygame.Rect(0,0, 24, 24)
+        self.collider = pygame.Rect(0,0, 24, 20)
         self.frame_number = 0
         self.frame_count = len(self.run_right_frames)
         self.jumping = False
@@ -75,7 +75,7 @@ class Character:
 
         # check collisions with the world blocks - pillars etc
         self.collider.centerx = self.location.centerx - scroll['x']
-        self.collider.centery = self.location.centery - scroll['y'] + 6
+        self.collider.centery = self.location.centery - scroll['y'] + 7
         collisions = self.world.blocks.collision_test(self.collider,
                                                       movement, scroll)
         if collisions == []:  # no collisions, so free to move

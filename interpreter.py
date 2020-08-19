@@ -158,6 +158,7 @@ class VirtualMachine:
                 '__name__': '__main__',
                 '__doc__': None,
                 '__package__': None,
+                'dogX': self.world.bit_x  # predefine globals to link to world
             }
         local_names.update(callargs)
         frame = Frame(code, global_names, local_names, self.frame)
