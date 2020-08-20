@@ -6,7 +6,6 @@ import io
 from constants import *
 import sprite_sheet
 
-BLOCK_SIZE = 16  # size in pixels of a the block 'grid'
 TILE_FILE = 'block tiles.png'
 ALPHA = (255, 255, 255)
 
@@ -163,7 +162,8 @@ class BlockMap:
             '                                    []   ',
             ' Pp                 Pp              []   ',
             ' []                 []              []   ',
-            ' Bb               = Bb   Pp=    =   Bb   ',
+            ' Bb  PP           = Bb   Pp=    =   Bb   ',
+            'PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP',
             ]
 
         # foreground layer is drawn on top of the player and doesn't collide
@@ -248,6 +248,7 @@ class BlockMap:
         trigger - characters can overlap the block, activating the trigger
         cosmetic - no collision physics or trigger (but may animate)
         """
+        direction = ''
         if DEBUG:
             # DEBUG draw character collider in green
             pygame.draw.rect(self.world.display, (0, 255, 0),
@@ -284,9 +285,21 @@ class BlockMap:
                 if (movement[X] > 0 and
                                 character_rect.centerx < collider.centerx):
                     collisions.append(collider)
+                    direction = 'horizontal'
 
                 if (movement[X] < 0 and
                                 character_rect.centerx > collider.centerx):
                     collisions.append(collider)
+                    direction = 'horizontal'
 
-        return collisions
+                if (movement[Y] < 0 and
+                        character_rect.centery > collider.centery):
+                    collisions.append(collider)
+                    direction = 'vertical'
+
+                if (movement[Y] > 0 and
+                        character_rect.centery < collider.centery):
+                    collisions.append(collider)
+                    direction = 'vertical'
+
+        return collisions, direction

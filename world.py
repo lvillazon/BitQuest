@@ -35,11 +35,12 @@ class World:
         self.blocks = blocks.BlockMap(self)
 
         # load character sprites
-        self.player = characters.Character(self, 'character.png')
-        self.dog = characters.Character(self, 'dog basic.png', run_speed=2)
-        self.player.location.x = 150
-        self.player.location.y = 170 - 32 - 2
-        self.dog.location.x = self.player.location.x + 300
+        self.player = characters.Character(self, 'player', 'character.png')
+        self.dog = characters.Character(self, 'dog', 'dog basic.png',
+                                        run_speed=2)
+        self.player.location.x = 5 * BLOCK_SIZE
+        self.player.location.y = 8 * BLOCK_SIZE - 7
+        self.dog.location.x = 12 * BLOCK_SIZE
         self.dog.location.y = self.player.location.y
         self.debug_mode = False
 
@@ -58,22 +59,29 @@ class World:
         self.clock = pygame.time.Clock()
 
     def get_bit_x(self):
-        return self.dog.location.x
+        return int(self.dog.location.x / BLOCK_SIZE)
+
+    def get_bit_y(self):
+        return int(self.dog.location.y / BLOCK_SIZE)
 
     def set_bit_x(self, new_x):
         # attempt to move the dog to the new position
-        if new_x < self.dog.location.x:
-            while (abs(self.dog.location.x - new_x) >= self.dog.run_speed):
-                self.dog.move_left()
-                self.update()
-        elif new_x > self.dog.location.x:
-            while (abs(self.dog.location.x - new_x) >= self.dog.run_speed):
-                self.dog.move_right()
-                self.update()
+        distance = new_x - int(self.dog.location.x / BLOCK_SIZE)
+        if distance < 0:
+            self.dog.move_left(distance)
+        elif distance > 0:
+            self.dog.move_right(distance)
 
-        self.dog.stop_moving()
+    def set_bit_y(self, new_y):
+        # attempt to move the dog to the new position
+        distance = new_y - int(self.dog.location.y / BLOCK_SIZE)
+        if distance < 0:
+            self.dog.move_up(distance)
+        elif distance > 0:
+            self.dog.move_down(distance)
 
     bit_x = property(get_bit_x, set_bit_x)
+    bit_y = property(get_bit_y, set_bit_y)
 
     def update(self):
         '''update all the game world stuff'''''
@@ -129,8 +137,8 @@ class World:
             elif pressed[K_d]: # or True:  # DEBUG ensure the scene is always moving to check multitasking works
 
                 self.player.move_right()
-            else:
-                self.player.stop_moving()
+            #else: - NOW STOPPING AUTOMATICALLY AFTER ONE BLOCK DISTANCE
+            #    self.player.stop_moving()
 
             if pressed[K_SPACE]:
                 self.player.jump()

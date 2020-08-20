@@ -5,7 +5,7 @@ CONSOLE_VERBOSE = True # when true enables extra debug messages in the console
 
 X = 0  # index values into a variety of positional tuples
 Y = 1
-DEBUG = False  # when true enables extra debug messages in the console
+DEBUG = True  # when true enables extra debug messages in the console
 
 # world constants
 WINDOW_SIZE = (908, 680)
@@ -13,6 +13,8 @@ EDITOR_HEIGHT = 300
 DISPLAY_SIZE = (227, 170)
 SCALING_FACTOR = 4
 EDITOR_POPUP_SPEED = 25  # how fast the editor scrolls into view
+BLOCK_SIZE = 16  # size in pixels of a the block 'grid'
+GRAVITY = 0.2
 
 # character animation constants
 STANDING_FRAME = 7

@@ -158,7 +158,8 @@ class VirtualMachine:
                 '__name__': '__main__',
                 '__doc__': None,
                 '__package__': None,
-                'dogX': self.world.bit_x  # predefine globals to link to world
+                'dogX': self.world.bit_x,  # predefine globals to link to world
+                'dogY': self.world.bit_y,
             }
         local_names.update(callargs)
         frame = Frame(code, global_names, local_names, self.frame)
@@ -330,14 +331,15 @@ class VirtualMachine:
         self.push_frame(frame)
         while self.running:
 
+            # let the game world update to reflect keyboard input and physics
+            self.world.update()
+
             # request to set any game variables
             # that were changed by the running program
             if 'dogX' in frame.global_names:
                 self.world.bit_x = frame.global_names['dogX']
-
-            # now let the game world update to reflect keyboard input
-            # and physics
-            self.world.update()
+            if 'dogY' in frame.global_names:
+                self.world.bit_y = frame.global_names['dogY']
 
             byte_name, arguments = self.parse_byte_and_args()
             stack_unwind_reason = self.dispatch(byte_name, arguments)

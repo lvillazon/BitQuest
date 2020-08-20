@@ -12,8 +12,9 @@ class Character:
     BUBBLE_MARGIN = 10  # 10-pixel border around text in the speech bubble
     MAX_TEXT_LINES = 10  # 10 lines maximum in a speech bubble
 
-    def __init__(self, world, sprite_file, run_speed=2):
+    def __init__(self, world, name, sprite_file, run_speed=2):
         self.world = world  # link back to the world game state
+        self.name = name  # for debugging only, right now
         # load character animation frames
         self.character_sheet = \
             sprite_sheet.SpriteSheet('assets/' + sprite_file)
@@ -30,6 +31,7 @@ class Character:
                                 for sprite in self.die_right_frames]
         self.moving = False
         self.facing_right = True
+        self.momentum = [0,0]
         self.location = pygame.Rect(0, 0, CHARACTER_SIZE, CHARACTER_SIZE)
         self.collider = pygame.Rect(0,0, 24, 20)
         self.frame_number = 0
@@ -44,15 +46,21 @@ class Character:
         f = int(self.frame_number) % self.frame_count
         self.frame_number = self.frame_number + .25
         movement = [0,0]
+        movement[Y] += self.momentum[Y]
         if self.moving:
             if self.facing_right:
                     movement[X] = self.run_speed
-#                    self.location.x += self.run_speed
+                    self.momentum[X] -= self.run_speed
+                    if self.momentum[X] < 0:
+                        self.momentum[X] = 0;
             else:
- #               self.location.x -= self.run_speed
-                # can't move past start of the world
-                if self.location.x > 0:
+                if self.location.x > 0:  # can't move past start of the world
                     movement[X] = -self.run_speed
+                    self.momentum[X] += self.run_speed
+                    if self.momentum[X] > 0:
+                        self.momentum[X] = 0;
+            if self.momentum == [0, 0]:
+                self.moving = False
 
         if self.jumping:
             if self.facing_right:
@@ -76,22 +84,42 @@ class Character:
         # check collisions with the world blocks - pillars etc
         self.collider.centerx = self.location.centerx - scroll['x']
         self.collider.centery = self.location.centery - scroll['y'] + 7
-        collisions = self.world.blocks.collision_test(self.collider,
-                                                      movement, scroll)
+        collisions, direction = self.world.blocks.collision_test(self.collider,
+                                   movement, scroll)
         if collisions == []:  # no collisions, so free to move
             self.location.x += movement[X]
             self.location.y += movement[Y]
+            self.momentum[Y] += GRAVITY  # constant downward pull
+        else:
+            if self.name == 'player':
+                print(direction, len(collisions), self.momentum)
+            if direction == 'vertical':
+                # this is an experiment to try and avoid the character overlapping the
+                # block and getting stuck when falling.
+                # it doesn't work because, you just pogo on the block
+                AARGH!
+                self.location.y -= movement[Y]
+                self.momentum[Y] = 0
 
         # draw the sprite at the new location
         surface.blit(frame, (self.location.x - scroll['x'],
                              self.location.y - scroll['y']))
 
-    def move_left(self):
+    def move_left(self, distance = 1):
+        # move a whole number of blocks to the left
         self.facing_right = False
+        self.momentum[X] = distance * BLOCK_SIZE
         self.moving = True
 
-    def move_right(self):
+    def move_right(self, distance = 1):
         self.facing_right = True
+        self.momentum[X] = distance * BLOCK_SIZE
+        self.moving = True
+
+    def move_up(self, distance = 1):
+        # move a whole number of blocks up
+        # this is effectively a jump
+        self.momentum[Y] = distance * BLOCK_SIZE
         self.moving = True
 
     def jump(self):

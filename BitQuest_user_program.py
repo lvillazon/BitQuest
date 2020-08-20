@@ -1,1 +1,1 @@
-dogX = 300
+print(dogX)
