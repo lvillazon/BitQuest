@@ -91,12 +91,12 @@ class World:
 
         # track the camera with the player, but with a bit of lag
         self.true_scroll['x'] += (self.player.location.x
-                             - self.true_scroll['x'] - PLAYER_X_OFFSET) / 16
+                             - self.true_scroll['x'] - CAMERA_X_OFFSET) / 16
         if self.true_scroll['x'] < 0:
             # can't scroll past the start of the world
             self.true_scroll['x'] = 0
         self.true_scroll['y'] += (self.player.location.y
-                             - self.true_scroll['y'] - PLAYER_Y_OFFSET) / 16
+                             - self.true_scroll['y'] - CAMERA_Y_OFFSET) / 16
         scroll = {'x': int(self.true_scroll['x']),
                   'y': int(self.true_scroll['y'])}
         if self.camera_shake:

@@ -33,6 +33,7 @@ class Character:
         self.facing_right = True
         self.momentum = [0,0]
         self.location = pygame.Rect(0, 0, CHARACTER_SIZE, CHARACTER_SIZE)
+        # TODO different collider heights for different characters
         self.collider = pygame.Rect(0,0, 24, 20)
         self.frame_number = 0
         self.frame_count = len(self.run_right_frames)
@@ -53,12 +54,14 @@ class Character:
                     self.momentum[X] -= self.run_speed
                     if self.momentum[X] < 0:
                         self.momentum[X] = 0;
+                        self.moving = False
             else:
                 if self.location.x > 0:  # can't move past start of the world
                     movement[X] = -self.run_speed
                     self.momentum[X] += self.run_speed
                     if self.momentum[X] > 0:
                         self.momentum[X] = 0;
+                        self.moving = False
             if self.momentum == [0, 0]:
                 self.moving = False
 
@@ -83,23 +86,21 @@ class Character:
 
         # check collisions with the world blocks - pillars etc
         self.collider.centerx = self.location.centerx - scroll['x']
-        self.collider.centery = self.location.centery - scroll['y'] + 7
-        collisions, direction = self.world.blocks.collision_test(self.collider,
+        self.collider.bottom = (self.location.bottom
+                               - scroll['y'] + COLLIDE_THRESHOLD)
+        collisions, blocked = self.world.blocks.collision_test(self.collider,
                                    movement, scroll)
-        if collisions == []:  # no collisions, so free to move
-            self.location.x += movement[X]
-            self.location.y += movement[Y]
-            self.momentum[Y] += GRAVITY  # constant downward pull
-        else:
-            if self.name == 'player':
-                print(direction, len(collisions), self.momentum)
-            if direction == 'vertical':
-                # this is an experiment to try and avoid the character overlapping the
-                # block and getting stuck when falling.
-                # it doesn't work because, you just pogo on the block
-                AARGH!
-                self.location.y -= movement[Y]
+
+        if blocked['left'] or blocked['right']:
+            movement[X] = 0
+        if blocked['up'] or blocked['down']:
+            movement[Y] = 0
+            if blocked['down']:
                 self.momentum[Y] = 0
+
+        self.location.x += movement[X]
+        self.location.y += movement[Y]
+        self.momentum[Y] += GRAVITY  # constant downward pull
 
         # draw the sprite at the new location
         surface.blit(frame, (self.location.x - scroll['x'],
@@ -108,7 +109,7 @@ class Character:
     def move_left(self, distance = 1):
         # move a whole number of blocks to the left
         self.facing_right = False
-        self.momentum[X] = distance * BLOCK_SIZE
+        self.momentum[X] = -distance * BLOCK_SIZE
         self.moving = True
 
     def move_right(self, distance = 1):

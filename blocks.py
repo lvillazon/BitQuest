@@ -57,7 +57,12 @@ class Block:
         # offset of -7 to align the blocks with the bottom of the screen
         self.y = grid_position[Y] * BLOCK_SIZE - 7
         self.frame_count = 1
-        if type == 'P':
+        if type == '1':
+            self.name = 'ground type 1'
+            self.image = block_tiles.image_at(
+                (BLOCK_SIZE * 8, BLOCK_SIZE * 1, BLOCK_SIZE, BLOCK_SIZE),
+                ALPHA)
+        elif type == 'P':
             self.name = 'left pillar top'
             self.image = block_tiles.image_at(
                 (BLOCK_SIZE * 12, BLOCK_SIZE * 22, BLOCK_SIZE, BLOCK_SIZE),
@@ -139,7 +144,7 @@ class BlockMap:
         #   |Bb/
         self.load_grid()
         self.collidable = [b for b in self.midground_blocks
-                           if b.type in 'Pp[]Bb']
+                           if b.type in '1Pp[]Bb']
         self.triggerable = [b for b in self.midground_blocks
                             if b.type in '-=']
         #self.cosmetic = [b for b in self.blocks if b.type in '¬|/']
@@ -163,7 +168,7 @@ class BlockMap:
             ' Pp                 Pp              []   ',
             ' []                 []              []   ',
             ' Bb  PP           = Bb   Pp=    =   Bb   ',
-            'PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP',
+            '111111111111111111111111111111111111111111',
             ]
 
         # foreground layer is drawn on top of the player and doesn't collide
@@ -248,7 +253,10 @@ class BlockMap:
         trigger - characters can overlap the block, activating the trigger
         cosmetic - no collision physics or trigger (but may animate)
         """
-        direction = ''
+        direction = {'left': False,
+                     'right': False,
+                     'up': False,
+                     'down': False,}
         if DEBUG:
             # DEBUG draw character collider in green
             pygame.draw.rect(self.world.display, (0, 255, 0),
@@ -283,23 +291,36 @@ class BlockMap:
                 # where the character is moving towards the block
                 # this prevents characters from getting stuck in blocks
                 if (movement[X] > 0 and
-                                character_rect.centerx < collider.centerx):
+                    character_rect.centerx < collider.centerx and
+                    character_rect.bottom > collider.top + COLLIDE_THRESHOLD
+                    ):
                     collisions.append(collider)
-                    direction = 'horizontal'
+                    direction['right'] = True
 
+                # TODO
+                FIX THIS
+                # Moving right now works fine
+                # But moving left currently causes the player to get stuck
+                # This is most likely because I have not incorporated one of the
+                # changes I made for moving right, into the moving left code
+                # check world, blocks and characters
                 if (movement[X] < 0 and
-                                character_rect.centerx > collider.centerx):
+                    character_rect.centerx > collider.centerx and
+                    character_rect.bottom < collider.top + COLLIDE_THRESHOLD
+                    ):
                     collisions.append(collider)
-                    direction = 'horizontal'
+                    direction['left'] = True
 
+                # TODO may need similar logic for Y movement, to allow
+                # falling when you are next to a wall
                 if (movement[Y] < 0 and
                         character_rect.centery > collider.centery):
                     collisions.append(collider)
-                    direction = 'vertical'
+                    direction['up'] = True
 
                 if (movement[Y] > 0 and
                         character_rect.centery < collider.centery):
                     collisions.append(collider)
-                    direction = 'vertical'
+                    direction['down'] = True
 
         return collisions, direction
