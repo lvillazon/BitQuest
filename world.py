@@ -68,9 +68,9 @@ class World:
         # attempt to move the dog to the new position
         distance = new_x - int(self.dog.location.x / BLOCK_SIZE)
         if distance < 0:
-            self.dog.move_left(distance)
+            self.dog.move_left(abs(distance))
         elif distance > 0:
-            self.dog.move_right(distance)
+            self.dog.move_right(abs(distance))
 
     def set_bit_y(self, new_y):
         # attempt to move the dog to the new position

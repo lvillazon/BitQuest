@@ -324,12 +324,6 @@ class Editor:
                     # handle all the printable characters
                     if event.unicode != '' and event.unicode in printable:
                         self.add_keystroke(event.unicode)
-#                    if event.unicode in shifted:  # chr(event.key) in shifted:
-#                        if pygame.key.get_mods() & pygame.KMOD_SHIFT:
-#                            char = shifted[event.unicode]  # shifted[chr(event.key)]
-#                        else:
-#                            char = event.unicode  # chr(event.key)
-#                        self.add_keystroke(char)
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_button = {1: self.left_click,

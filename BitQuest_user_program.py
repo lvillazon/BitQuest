@@ -1,1 +1,1 @@
-print(dogX)
+dogY -= 1

@@ -9,6 +9,14 @@ import sprite_sheet
 TILE_FILE = 'block tiles.png'
 ALPHA = (255, 255, 255)
 
+def draw_collider(surface, colour, collider, width, scroll):
+    """ debug routine to show colliders"""
+    rect = pygame.Rect(collider.x - scroll['x'],
+                       collider.y - scroll['y'],
+                       collider.width,
+                       collider.height)
+    pygame.draw.rect(surface, colour, rect, width)
+
 class Moveable:
     ''' pillars, drawbridges and other objects that move
     when a trigger activates'''
@@ -167,7 +175,7 @@ class BlockMap:
             '                                    []   ',
             ' Pp                 Pp              []   ',
             ' []                 []              []   ',
-            ' Bb  PP           = Bb   Pp=    =   Bb   ',
+            ' Bb               = Bb   Pp=    =   Bb   ',
             '111111111111111111111111111111111111111111',
             ]
 
@@ -259,13 +267,13 @@ class BlockMap:
                      'down': False,}
         if DEBUG:
             # DEBUG draw character collider in green
-            pygame.draw.rect(self.world.display, (0, 255, 0),
-                             character_rect, 1)
+            draw_collider(self.world.display,
+                          (0, 255, 0), character_rect, 1, scroll)
 
         # check for collisions with triggers
         for t in self.triggerable:
-            collider = pygame.Rect(t.x - scroll['x'],
-                                   t.y - scroll['y'],
+            collider = pygame.Rect(t.x,
+                                   t.y,
                                    BLOCK_SIZE, BLOCK_SIZE)
             if character_rect.colliderect(collider):
                 if t.grid_position in self.triggers.keys():
@@ -275,15 +283,19 @@ class BlockMap:
                         print("trigger", self.triggers[t.grid_position], "activated!")
 
         # check for collisions with solid objects
-        collisions = []
+        collisions = {'left': None,
+                      'right': None,
+                      'up': None,
+                      'down': None}
+        # find the first colliding block in each direction
         for b in self.collidable:
-            collider = pygame.Rect(b.x - scroll['x'],
-                                   b.y - scroll['y'],
+            collider = pygame.Rect(b.x,
+                                   b.y,
                                    BLOCK_SIZE, BLOCK_SIZE)
             if DEBUG:
-                # DEBUG draw block colliders in red
-                pygame.draw.rect(self.world.display, (255, 0, 0),
-                                 collider, 1)
+                # DEBUG draw block colliders in yellow
+                draw_collider(self.world.display,
+                              (255, 255, 0), collider, 1, scroll)
 
             if character_rect.colliderect(collider):
                 # just because the rectangles overlap, doesn't necessarily
@@ -292,35 +304,39 @@ class BlockMap:
                 # this prevents characters from getting stuck in blocks
                 if (movement[X] > 0 and
                     character_rect.centerx < collider.centerx and
-                    character_rect.bottom > collider.top + COLLIDE_THRESHOLD
+                    (character_rect.bottom > collider.top
+                     + COLLIDE_THRESHOLD) and
+                    collisions['right'] == None
                     ):
-                    collisions.append(collider)
-                    direction['right'] = True
+                    collisions['right'] = collider
 
-                # TODO
-                FIX THIS
-                # Moving right now works fine
-                # But moving left currently causes the player to get stuck
-                # This is most likely because I have not incorporated one of the
-                # changes I made for moving right, into the moving left code
-                # check world, blocks and characters
-                if (movement[X] < 0 and
-                    character_rect.centerx > collider.centerx and
-                    character_rect.bottom < collider.top + COLLIDE_THRESHOLD
-                    ):
-                    collisions.append(collider)
-                    direction['left'] = True
+                if movement[X] < 0:
+                    if (character_rect.left <= collider.right and
+                    (character_rect.bottom > collider.top
+                     + COLLIDE_THRESHOLD) and
+                        collisions['left'] == None
+                        ):
+                        collisions['left'] = collider
+                        # DEBUG draw active colliders in red
+                        if DEBUG:
+                            draw_collider(self.world.display,
+                                          (255, 0, 0), collider, 0, scroll)
 
                 # TODO may need similar logic for Y movement, to allow
                 # falling when you are next to a wall
                 if (movement[Y] < 0 and
-                        character_rect.centery > collider.centery):
-                    collisions.append(collider)
-                    direction['up'] = True
+                        character_rect.top <= collider.bottom and
+                        collisions['up'] == None):
+                    collisions['up'] = collider
 
                 if (movement[Y] > 0 and
-                        character_rect.centery < collider.centery):
-                    collisions.append(collider)
-                    direction['down'] = True
+                        character_rect.bottom >= collider.top and
+                        collisions['down'] == None):
+                    collisions['down'] = collider
 
-        return collisions, direction
+                    # DEBUG draw active colliders in red
+#                    if DEBUG:
+#                        draw_collider(self.world.display,
+#                                      (255, 0, 0), collider, 0, scroll)
+
+        return collisions

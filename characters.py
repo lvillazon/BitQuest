@@ -1,4 +1,6 @@
 """ movement and animation for all the player and npc sprites """
+import math
+from math import copysign
 
 import pygame
 import contextlib
@@ -34,7 +36,7 @@ class Character:
         self.momentum = [0,0]
         self.location = pygame.Rect(0, 0, CHARACTER_SIZE, CHARACTER_SIZE)
         # TODO different collider heights for different characters
-        self.collider = pygame.Rect(0,0, 24, 20)
+        self.collider = pygame.Rect(0,0, 16, 20)
         self.frame_number = 0
         self.frame_count = len(self.run_right_frames)
         self.jumping = False
@@ -49,20 +51,13 @@ class Character:
         movement = [0,0]
         movement[Y] += self.momentum[Y]
         if self.moving:
-            if self.facing_right:
-                    movement[X] = self.run_speed
-                    self.momentum[X] -= self.run_speed
-                    if self.momentum[X] < 0:
-                        self.momentum[X] = 0;
-                        self.moving = False
-            else:
-                if self.location.x > 0:  # can't move past start of the world
-                    movement[X] = -self.run_speed
-                    self.momentum[X] += self.run_speed
-                    if self.momentum[X] > 0:
-                        self.momentum[X] = 0;
-                        self.moving = False
-            if self.momentum == [0, 0]:
+            if self.momentum[X] != 0:
+                # use the direction of the momentum to set the movement
+                direction = copysign(self.run_speed, self.momentum[X])
+                movement[X] = direction
+                self.momentum[X] = self.momentum[X] - direction
+
+            if self.momentum[X] == 0:  # [0, 0]:
                 self.moving = False
 
         if self.jumping:
@@ -85,20 +80,21 @@ class Character:
                 frame = self.run_left_frames[self.STANDING_FRAME]
 
         # check collisions with the world blocks - pillars etc
-        self.collider.centerx = self.location.centerx - scroll['x']
-        self.collider.bottom = (self.location.bottom
-                               - scroll['y'] + COLLIDE_THRESHOLD)
-        collisions, blocked = self.world.blocks.collision_test(self.collider,
-                                   movement, scroll)
+        self.collider.centerx = self.location.centerx + movement[X]
+        self.collider.bottom = self.location.bottom + movement[Y]
+        blocked = self.world.blocks.collision_test(self.collider,
+                        movement, scroll)
 
+        if blocked['down'] or blocked['up']:
+            movement[Y] = 0
+            self.momentum[Y] = 0
         if blocked['left'] or blocked['right']:
             movement[X] = 0
-        if blocked['up'] or blocked['down']:
-            movement[Y] = 0
-            if blocked['down']:
-                self.momentum[Y] = 0
+            self.momentum[X] = 0
 
         self.location.x += movement[X]
+        if self.location.x < 0:  # can't move past start of the world
+            self.location.x = 0
         self.location.y += movement[Y]
         self.momentum[Y] += GRAVITY  # constant downward pull
 
@@ -118,9 +114,17 @@ class Character:
         self.moving = True
 
     def move_up(self, distance = 1):
-        # move a whole number of blocks up
-        # this is effectively a jump
-        self.momentum[Y] = distance * BLOCK_SIZE
+        # set the upward momentum, so that the max height will be
+        # a number of blocks equal to distance
+        # (this is effectively a jump)
+        # the formula is:
+        # h = V^2/2G
+        # (www.toppr.com/guides/physics-formulas/maximum-height-formula/)
+        # solving for v:
+        # v = sqrt(2hG)
+        self.momentum[Y] = copysign(
+            math.sqrt(2 * abs(distance) * BLOCK_SIZE * GRAVITY),
+            distance)
         self.moving = True
 
     def jump(self):
