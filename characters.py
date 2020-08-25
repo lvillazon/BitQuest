@@ -99,8 +99,8 @@ class Character:
         self.momentum[Y] += GRAVITY  # constant downward pull
 
         # draw the sprite at the new location
-        surface.blit(frame, (self.location.x - scroll['x'],
-                             self.location.y - scroll['y']))
+        surface.blit(frame, (self.location.x - scroll[X],
+                             self.location.y - scroll[Y]))
 
     def move_left(self, distance = 1):
         # move a whole number of blocks to the left
@@ -122,9 +122,7 @@ class Character:
         # (www.toppr.com/guides/physics-formulas/maximum-height-formula/)
         # solving for v:
         # v = sqrt(2hG)
-        self.momentum[Y] = copysign(
-            math.sqrt(2 * abs(distance) * BLOCK_SIZE * GRAVITY),
-            distance)
+        self.momentum[Y] = -(math.sqrt(2 * abs(distance) * BLOCK_SIZE * GRAVITY))
         self.moving = True
 
     def jump(self):

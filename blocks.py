@@ -11,8 +11,8 @@ ALPHA = (255, 255, 255)
 
 def draw_collider(surface, colour, collider, width, scroll):
     """ debug routine to show colliders"""
-    rect = pygame.Rect(collider.x - scroll['x'],
-                       collider.y - scroll['y'],
+    rect = pygame.Rect(collider.x - scroll[X],
+                       collider.y - scroll[Y],
                        collider.width,
                        collider.height)
     pygame.draw.rect(surface, colour, rect, width)
@@ -63,7 +63,7 @@ class Block:
         self.grid_position = grid_position
         self.x = grid_position[X] * BLOCK_SIZE
         # offset of -7 to align the blocks with the bottom of the screen
-        self.y = grid_position[Y] * BLOCK_SIZE - 7
+        self.y = grid_position[Y] * BLOCK_SIZE
         self.frame_count = 1
         if type == '1':
             self.name = 'ground type 1'
@@ -250,9 +250,19 @@ class BlockMap:
 
         # now draw each tile in its current location
         for b in self.midground_blocks:
-            surface.blit(b.image, (b.x - scroll['x'], b.y - scroll['y']))
+            surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
         for b in self.foreground_blocks:
-            surface.blit(b.image, (b.x - scroll['x'], b.y - scroll['y']))
+            surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
+
+    def draw_grid(self, surface, scroll):
+        """ overlays a grid to show the block spacing """
+        grid_colour = self.world.editor.get_bg_color()
+        offset = scroll[X] % BLOCK_SIZE
+        for x in range(-offset, DISPLAY_SIZE[X] - offset, BLOCK_SIZE):
+            pygame.draw.line(surface, grid_colour, (x, 0), (x, DISPLAY_SIZE[Y]))
+        offset = scroll[Y] % BLOCK_SIZE
+        for y in range(-offset, DISPLAY_SIZE[Y], BLOCK_SIZE):
+            pygame.draw.line(surface, grid_colour, (0, y), (DISPLAY_SIZE[X], y))
 
     def collision_test(self, character_rect, movement, scroll):
         """ check if this character is colliding with any of the blocks

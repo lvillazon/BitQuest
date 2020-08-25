@@ -26,7 +26,7 @@ class World:
 
         # load scenery layers
         self.scenery = scenery.Scenery('Day', 'Desert')
-        self.true_scroll = {'x': 0.0, 'y': 0.0}
+        self.true_scroll = [0.0, 0.0]
         # location of the game area on the window
         # used to scroll the game area out of the way of the code editor
         self.game_origin = [0, 0]
@@ -39,10 +39,12 @@ class World:
         self.dog = characters.Character(self, 'dog', 'dog basic.png',
                                         run_speed=2)
         self.player.location.x = 5 * BLOCK_SIZE
-        self.player.location.y = 8 * BLOCK_SIZE - 7
+        self.player.location.y = 8 * BLOCK_SIZE
         self.dog.location.x = 12 * BLOCK_SIZE
         self.dog.location.y = self.player.location.y
-        self.debug_mode = False
+        self.show_fps = False
+        self.show_grid = False
+        self.grid_toggle_lock = False
 
         # intialise the python interpreter and editor
         if pygame.font.get_init() is False:
@@ -90,18 +92,17 @@ class World:
         frame_start_time = time.time_ns()  # used to calculate fps
 
         # track the camera with the player, but with a bit of lag
-        self.true_scroll['x'] += (self.player.location.x
-                             - self.true_scroll['x'] - CAMERA_X_OFFSET) / 16
-        if self.true_scroll['x'] < 0:
+        self.true_scroll[X] += (self.player.location.x
+                             - self.true_scroll[X] - CAMERA_X_OFFSET) / 16
+        if self.true_scroll[X] < 0:
             # can't scroll past the start of the world
-            self.true_scroll['x'] = 0
-        self.true_scroll['y'] += (self.player.location.y
-                             - self.true_scroll['y'] - CAMERA_Y_OFFSET) / 16
-        scroll = {'x': int(self.true_scroll['x']),
-                  'y': int(self.true_scroll['y'])}
+            self.true_scroll[X] = 0
+        self.true_scroll[Y] += (self.player.location.y
+                             - self.true_scroll[Y] - CAMERA_Y_OFFSET) / 16
+        scroll = [int(self.true_scroll[X]), int(self.true_scroll[Y])]
         if self.camera_shake:
-            scroll['x'] += random.randint(-1,1)
-            scroll['y'] += random.randint(-1,1)
+            scroll[X] += random.randint(-1,1)
+            scroll[Y] += random.randint(-1,1)
 
         # render the background
         self.scenery.draw_background(display, scroll)
@@ -112,15 +113,19 @@ class World:
         # move and render the dog
         self.dog.update(display, scroll)
         # dog follows the player
-        #if self.dog.location['x'] > self.player.location['x'] + 30:
+        #if self.dog.location[X] > self.player.location[X] + 30:
         #    self.dog.move_left()
-        #elif self.dog.location['x'] < self.player.location['x'] - 30:
+        #elif self.dog.location[X] < self.player.location[X] - 30:
         #    self.dog.move_right()
         #else:
         #    self.dog.stop_moving()
 
         # draw the foreground scenery on top of the characters
         self.blocks.update(display, scroll)
+
+        # draw the grid overlay last so it is on top of everything
+        if self.show_grid:
+            self.blocks.draw_grid(display, scroll)
 
         # allocate some cpu time to the in-game interpreter running player's code
         if self.program.is_running():
@@ -151,20 +156,27 @@ class World:
 
             # DEBUG stats
             if pressed[K_f]:
-                # display fps stats
-                self.debug_frame_counter = 0
-                self.debug_mode = True
+                # toggle fps stats
+                if self.show_fps:
+                    self.show_fps = False
+                else:
+                    self.debug_frame_counter = 0
+                    self.show_fps = True
 
             if pressed[K_g]:
-                # turn off fps stats
-                self.debug_mode = False
+                if not self.grid_toggle_lock:
+                    # toggle the block grid overlay
+                    self.show_grid = not self.show_grid
+                    self.grid_toggle_lock = True  # prevents the grid immediately toggling off again
+            else:
+                self.grid_toggle_lock = False
 
             # process all other events to clear the queue
             for event in pygame.event.get():
                 if event.type == QUIT:
                     game_running = False
 
-        if self.debug_mode:
+        if self.show_fps:
             self.debug_frame_counter += 1
             if self.debug_frame_counter > 60:
                 self.debug_frame_counter = 0
@@ -197,9 +209,9 @@ class World:
         if self.dog.speaking:
             # position the tip of the speak bubble at the middle
             # of the top edge of the sprite box
-            position = ((self.dog.location.x - scroll['x'] + 16)
+            position = ((self.dog.location.x - scroll[X] + 16)
                         * SCALING_FACTOR + self.game_origin[X],
-                        (self.dog.location.y - scroll['y'])
+                        (self.dog.location.y - scroll[Y])
                         * SCALING_FACTOR  + self.game_origin[Y]
                         - self.dog.text_size[Y])
             self.screen.blit(self.dog.bubble, position)

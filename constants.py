@@ -5,7 +5,7 @@ CONSOLE_VERBOSE = True # when true enables extra debug messages in the console
 
 X = 0  # index values into a variety of positional tuples
 Y = 1
-DEBUG = True  # when true enables extra debug messages in the console
+DEBUG = False  # when true enables extra debug messages in the console and shows the sprite colliders
 
 # world constants
 WINDOW_SIZE = (908, 680)
