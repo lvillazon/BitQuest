@@ -44,7 +44,9 @@ class World:
         self.dog.location.y = self.player.location.y
         self.show_fps = False
         self.show_grid = False
-        self.grid_toggle_lock = False
+        # this flag prevents certain key actions from automatically repeating
+        # it is cleared when any key is released
+        self.repeat_lock = False
 
         # intialise the python interpreter and editor
         if pygame.font.get_init() is False:
@@ -154,6 +156,26 @@ class World:
                 if self.game_origin[Y] == 0:
                     self.editor.show()
 
+            if EDITOR_MODE and not self.repeat_lock:
+                if pressed[K_F9]:
+                    print("Saving map...", end='')
+                    self.blocks.save_grid()
+                    print("done")
+                    self.repeat_lock = True
+
+                if pressed[K_RIGHT]:
+                    self.blocks.cursor_right()
+                    self.repeat_lock = True
+                if pressed[K_LEFT]:
+                    self.blocks.cursor_left()
+                    self.repeat_lock = True
+                if pressed[K_UP]:
+                    self.blocks.cursor_up()
+                    self.repeat_lock = True
+                if pressed[K_DOWN]:
+                    self.blocks.cursor_down()
+                    self.repeat_lock = True
+
             # DEBUG stats
             if pressed[K_f]:
                 # toggle fps stats
@@ -164,15 +186,15 @@ class World:
                     self.show_fps = True
 
             if pressed[K_g]:
-                if not self.grid_toggle_lock:
+                if not self.repeat_lock:
                     # toggle the block grid overlay
                     self.show_grid = not self.show_grid
-                    self.grid_toggle_lock = True  # prevents the grid immediately toggling off again
-            else:
-                self.grid_toggle_lock = False
+                    self.repeat_lock = True
 
             # process all other events to clear the queue
             for event in pygame.event.get():
+                if event.type == KEYUP:
+                    self.repeat_lock = False  # release the lock
                 if event.type == QUIT:
                     game_running = False
 

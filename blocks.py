@@ -27,10 +27,12 @@ class Moveable:
         # and distance is how far the object moves when triggered
         # all specified using the block grid units
         self.world = world  # so we can set camera_shake
+        self.block_range = block_range  # makes it easier when saving the map
         self.blocks = []
         for x in range(block_range[0], block_range[0]+block_range[2]):
             for y in range(block_range[1], block_range[1]+block_range[3]):
-                self.blocks.append(block_map.get_block(x,y))
+                self.blocks.append(block_map.get_block(
+                    block_map.midground_blocks, x, y))
 
         self.action = action
         self.distance = distance
@@ -100,7 +102,7 @@ class Block:
             self.image = block_tiles.image_at(
                 (BLOCK_SIZE * 13, BLOCK_SIZE * 24, BLOCK_SIZE, BLOCK_SIZE),
                 ALPHA)
-        elif type == '¬':
+        elif type == '-':
             self.name = 'left leaf top'
             self.image = block_tiles.image_at(
                 (BLOCK_SIZE * 8, BLOCK_SIZE * 23, BLOCK_SIZE, BLOCK_SIZE),
@@ -133,6 +135,8 @@ class Block:
                  (BLOCK_SIZE * 24, BLOCK_SIZE * 27, BLOCK_SIZE, BLOCK_SIZE)),
                 ALPHA)
             self.image = self.frames[0]
+        else:
+            print("UNRECOGNISED BLOCK CODE:", type)
 
         # set default frame list for tiles that do not animate
         if self.frame_count == 1:
@@ -142,7 +146,12 @@ class BlockMap:
 
     def __init__(self, world):
         self.world = world  # link back to the world game state
-        self.blocks = []
+
+        # editing cursor (used when editing the map)
+        self.cursor = [5,5]
+        self.cursor_rect = pygame.Rect(self.cursor[X] * BLOCK_SIZE,
+                                       self.cursor[Y] * BLOCK_SIZE,
+                                       BLOCK_SIZE -1, BLOCK_SIZE -1)
 
         # pillars
         # a complete pillar is
@@ -155,47 +164,99 @@ class BlockMap:
                            if b.type in '1Pp[]Bb']
         self.triggerable = [b for b in self.midground_blocks
                             if b.type in '-=']
-        #self.cosmetic = [b for b in self.blocks if b.type in '¬|/']
 
-    def load_grid(self):
-        ''' TODO read in map data from a file
+    def save_grid(self, level=1):
+        """save current grid map to the level file
+        this function is only accessible in map editor mode"""
+        # TODO add save dialogue to change name/folder
+
+        # find size of the map by looking for the largest x & y coords
+        max_x = 0
+        max_y = 0
+        for b in self.collidable:
+            if b.grid_position[X] > max_x:
+                max_x = b.grid_position[X]
+            if b.grid_position[Y] > max_y:
+                max_y = b.grid_position[Y]
+
+        # write this map to the file
+        file_name = 'BitQuest_level' + str(level) + '.txt'
+        preamble = \
+            "Level data is split into 4 sections, each section ends with " \
+            "### on its own line:\n" \
+            "   1. This section is for comments only and is ignored.\n" \
+            "   2. The midground section shows the arrangements of " \
+            "collidable blocks and triggers.\n" \
+            "   3. Foreground layer is drawn on top of the player and " \
+            "doesn't collide.\n" \
+            "   4. The next section defines the blocks that move when " \
+            "triggered.\n" \
+            "   5. This section defines the trigger locations, as x, y and " \
+            "block group number, each on their own line.\n"
+        delimiter = "###\n"
+        with open(file_name, 'w') as file:
+            file.write(preamble)  # section 1
+            file.write(delimiter)
+            # sections 2 and 3
+            for blocks in (self.midground_blocks, self.foreground_blocks):
+                for y in range(max_y + 1):
+                    for x in range(max_x + 1):
+                        b = self.get_block(blocks, x, y)
+                        if b:
+                            file.write(b.type)
+                        else:  # b == None if not found
+                            file.write(' ')
+                    file.write('\n')  # new line
+                file.write(delimiter)
+
+            # section 4
+            for m in self.movers:
+                for br in m.block_range:
+                    file.write(str(br) + ', ')
+                file.write(m.action + ', ')
+                file.write(str(m.distance) + '\n')
+            file.write(delimiter)
+
+            # section 5
+            for t in self.triggers:
+                file.write(str(t[0]) + ', ')
+                file.write(str(t[1]) + ', ')
+                file.write(str(self.triggers[t]) + '\n')
+            file.write(delimiter)
+
+    def load_grid(self, level=1):
+        """read in map data from the level file
         Each screen has room for 15 x 11 tiles
         but a map may be arbitrarily wide
-        '''
+        """
         # midground is the same layer as the player
         # collidable blocks on this layer will stop player progress
-        midground_map = [
-            '               ',
-            '               ',
-            '               ',
-            '               ',
-            '               ',
-            '               ',
-            '                                    Pp   ',
-            '                                    []   ',
-            ' Pp                 Pp              []   ',
-            ' []                 []              []   ',
-            ' Bb               = Bb   Pp=    =   Bb   ',
-            '111111111111111111111111111111111111111111',
-            ]
 
-        # foreground layer is drawn on top of the player and doesn't collide
-        foreground_map = [
-            '               ',
-            '               ',
-            '               ',
-            '               ',
-            '               ',
-            '               ',
-            '               ',
-            '               ',
-            '                   ',
-            '¬     ¬            ¬                ¬   ',
-            '{|/}  {|/}         {|/}             {|    ',
-        ]
+        file_name = 'BitQuest_level' + str(level) + '.txt'
+        with open(file_name, 'r') as file:
+            lines = file.readlines()
+            level_data = []
+            for file_line in lines:
+                level_data.append(file_line[:-1])
 
+        # parse the raw level file into the midground, foreground,
+        # block and trigger info
+        # the level data is divided into sections, using ### between them
+        # the start of the level is ignored, so it can be used for comments
+        i = level_data.index('###') + 1  # marks the actual level data
 
-        # load block tile graphics
+        midground_map = []
+        while i < len(level_data) and level_data[i] != '###':
+            midground_map.append(level_data[i])
+            i += 1
+
+        foreground_map = []
+        i += 1  # skip over the ### section delimiter
+        while i < len(level_data) and level_data[i] != '###':
+            foreground_map.append(level_data[i])
+            i += 1
+
+        # load block tile graphics for each block in the map
         block_tiles = sprite_sheet.SpriteSheet('assets/' + TILE_FILE)
         # convert the map into a list of block objects, with their coords
         self.midground_blocks = []
@@ -221,24 +282,44 @@ class BlockMap:
                 x += 1
             x = 0
             y += 1
+
+        # the moveable objects are groups of blocks that all move together
+        # in response to a trigger
+        # they are defined by their top, left, width & height values
+        # in the block coordinate system
+        # plus a move direction as a string
+        # and a number of blocks to move
+        self.movers = []
+        i += 1  # skip over the ### section delimiter
+        while i < len(level_data) and level_data[i] != '###':
+            values = level_data[i].split(',')
+            mover = Moveable(self, self.world,
+                             (int(values[0]), int(values[1]),
+                              int(values[2]), int(values[3])),
+                             values[4],
+                             int(values[5]))
+            self.movers.append(mover)
+            i += 1
+
         # the triggers dictionary uses the grid coords of the trigger tile
         # as the key and the value is the index of the moveable object
         # that is activated
-        self.triggers = {(18,10): 0,
-                         (27,10): 1,
-                         (32,10): 2,
-                         }
-        pillar1 = Moveable(self, self.world, (20, 8, 2, 3), 'down', 3)
-        pillar2 = Moveable(self, self.world, (25, 10, 2, 1), 'down', 1)
-        pillar3 = Moveable(self, self.world, (36, 6, 2, 5), 'down', 5)
-        self.movers = [pillar1, pillar2, pillar3]
+        self.triggers = {}
+        i += 1  # skip over the ### section delimiter
+        while i < len(level_data) and level_data[i] != '###':
+            values = level_data[i].split(',')
+            print(values)
+            self.triggers[(int(values[0]), int(values[1]))] = int(values[2])
+            i += 1
 
-    def get_block(self, x, y):
+    def get_block(self, blocklist, x, y):
         """returns the block at grid coord x,y"""
-        for b in self.midground_blocks:
+        for b in blocklist:
             if b.grid_position == (x, y):
                 return b
-        raise ValueError("No block found at " + str(x) + "," + str(y))
+        if DEBUG:
+            print("No block found at " + str(x) + "," + str(y))
+        return None
 
     def update(self, surface, scroll):
         """ draw all the blocks on the map """
@@ -259,10 +340,31 @@ class BlockMap:
         grid_colour = self.world.editor.get_bg_color()
         offset = scroll[X] % BLOCK_SIZE
         for x in range(-offset, DISPLAY_SIZE[X] - offset, BLOCK_SIZE):
-            pygame.draw.line(surface, grid_colour, (x, 0), (x, DISPLAY_SIZE[Y]))
+            pygame.draw.line(surface, grid_colour, (x, 0),
+                             (x, DISPLAY_SIZE[Y]))
         offset = scroll[Y] % BLOCK_SIZE
         for y in range(-offset, DISPLAY_SIZE[Y], BLOCK_SIZE):
-            pygame.draw.line(surface, grid_colour, (0, y), (DISPLAY_SIZE[X], y))
+            pygame.draw.line(surface, grid_colour, (0, y),
+                             (DISPLAY_SIZE[X], y))
+        if EDITOR_MODE:
+            self.cursor_rect.x = (self.cursor[X] * BLOCK_SIZE) - scroll[X] + 1
+            self.cursor_rect.y = (self.cursor[Y] * BLOCK_SIZE) - scroll[Y] + 1
+            pygame.draw.rect(surface, (255,255,255),
+                             self.cursor_rect, 1)  # highlight cursor
+
+    def cursor_right(self):
+        self.cursor[X] += 1
+
+    def cursor_left(self):
+        if self.cursor[X] > 0:
+            self.cursor[X] -= 1
+
+    def cursor_up(self):
+        if self.cursor[Y] > 0:
+            self.cursor[Y] -= 1
+
+    def cursor_down(self):
+        self.cursor[Y] += 1
 
     def collision_test(self, character_rect, movement, scroll):
         """ check if this character is colliding with any of the blocks
