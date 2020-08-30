@@ -66,6 +66,7 @@ class Block:
         self.x = grid_position[X] * BLOCK_SIZE
         # offset of -7 to align the blocks with the bottom of the screen
         self.y = grid_position[Y] * BLOCK_SIZE
+
         self.frame_count = 1
         if type == '1':
             self.name = 'ground type 1'
@@ -142,6 +143,18 @@ class Block:
         if self.frame_count == 1:
             self.frames = [self.image]
 
+    def is_collidable(self):
+        if self.type in '1Pp[]Bb':
+            return True
+        else:
+            return False
+
+    def is_trigger(self):
+        if self.type in '-=':
+            return True
+        else:
+            return False
+
 class BlockMap:
 
     def __init__(self, world):
@@ -159,11 +172,10 @@ class BlockMap:
         #    Pp
         #   ¬[]
         #   |Bb/
+        self.block_tiles = sprite_sheet.SpriteSheet('assets/' + TILE_FILE)
         self.load_grid()
-        self.collidable = [b for b in self.midground_blocks
-                           if b.type in '1Pp[]Bb']
-        self.triggerable = [b for b in self.midground_blocks
-                            if b.type in '-=']
+        self.editor_pallette = '1Pb[]Bb='
+        self.current_editor_tile = self.editor_pallette[0]  # set the default starting tile for the editor
 
     def save_grid(self, level=1):
         """save current grid map to the level file
@@ -257,7 +269,6 @@ class BlockMap:
             i += 1
 
         # load block tile graphics for each block in the map
-        block_tiles = sprite_sheet.SpriteSheet('assets/' + TILE_FILE)
         # convert the map into a list of block objects, with their coords
         self.midground_blocks = []
         x = 0
@@ -266,7 +277,7 @@ class BlockMap:
             for tile in row:
                 if tile != ' ':
                     self.midground_blocks.append(
-                        Block(block_tiles, tile, (x, y)))
+                        Block(self.block_tiles, tile, (x, y)))
                 x += 1
             x = 0
             y += 1
@@ -278,7 +289,7 @@ class BlockMap:
             for tile in row:
                 if tile != ' ':
                     self.foreground_blocks.append(
-                        Block(block_tiles, tile, (x, y)))
+                        Block(self.block_tiles, tile, (x, y)))
                 x += 1
             x = 0
             y += 1
@@ -346,7 +357,7 @@ class BlockMap:
         for y in range(-offset, DISPLAY_SIZE[Y], BLOCK_SIZE):
             pygame.draw.line(surface, grid_colour, (0, y),
                              (DISPLAY_SIZE[X], y))
-        if EDITOR_MODE:
+        if MAP_EDITOR_MODE:
             self.cursor_rect.x = (self.cursor[X] * BLOCK_SIZE) - scroll[X] + 1
             self.cursor_rect.y = (self.cursor[Y] * BLOCK_SIZE) - scroll[Y] + 1
             pygame.draw.rect(surface, (255,255,255),
@@ -366,6 +377,19 @@ class BlockMap:
     def cursor_down(self):
         self.cursor[Y] += 1
 
+    def change_block(self):
+        """ if there is no block at the current grid cursor location, this adds the 1st block in the pallette
+        otherwise, it swaps the current block for the next one in the pallette, wrapping around to the first."""
+        existing_block = self.get_block(self.midground_blocks, self.cursor[X], self.cursor[Y])
+        if existing_block == None:
+            b = Block(self.block_tiles, self.current_editor_tile, self.cursor)
+            self.midground_blocks.append(b)
+        else:  # cycle to the next block in the pallette
+            self.current_editor_tile = (self.current_editor_tile + 1) % len(self.editor_pallette)
+            existing_block.type = self.current_editor_tile
+            # TODO this only changes the symbol - it doesn't change the image
+            # we will need a pallette of actual blocks, rather than just the tile symbols
+
     def collision_test(self, character_rect, movement, scroll):
         """ check if this character is colliding with any of the blocks
         blocks are categorised as:
@@ -383,16 +407,17 @@ class BlockMap:
                           (0, 255, 0), character_rect, 1, scroll)
 
         # check for collisions with triggers
-        for t in self.triggerable:
-            collider = pygame.Rect(t.x,
-                                   t.y,
-                                   BLOCK_SIZE, BLOCK_SIZE)
-            if character_rect.colliderect(collider):
-                if t.grid_position in self.triggers.keys():
-                    t.image = t.frames[1]  # switch to 'pressed' state
-                    self.movers[self.triggers[t.grid_position]].activate()
-                    if DEBUG:
-                        print("trigger", self.triggers[t.grid_position], "activated!")
+        for t in self.midground_blocks:
+            if t.is_trigger():
+                collider = pygame.Rect(t.x,
+                                       t.y,
+                                       BLOCK_SIZE, BLOCK_SIZE)
+                if character_rect.colliderect(collider):
+                    if t.grid_position in self.triggers.keys():
+                        t.image = t.frames[1]  # switch to 'pressed' state
+                        self.movers[self.triggers[t.grid_position]].activate()
+                        if DEBUG:
+                            print("trigger", self.triggers[t.grid_position], "activated!")
 
         # check for collisions with solid objects
         collisions = {'left': None,
@@ -400,55 +425,56 @@ class BlockMap:
                       'up': None,
                       'down': None}
         # find the first colliding block in each direction
-        for b in self.collidable:
-            collider = pygame.Rect(b.x,
-                                   b.y,
-                                   BLOCK_SIZE, BLOCK_SIZE)
-            if DEBUG:
-                # DEBUG draw block colliders in yellow
-                draw_collider(self.world.display,
-                              (255, 255, 0), collider, 1, scroll)
+        for b in self.midground_blocks:
+            if b.is_collidable():
+                collider = pygame.Rect(b.x,
+                                       b.y,
+                                       BLOCK_SIZE, BLOCK_SIZE)
+                if DEBUG:
+                    # DEBUG draw block colliders in yellow
+                    draw_collider(self.world.display,
+                                  (255, 255, 0), collider, 1, scroll)
 
-            if character_rect.colliderect(collider):
-                # just because the rectangles overlap, doesn't necessarily
-                # mean we want to call it a collision. We only count collisions
-                # where the character is moving towards the block
-                # this prevents characters from getting stuck in blocks
-                if (movement[X] > 0 and
-                    character_rect.centerx < collider.centerx and
-                    (character_rect.bottom > collider.top
-                     + COLLIDE_THRESHOLD) and
-                    collisions['right'] == None
-                    ):
-                    collisions['right'] = collider
-
-                if movement[X] < 0:
-                    if (character_rect.left <= collider.right and
-                    (character_rect.bottom > collider.top
-                     + COLLIDE_THRESHOLD) and
-                        collisions['left'] == None
+                if character_rect.colliderect(collider):
+                    # just because the rectangles overlap, doesn't necessarily
+                    # mean we want to call it a collision. We only count collisions
+                    # where the character is moving towards the block
+                    # this prevents characters from getting stuck in blocks
+                    if (movement[X] > 0 and
+                        character_rect.centerx < collider.centerx and
+                        (character_rect.bottom > collider.top
+                         + COLLIDE_THRESHOLD) and
+                        collisions['right'] == None
                         ):
-                        collisions['left'] = collider
+                        collisions['right'] = collider
+
+                    if movement[X] < 0:
+                        if (character_rect.left <= collider.right and
+                        (character_rect.bottom > collider.top
+                         + COLLIDE_THRESHOLD) and
+                            collisions['left'] == None
+                            ):
+                            collisions['left'] = collider
+                            # DEBUG draw active colliders in red
+                            if DEBUG:
+                                draw_collider(self.world.display,
+                                              (255, 0, 0), collider, 0, scroll)
+
+                    # TODO may need similar logic for Y movement, to allow
+                    # falling when you are next to a wall
+                    if (movement[Y] < 0 and
+                            character_rect.top <= collider.bottom and
+                            collisions['up'] == None):
+                        collisions['up'] = collider
+
+                    if (movement[Y] > 0 and
+                            character_rect.bottom >= collider.top and
+                            collisions['down'] == None):
+                        collisions['down'] = collider
+
                         # DEBUG draw active colliders in red
-                        if DEBUG:
-                            draw_collider(self.world.display,
-                                          (255, 0, 0), collider, 0, scroll)
-
-                # TODO may need similar logic for Y movement, to allow
-                # falling when you are next to a wall
-                if (movement[Y] < 0 and
-                        character_rect.top <= collider.bottom and
-                        collisions['up'] == None):
-                    collisions['up'] = collider
-
-                if (movement[Y] > 0 and
-                        character_rect.bottom >= collider.top and
-                        collisions['down'] == None):
-                    collisions['down'] = collider
-
-                    # DEBUG draw active colliders in red
-#                    if DEBUG:
-#                        draw_collider(self.world.display,
-#                                      (255, 0, 0), collider, 0, scroll)
+    #                    if DEBUG:
+    #                        draw_collider(self.world.display,
+    #                                      (255, 0, 0), collider, 0, scroll)
 
         return collisions
