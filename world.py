@@ -35,12 +35,12 @@ class World:
         self.blocks = blocks.BlockMap(self)
 
         # load character sprites
-        self.player = characters.Character(self, 'player', 'character.png')
-        self.dog = characters.Character(self, 'dog', 'dog basic.png',
+        self.player = characters.Character(self, 'player', 'new_character.png')
+        self.dog = characters.Character(self, 'dog', 'bit basic1.png',
                                         run_speed=2)
-        self.player.location.x = 5 * BLOCK_SIZE
+        self.player.location.x = 4 * BLOCK_SIZE + COLLIDER_WIDTH/2
         self.player.location.y = 8 * BLOCK_SIZE
-        self.dog.location.x = 12 * BLOCK_SIZE
+        self.dog.location.x = 11 * BLOCK_SIZE + COLLIDER_WIDTH/2
         self.dog.location.y = self.player.location.y
         self.show_fps = False
         self.show_grid = False
@@ -51,8 +51,8 @@ class World:
         # intialise the python interpreter and editor
         if pygame.font.get_init() is False:
             pygame.font.init()
-        if pygame.scrap.get_init() is False:
-            pygame.scrap.init()
+#        if pygame.scrap.get_init() is False:
+        pygame.scrap.init()
         self.code_font = pygame.font.SysFont("dejavusansmono", 18)
         self.program = interpreter.VirtualMachine(self)
         self.editor = editor.Editor(screen, 300, self.code_font, self.program)
@@ -63,14 +63,14 @@ class World:
         self.clock = pygame.time.Clock()
 
     def get_bit_x(self):
-        return int(self.dog.location.x / BLOCK_SIZE)
+        return self.dog.gridX()
 
     def get_bit_y(self):
-        return int(self.dog.location.y / BLOCK_SIZE)
+        return self.dog.gridY()
 
     def set_bit_x(self, new_x):
         # attempt to move the dog to the new position
-        distance = new_x - int(self.dog.location.x / BLOCK_SIZE)
+        distance = new_x - self.dog.gridX()
         if distance < 0:
             self.dog.move_left(abs(distance))
         elif distance > 0:
@@ -81,6 +81,7 @@ class World:
         distance = new_y - int(self.dog.location.y / BLOCK_SIZE)
         if distance < 0:
             self.dog.move_up(distance)
+            self.dog.is_flying = True
         elif distance > 0:
             self.dog.move_down(distance)
 
@@ -114,13 +115,6 @@ class World:
 
         # move and render the dog
         self.dog.update(display, scroll)
-        # dog follows the player
-        #if self.dog.location[X] > self.player.location[X] + 30:
-        #    self.dog.move_left()
-        #elif self.dog.location[X] < self.player.location[X] - 30:
-        #    self.dog.move_right()
-        #else:
-        #    self.dog.stop_moving()
 
         # draw the foreground scenery on top of the characters
         self.blocks.update(display, scroll)
@@ -196,7 +190,7 @@ class World:
                 if event.type == KEYUP:
                     self.repeat_lock = False  # release the lock
                 if event.type == QUIT:
-                    game_running = False
+                    self.game_running = False
 
         if self.show_fps:
             self.debug_frame_counter += 1

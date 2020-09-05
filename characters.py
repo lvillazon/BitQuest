@@ -20,7 +20,10 @@ class Character:
         # load character animation frames
         self.character_sheet = \
             sprite_sheet.SpriteSheet('assets/' + sprite_file)
-        self.run_right_frames = self.character_sheet.load_block_of_8(0, 0, -1)
+        self.run_right_frames = self.character_sheet.load_strip(
+            pygame.Rect(0,0, CHARACTER_WIDTH, CHARACTER_HEIGHT), 8, -1)
+
+        #self.run_right_frames = self.character_sheet.load_block_of_8(0, 0, -1)
         self.run_left_frames = [pygame.transform.flip(sprite, True, False)
                                 for sprite in self.run_right_frames]
         self.jump_right_frames = self.character_sheet.load_block_of_8(0, 152,
@@ -32,11 +35,12 @@ class Character:
         self.die_left_frames = [pygame.transform.flip(sprite, True, False)
                                 for sprite in self.die_right_frames]
         self.moving = False
+        self.is_flying = False
         self.facing_right = True
         self.momentum = [0,0]
-        self.location = pygame.Rect(0, 0, CHARACTER_SIZE, CHARACTER_SIZE)
+        self.location = pygame.Rect(0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT)
         # TODO different collider heights for different characters
-        self.collider = pygame.Rect(0,0, 16, 20)
+        self.collider = pygame.Rect(0,0, COLLIDER_WIDTH, COLLIDER_HEIGHT)
         self.frame_number = 0
         self.frame_count = len(self.run_right_frames)
         self.jumping = False
@@ -49,7 +53,8 @@ class Character:
         f = int(self.frame_number) % self.frame_count
         self.frame_number = self.frame_number + .25
         movement = [0,0]
-        movement[Y] += self.momentum[Y]
+        if not self.is_flying:
+            movement[Y] += self.momentum[Y]
         if self.moving:
             if self.momentum[X] != 0:
                 # use the direction of the momentum to set the movement
@@ -85,9 +90,13 @@ class Character:
         blocked = self.world.blocks.collision_test(self.collider,
                         movement, scroll)
 
-        if blocked['down'] or blocked['up']:
+        if blocked['up']:
             movement[Y] = 0
             self.momentum[Y] = 0
+        if blocked['down']:
+            movement[Y] = 0
+            self.momentum[Y] = 0
+            self.is_flying = False
         if blocked['left'] or blocked['right']:
             movement[X] = 0
             self.momentum[X] = 0
@@ -102,16 +111,26 @@ class Character:
         surface.blit(frame, (self.location.x - scroll[X],
                              self.location.y - scroll[Y]))
 
+    def gridX(self):
+        # current location in terms of block coords, rather than pixels
+        return int(self.location[X] / BLOCK_SIZE)
+
+    def gridY(self):
+        return  int(self.location[Y] / BLOCK_SIZE)
+
     def move_left(self, distance = 1):
         # move a whole number of blocks to the left
-        self.facing_right = False
-        self.momentum[X] = -distance * BLOCK_SIZE
-        self.moving = True
+        if self.momentum[X] == 0:  # wait until any previous move is complete
+            self.facing_right = False
+            self.momentum[X] = -distance * BLOCK_SIZE
+            self.moving = True
 
     def move_right(self, distance = 1):
-        self.facing_right = True
-        self.momentum[X] = distance * BLOCK_SIZE
-        self.moving = True
+        # move a whole number of blocks to the left
+        if self.momentum[X] == 0:  # wait until any previous move is complete
+            self.facing_right = True
+            self.momentum[X] = distance * BLOCK_SIZE
+            self.moving = True
 
     def move_up(self, distance = 1):
         # set the upward momentum, so that the max height will be
@@ -124,6 +143,9 @@ class Character:
         # v = sqrt(2hG)
         self.momentum[Y] = -(math.sqrt(2 * abs(distance) * BLOCK_SIZE * GRAVITY))
         self.moving = True
+
+    def move_down(self, distance = 1):
+        pass
 
     def jump(self):
         self.jumping = True
@@ -184,7 +206,7 @@ class Character:
                            self.world.editor.get_fg_color(),
                            self.world.editor.get_bg_color())
 
-    def syntax_error(self, msg):
+    def error(self, msg):
         # show the error in a speak-bubble above the character
         self.speech_bubble("Syntax error!", msg,
                            (0,0,0),

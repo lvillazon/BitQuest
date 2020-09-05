@@ -109,9 +109,14 @@ class VirtualMachine:
         self.byte_code = None
         self.stack = []
         self.running = False  # true when a program is executing
+        # functions that replace the standard python functions
         self.overridden_builtins = {
-            # functions that replace the standard python functions
             'print': self.BIT.say
+        }
+        # getters and setters for all the programmable world variables
+        self.world_variables = {
+            'dogX': (self.world.get_bit_x, self.world.set_bit_x),
+            'dogY': (self.world.get_bit_y, self.world.set_bit_y),
         }
 
     def load(self, source):
@@ -119,13 +124,46 @@ class VirtualMachine:
         self.source = source
         #self.source.insert(0, 'import world_access')  # invisible import present for all programs to allow access to game vars]  # a list of lines of source code
 
-
     def is_running(self):
         return self.running
 
     def halt(self):
         """halts execution immediately"""
         self.running = False
+
+    def sync_world_variables(self, frame):
+        # request to set any game variables
+        # that were changed by the running program
+        # this uses the getters and setters defined in the world_variables dict
+        # to request a change to the correct variable and then block
+        # further program execution until the world variable matches the
+        # program variable, or a timeout occurs (eg due to an obstacle)
+        GET = 0  # index into world_variables tuple
+        SET = 1
+        UPDATE_TIMEOUT = 15  # number of updates without change before we bail
+        for v in self.world_variables:
+            w = self.world_variables[v]  # for brevity
+            if w[GET]() != frame.global_names[v]:
+                # request a change to the word variable
+                w[SET](frame.global_names[v])
+                # loop until the change is complete or timeout
+                done = False
+                timeout_counter = 0
+                while not done:
+                    previous_value = w[GET]()
+                    self.world.update()
+                    if w[GET]() == frame.global_names[v]:
+                        done = True
+                    else:
+                        if w[GET]() == previous_value:
+                            timeout_counter += 1
+                            if timeout_counter > UPDATE_TIMEOUT:
+                                self.BIT.error("can't complete this instruction")
+                                # correct the program variable to match the world
+                                frame.global_names[v] = w[GET]()
+                                done = True
+                        else:
+                            timeout_counter = 0
 
     def run(self, global_names=None, local_names=None):
         """ creates an entry point for code execution on the vm"""
@@ -333,13 +371,8 @@ class VirtualMachine:
 
             # let the game world update to reflect keyboard input and physics
             self.world.update()
-
-            # request to set any game variables
-            # that were changed by the running program
-            if 'dogX' in frame.global_names:
-                self.world.bit_x = frame.global_names['dogX']
-            if 'dogY' in frame.global_names:
-                self.world.bit_y = frame.global_names['dogY']
+            # makes sure game variables in the program affect the world
+            self.sync_world_variables(frame)
 
             byte_name, arguments = self.parse_byte_and_args()
             stack_unwind_reason = self.dispatch(byte_name, arguments)
@@ -443,7 +476,7 @@ class VirtualMachine:
             error_msg = self.compile_time_error['error']
             error_line = self.compile_time_error['line']
             msg = error_msg + " on line " + str(error_line)
-            self.world.dog.syntax_error(msg)
+            self.BIT.error(msg)
 
         return success
 

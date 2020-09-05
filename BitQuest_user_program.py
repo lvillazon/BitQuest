@@ -1,5 +1,3 @@
-for i in range(23):
-    dogX = i
-dogY -= 3
-dogX += 5
-
+while True:
+    dogX -= 4
+    dogX += 4
