@@ -3,8 +3,9 @@ import dis  # built-in python disassembler - used for tokenising
 import inspect
 import operator
 import sys
+import time
 import types
-from constants import CONSOLE_VERBOSE
+from constants import CONSOLE_VERBOSE, Y
 
 
 def is_a_number(p):
@@ -140,30 +141,31 @@ class VirtualMachine:
         # program variable, or a timeout occurs (eg due to an obstacle)
         GET = 0  # index into world_variables tuple
         SET = 1
-        UPDATE_TIMEOUT = 15  # number of updates without change before we bail
+        UPDATE_TIMEOUT = 150  # number of updates without change before we bail
         for v in self.world_variables:
             w = self.world_variables[v]  # for brevity
-            if w[GET]() != frame.global_names[v]:
+            target_value = frame.global_names[v]
+            current_value = w[GET]
+            if current_value != target_value:
                 # request a change to the word variable
-                w[SET](frame.global_names[v])
+                w[SET](target_value)
                 # loop until the change is complete or timeout
                 done = False
                 timeout_counter = 0
                 while not done:
-                    previous_value = w[GET]()
+                    previous_value = current_value
+                    # give world variables a chance to change
                     self.world.update()
-                    if w[GET]() == frame.global_names[v]:
+                    current_value = w[GET]()
+                    if current_value == target_value:
                         done = True
                     else:
-                        if w[GET]() == previous_value:
-                            timeout_counter += 1
-                            if timeout_counter > UPDATE_TIMEOUT:
-                                self.BIT.error("can't complete this instruction")
-                                # correct the program variable to match the world
-                                frame.global_names[v] = w[GET]()
-                                done = True
-                        else:
-                            timeout_counter = 0
+                        timeout_counter += 1
+                        if timeout_counter > UPDATE_TIMEOUT:
+                            self.BIT.error("can't complete this instruction")
+                            # correct the program variable to match the world
+                            frame.global_names[v] = current_value
+                            done = True
 
     def run(self, global_names=None, local_names=None):
         """ creates an entry point for code execution on the vm"""
@@ -368,7 +370,6 @@ class VirtualMachine:
         """ frames run until they return a value or raise an exception"""
         self.push_frame(frame)
         while self.running:
-
             # let the game world update to reflect keyboard input and physics
             self.world.update()
             # makes sure game variables in the program affect the world
@@ -381,6 +382,7 @@ class VirtualMachine:
             while stack_unwind_reason and frame.block_stack:
                 stack_unwind_reason = \
                     self.manage_block_stack(stack_unwind_reason)
+
             if stack_unwind_reason:
                 break
 
@@ -696,17 +698,6 @@ class VirtualMachine:
         defaults = self.popn(arg_count)
         globs = self.frame.global_names
         new_function = Function(name, code, globs, defaults, None, self)
-        # print("here's what we made:")
-        # print("func_name:", new_function.func_name)
-        # print("func_defaults:", new_function.func_defaults)
-        # print("func_globals:", new_function.func_globals)
-        # print("func_locals", new_function.func_locals)
-        # print("__dict__", new_function.__dict__)
-        # print("func_closure:", new_function.func_closure)
-        # print("__doc__:", new_function.__doc__)
-        # print("_func:", new_function._func)
-        # print("_vm:", new_function._vm)
-        # print("func_code:", new_function.func_code)
         self.push(new_function)
 
     def byte_POP_JUMP_IF_FALSE(self, target):

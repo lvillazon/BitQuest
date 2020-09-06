@@ -7,6 +7,8 @@ import contextlib
 import io
 from constants import *
 import sprite_sheet
+from particles import Jet
+
 
 class Character:
     ANIMATION_LENGTH = 8  # number of frames per movement
@@ -35,12 +37,14 @@ class Character:
         self.die_left_frames = [pygame.transform.flip(sprite, True, False)
                                 for sprite in self.die_right_frames]
         self.moving = False
-        self.is_flying = False
+        self.flying = False
         self.facing_right = True
         self.momentum = [0,0]
         self.location = pygame.Rect(0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT)
         # TODO different collider heights for different characters
         self.collider = pygame.Rect(0,0, COLLIDER_WIDTH, COLLIDER_HEIGHT)
+        self.ground_proximity = \
+            pygame.Rect(0,0, COLLIDER_WIDTH, COLLIDER_HEIGHT)
         self.frame_number = 0
         self.frame_count = len(self.run_right_frames)
         self.jumping = False
@@ -48,13 +52,21 @@ class Character:
         self.speaking = False
         self.text = []
         self.text_size = [0,0]
+        self.jets = []  # the particle streams that appear when flying
+        # create 2 jets, 1 for each leg
+        # the origin coordinates are just zero,
+        # since they will be set each frame
+        for j in range(2):
+            self.jets.append(Jet(self.world,  # link back to the game world
+                                 (0, 0),      # dummy start position
+                                 (0, 1),      # initial velocity vector
+                                 ))
 
     def update(self, surface, scroll):
         f = int(self.frame_number) % self.frame_count
         self.frame_number = self.frame_number + .25
         movement = [0,0]
-        if not self.is_flying:
-            movement[Y] += self.momentum[Y]
+        movement[Y] += self.momentum[Y]
         if self.moving:
             if self.momentum[X] != 0:
                 # use the direction of the momentum to set the movement
@@ -64,6 +76,18 @@ class Character:
 
             if self.momentum[X] == 0:  # [0, 0]:
                 self.moving = False
+
+        if self.flying:
+            if self.momentum[Y] != 0:
+                # use the direction of the momentum to set the movement
+                direction = copysign(
+                    int(self.run_speed * self.jets[0].get_power()),
+                    self.momentum[Y]
+                )
+                movement[Y] = direction
+                self.momentum[Y] = self.momentum[Y] - direction
+                if self.momentum[Y] == 0:
+                    self.reason = "line 88"
 
         if self.jumping:
             if self.facing_right:
@@ -91,12 +115,11 @@ class Character:
                         movement, scroll)
 
         if blocked['up']:
-            movement[Y] = 0
-            self.momentum[Y] = 0
-        if blocked['down']:
-            movement[Y] = 0
-            self.momentum[Y] = 0
-            self.is_flying = False
+            movement[Y] = 0.0
+            self.momentum[Y] = 0.0
+        if blocked['down'] and movement[Y] >0.0:
+            movement[Y] = 0.0
+            self.momentum[Y] = 0.0
         if blocked['left'] or blocked['right']:
             movement[X] = 0
             self.momentum[X] = 0
@@ -105,18 +128,43 @@ class Character:
         if self.location.x < 0:  # can't move past start of the world
             self.location.x = 0
         self.location.y += movement[Y]
-        self.momentum[Y] += GRAVITY  # constant downward pull
+
+        if not self.flying:
+            self.momentum[Y] += GRAVITY  # constant downward pull
+        else:
+            # check for ground underneath
+            self.ground_proximity.centerx = self.location.centerx \
+                                            + movement[X]
+            self.ground_proximity.bottom = self.location.bottom \
+                                           + movement[Y] \
+                                           + BLOCK_SIZE /2
+
+            blocked = self.world.blocks.collision_test(self.ground_proximity,
+                                                           movement, scroll)
+            if blocked['down']:
+                self.flying = False
+                self.jets[0].turn_off()
+                self.jets[1].turn_off()
 
         # draw the sprite at the new location
         surface.blit(frame, (self.location.x - scroll[X],
                              self.location.y - scroll[Y]))
+        # update the jets if they are running
+        if self.jets[0].is_active():
+            self.jets[0].nozzle[X] = self.location.left + 4
+            self.jets[0].nozzle[Y] = self.location.bottom + 2
+            self.jets[0].update(surface, scroll)
+        if self.jets[1].is_active():
+            self.jets[1].nozzle[X] = self.location.right - 4
+            self.jets[1].nozzle[Y] = self.location.bottom + 2
+            self.jets[1].update(surface, scroll)
 
     def gridX(self):
         # current location in terms of block coords, rather than pixels
         return int(self.location[X] / BLOCK_SIZE)
 
     def gridY(self):
-        return  int(self.location[Y] / BLOCK_SIZE)
+        return int(self.location[Y] / BLOCK_SIZE)
 
     def move_left(self, distance = 1):
         # move a whole number of blocks to the left
@@ -126,26 +174,31 @@ class Character:
             self.moving = True
 
     def move_right(self, distance = 1):
-        # move a whole number of blocks to the left
+        # move a whole number of blocks to the right
         if self.momentum[X] == 0:  # wait until any previous move is complete
             self.facing_right = True
             self.momentum[X] = distance * BLOCK_SIZE
             self.moving = True
 
     def move_up(self, distance = 1):
-        # set the upward momentum, so that the max height will be
-        # a number of blocks equal to distance
-        # (this is effectively a jump)
-        # the formula is:
-        # h = V^2/2G
-        # (www.toppr.com/guides/physics-formulas/maximum-height-formula/)
-        # solving for v:
-        # v = sqrt(2hG)
-        self.momentum[Y] = -(math.sqrt(2 * abs(distance) * BLOCK_SIZE * GRAVITY))
-        self.moving = True
+        # move a whole number of blocks upwards
+        if not self.flying:  # take off 1st
+            self.flying = True
+            self.jets[0].turn_on()
+            self.jets[1].turn_on()
+        if abs(self.momentum[Y]) <1:  # wait until any previous move is complete
+            self.momentum[Y] = distance * BLOCK_SIZE
+            if self.momentum[Y] == 0:
+                self.reason = "line 192"
+            self.moving = True
 
     def move_down(self, distance = 1):
-        pass
+        # move a whole number of blocks downwards
+        if abs(self.momentum[Y]) <1:  # wait until any previous move is complete
+            self.momentum[Y] = distance * BLOCK_SIZE
+            if self.momentum[Y] == 0:
+                self.reason = "line 200"
+            self.moving = True
 
     def jump(self):
         self.jumping = True

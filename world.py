@@ -38,9 +38,9 @@ class World:
         self.player = characters.Character(self, 'player', 'new_character.png')
         self.dog = characters.Character(self, 'dog', 'bit basic1.png',
                                         run_speed=2)
-        self.player.location.x = 4 * BLOCK_SIZE + COLLIDER_WIDTH/2
+        self.player.location.x = 4 * BLOCK_SIZE
         self.player.location.y = 8 * BLOCK_SIZE
-        self.dog.location.x = 11 * BLOCK_SIZE + COLLIDER_WIDTH/2
+        self.dog.location.x = 11 * BLOCK_SIZE
         self.dog.location.y = self.player.location.y
         self.show_fps = False
         self.show_grid = False
@@ -51,8 +51,8 @@ class World:
         # intialise the python interpreter and editor
         if pygame.font.get_init() is False:
             pygame.font.init()
-#        if pygame.scrap.get_init() is False:
-        pygame.scrap.init()
+        if pygame.scrap.get_init() is False:
+            pygame.scrap.init()
         self.code_font = pygame.font.SysFont("dejavusansmono", 18)
         self.program = interpreter.VirtualMachine(self)
         self.editor = editor.Editor(screen, 300, self.code_font, self.program)
@@ -81,7 +81,7 @@ class World:
         distance = new_y - int(self.dog.location.y / BLOCK_SIZE)
         if distance < 0:
             self.dog.move_up(distance)
-            self.dog.is_flying = True
+            self.dog.flying = True
         elif distance > 0:
             self.dog.move_down(distance)
 
@@ -90,6 +90,7 @@ class World:
 
     def update(self):
         '''update all the game world stuff'''''
+
         display = self.display  # for brevity
 
         frame_start_time = time.time_ns()  # used to calculate fps

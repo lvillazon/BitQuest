@@ -452,3 +452,13 @@ class BlockMap:
 #                                      (255, 0, 0), collider, 0, scroll)
 
         return collisions
+
+    def point_collision_test(self, position):
+        """ a much simpler collision test used for the particle system
+        returns true if the particle position is inside any block"""
+        x = int(position[X] / BLOCK_SIZE)
+        y = int(position[Y] / BLOCK_SIZE)
+        for b in self.midground_blocks:
+            if (x,y) == b.grid_position:
+                return True
+        return False
