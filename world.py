@@ -151,7 +151,7 @@ class World:
                 if self.game_origin[Y] == 0:
                     self.editor.show()
 
-            if EDITOR_MODE and not self.repeat_lock:
+            if MAP_EDITOR_MODE and not self.repeat_lock:
                 if pressed[K_F9]:
                     print("Saving map...", end='')
                     self.blocks.save_grid()
@@ -169,6 +169,9 @@ class World:
                     self.repeat_lock = True
                 if pressed[K_DOWN]:
                     self.blocks.cursor_down()
+                    self.repeat_lock = True
+                if pressed[K_RETURN]:  # change/add a block to at the current grid cursor location
+                    self.blocks.change_block()
                     self.repeat_lock = True
 
             # DEBUG stats
