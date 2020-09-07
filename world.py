@@ -13,6 +13,8 @@ import editor
 import interpreter
 import scenery
 from constants import *
+from particles import DustStorm
+
 '''
 https://wiki.libsdl.org/Installation
 https://github.com/pygame/pygame/issues/1722
@@ -33,6 +35,9 @@ class World:
 
         # load puzzle blocks
         self.blocks = blocks.BlockMap(self)
+
+        # initialise the environmental dust effect
+        # self.dust_storm = DustStorm(self)  # DEBUG disabled due to looking bad
 
         # load character sprites
         self.player = characters.Character(self, 'player', 'new_character.png')
@@ -87,6 +92,21 @@ class World:
 
     bit_x = property(get_bit_x, set_bit_x)
     bit_y = property(get_bit_y, set_bit_y)
+
+    def get_player_x(self):
+        return self.player.gridX()
+
+    def get_player_y(self):
+        return self.player.gridY()
+
+    def set_player_x(self, dummy):  # variable is read only
+        pass
+
+    def set_player_y(self, dummy):  # variable is read only
+        pass
+
+    player_x = property(get_player_x, set_player_x)
+    player_y = property(get_player_y, set_player_y)
 
     def update(self):
         '''update all the game world stuff'''''
@@ -235,6 +255,9 @@ class World:
                         * SCALING_FACTOR  + self.game_origin[Y]
                         - self.dog.text_size[Y])
             self.screen.blit(self.dog.bubble, position)
+
+        # draw the swirling dust
+        #self.dust_storm.update(self.screen, self.game_origin[Y], scroll)
 
         pygame.display.update()  # actually display
 

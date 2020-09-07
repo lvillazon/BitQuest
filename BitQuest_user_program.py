@@ -1,7 +1,5 @@
-dogY = 9
-while True:
-    if dogY == 9:
-        dogY =8
-    elif dogY == 8:
-        dogY =9
+bitY -= 3
+while bitX != 27:
+    bitX = playerX + 3
+bitY += 3
 
