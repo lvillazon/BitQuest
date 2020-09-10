@@ -253,7 +253,7 @@ class Character:
         # show the message t in a speak-bubble above the character
         f = io.StringIO()
         with contextlib.redirect_stdout(f):
-            print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still us the end= keyword
+            print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still use the end= keyword
             speech = f.getvalue()
         self.speech_bubble("BIT says:", speech,
                            self.world.editor.get_fg_color(),

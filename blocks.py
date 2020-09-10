@@ -3,6 +3,8 @@
 import pygame
 import contextlib
 import io
+
+from console_messages import console_msg
 from constants import *
 import sprite_sheet
 
@@ -62,9 +64,11 @@ class Block:
 
     def __init__(self, block_tiles, type, grid_position):
         self.type = type
-        self.grid_position = grid_position
+        #self.grid_position = grid_position
         self.x = grid_position[X] * BLOCK_SIZE
-        # offset of -7 to align the blocks with the bottom of the screen
+        # to align the blocks with the bottom of the screen
+        # the self.y needs an offset of -7
+        # I'm not doing this for now
         self.y = grid_position[Y] * BLOCK_SIZE
 
         self.frame_count = 1
@@ -137,11 +141,16 @@ class Block:
                 ALPHA)
             self.image = self.frames[0]
         else:
-            print("UNRECOGNISED BLOCK CODE:", type)
+            console_msg("UNRECOGNISED BLOCK CODE:" + type, 3)
 
         # set default frame list for tiles that do not animate
         if self.frame_count == 1:
             self.frames = [self.image]
+
+    def get_grid_position(self):
+        return (int(self.x / BLOCK_SIZE), int(self.y / BLOCK_SIZE))
+
+    grid_position = property(get_grid_position)  # read only property
 
     def is_collidable(self):
         if self.type in '1Pp[]Bb':
@@ -244,6 +253,7 @@ class BlockMap:
         # midground is the same layer as the player
         # collidable blocks on this layer will stop player progress
 
+
         file_name = 'BitQuest_level' + str(level) + '.txt'
         with open(file_name, 'r') as file:
             lines = file.readlines()
@@ -317,9 +327,10 @@ class BlockMap:
         # that is activated
         self.triggers = {}
         i += 1  # skip over the ### section delimiter
+        console_msg("Block triggers:", 8)
         while i < len(level_data) and level_data[i] != '###':
             values = level_data[i].split(',')
-            print(values)
+            console_msg(values, 8)
             self.triggers[(int(values[0]), int(values[1]))] = int(values[2])
             i += 1
 
@@ -328,8 +339,7 @@ class BlockMap:
         for b in blocklist:
             if b.grid_position == (x, y):
                 return b
-        if DEBUG:
-            print("No block found at " + str(x) + "," + str(y))
+        console_msg("No block found at " + str(x) + "," + str(y), 3)
         return None
 
     def update(self, surface, scroll):
@@ -416,8 +426,10 @@ class BlockMap:
                     if t.grid_position in self.triggers.keys():
                         t.image = t.frames[1]  # switch to 'pressed' state
                         self.movers[self.triggers[t.grid_position]].activate()
-                        if DEBUG:
-                            print("trigger", self.triggers[t.grid_position], "activated!")
+                        console_msg(
+                            "trigger "
+                            + str(self.triggers[t.grid_position])
+                            + " activated!", 8)
 
         # check for collisions with solid objects
         collisions = {'left': None,

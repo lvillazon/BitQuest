@@ -2,6 +2,8 @@ import pygame
 import button_tray
 
 # used to index into (x,y) tuples
+from console_messages import console_msg
+
 X = 0
 Y = 1
 
@@ -55,7 +57,7 @@ class Editor:
         self.cursor_col = 0
         self.buttons = button_tray.ButtonTray('editor icons.png', self.surface)
 
-        print("Editor row width =", self.row_width)
+        console_msg("Editor row width =" + str(self.row_width), 8)
 
     def show(self):
         pygame.key.set_repeat(500, 50)
@@ -231,13 +233,13 @@ class Editor:
             self.add_keystroke(i)
 
     def clipboard_cut(self):
-        print("CUT")
+        console_msg("CUT", 8)
 
     def clipboard_copy(self):
-        print("COPY")
+        console_msg("COPY", 8)
 
     def clipboard_paste(self):
-        print("PASTE")
+        console_msg("PASTE", 8)
         clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT) \
             .decode("utf-8").replace('\0', '')  # strip trailing nulls
 
@@ -265,7 +267,7 @@ class Editor:
             elif button_result == button_tray.RUN:
                 self.run_program()
             elif button_result == button_tray.STOP:
-                print("Execution halted.")
+                console_msg("Execution halted.", 1)
                 self.program.halt()
             elif button_result == button_tray.LOAD:
                 self.load_program()
@@ -343,7 +345,7 @@ class Editor:
             # we don't actually want to quit the game though
             # TODO prompt user to save code
             elif event.type == pygame.QUIT:
-                print("WARNING: Save code before quitting?")
+                console_msg("WARNING: Save code before quitting?", 2)
 
             # finally, if there is a program running, we must update that too
 
@@ -426,8 +428,8 @@ class Editor:
             if p.compile_time_error:
                 error_msg = p.compile_time_error['error']
                 error_line = p.compile_time_error['line']
-                print('BIT found a SYNTAX ERROR:')
+                console_msg('BIT found a SYNTAX ERROR:',5)
                 msg = error_msg + " on line " + str(error_line)
-                print(msg)
+                console_msg(msg, 5)
         else:
             p.run()  # set the program going

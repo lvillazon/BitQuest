@@ -12,6 +12,7 @@ import characters
 import editor
 import interpreter
 import scenery
+from console_messages import console_msg
 from constants import *
 from particles import DustStorm
 
@@ -22,7 +23,7 @@ https://github.com/pygame/pygame/issues/1722
 
 class World:
     def __init__(self, screen, display):
-        print('Started.')
+        console_msg('Started.', 0)
         self.screen = screen
         self.display = display
 
@@ -35,14 +36,17 @@ class World:
 
         # load puzzle blocks
         self.blocks = blocks.BlockMap(self)
+        console_msg("Map loaded", 1)
 
         # initialise the environmental dust effect
         # self.dust_storm = DustStorm(self)  # DEBUG disabled due to looking bad
 
         # load character sprites
         self.player = characters.Character(self, 'player', 'new_character.png')
+        console_msg("player sprite initialised", 1)
         self.dog = characters.Character(self, 'dog', 'bit basic1.png',
                                         run_speed=2)
+        console_msg("BIT sprite initialised", 1)
         self.player.location.x = 4 * BLOCK_SIZE
         self.player.location.y = 8 * BLOCK_SIZE
         self.dog.location.x = 11 * BLOCK_SIZE
@@ -56,11 +60,18 @@ class World:
         # intialise the python interpreter and editor
         if pygame.font.get_init() is False:
             pygame.font.init()
+        self.code_font = pygame.font.SysFont("dejavusansmono", 18)
+        console_msg("Font system initialised", 2)
+
         if pygame.scrap.get_init() is False:
             pygame.scrap.init()
-        self.code_font = pygame.font.SysFont("dejavusansmono", 18)
+            console_msg("Clipboard initialised", 2)
+
         self.program = interpreter.VirtualMachine(self)
+        console_msg("Interpreter initialised", 2)
+
         self.editor = editor.Editor(screen, 300, self.code_font, self.program)
+        console_msg("Editor initialised", 2)
 
         self.camera_shake = False
         self.game_running = True
@@ -173,9 +184,9 @@ class World:
 
             if MAP_EDITOR_MODE and not self.repeat_lock:
                 if pressed[K_F9]:
-                    print("Saving map...", end='')
+                    console_msg("Saving map...", 1, line_end='')
                     self.blocks.save_grid()
-                    print("done")
+                    console_msg("done", 1)
                     self.repeat_lock = True
 
                 if pressed[K_RIGHT]:
@@ -220,12 +231,12 @@ class World:
             self.debug_frame_counter += 1
             if self.debug_frame_counter > 60:
                 self.debug_frame_counter = 0
-                print(
+                console_msg(
                     'frame draw:{0}ms fps:{1} render budget left:{2}ms'.format(
                         self.frame_draw_time / 1000000,
                         int(1000000000 / self.frame_draw_time),
                         int((1000000000 - 60
-                             * self.frame_draw_time) / 1000000)))
+                             * self.frame_draw_time) / 1000000)), 1)
 
         # scroll the editor in and out of view as required
         if self.editor.is_active():

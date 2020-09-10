@@ -6,6 +6,7 @@
 import pygame
 
 import world
+from console_messages import console_msg
 from constants import *
 '''
 https://wiki.libsdl.org/Installation
@@ -29,6 +30,7 @@ display = pygame.Surface(DISPLAY_SIZE)
 
 # create the world
 world = world.World(screen, display)
+console_msg("World initialisation complete", 1)
 
 # set it in motion
 while world.game_running:
