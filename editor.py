@@ -55,6 +55,9 @@ class Editor:
         self.cursor_line = 0
         # character position of the cursor within the current line
         self.cursor_col = 0
+        self.selecting = False;  # True when currently marking a block of text
+        self.selection_start = (0,0)  # cursor coords of the start and end of the marked block
+        self.selection_end = (0,0)
         self.buttons = button_tray.ButtonTray('editor icons.png', self.surface)
 
         console_msg("Editor row width =" + str(self.row_width), 8)
@@ -214,6 +217,12 @@ class Editor:
             else:
                 self.cursor_col = len(self.text[self.cursor_line])
 
+            # update the currently selected block, or start a new block
+            if self.selecting:
+                self.selection_end = (self.cursor_col, self.cursor_line)
+            else:
+                self.selection_start = (self.cursor_col, self.cursor_line)
+
     def page_up(self):
         # page up by calling cursor_up multiple times
         for i in range(self.max_lines):
@@ -264,6 +273,7 @@ class Editor:
             button_result = self.buttons.click(mouse_pos)
             if button_result is None:
                 self.cursor_to_mouse_pos()
+                self.selecting = True  # begin marking a selection at the current position
             elif button_result == button_tray.RUN:
                 self.run_program()
             elif button_result == button_tray.STOP:
@@ -329,15 +339,16 @@ class Editor:
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_button = {1: self.left_click,
-                                # 3: self.start_selection,
+                                # 2: middle button
+                                # 3: right button
                                 4: self.cursor_up,  # scroll up
                                 5: self.cursor_down,  # scroll down
                                 }
-                # middle button is 2, right button is 3
                 if event.button in mouse_button:
                     mouse_button[event.button]()
             elif event.type == pygame.MOUSEBUTTONUP:
-            #    self.stop_selection()  # any button release cancels selection
+                self.cursor_to_mouse_pos()
+                self.selecting = False  # any button release cancels selection
                 self.buttons.release()  # also unclick any clicked buttons
 
             # we also have to handle the quit event, since the main loop
@@ -347,15 +358,38 @@ class Editor:
             elif event.type == pygame.QUIT:
                 console_msg("WARNING: Save code before quitting?", 2)
 
-            # finally, if there is a program running, we must update that too
+        if self.selecting:
+            self.cursor_to_mouse_pos()
+
+    def in_marked_block(self, x, y):
+        char_pos = y * self.row_width + x
+        if ((char_pos >= self.selection_start[Y] * self.row_width + self.selection_start[X]) and
+            (char_pos < self.selection_end[Y] * self.row_width + self.selection_end[X])):
+            return True
+        else:
+            return False
 
     def print(self, s, pos):
         # renders a string s onto the editor surface at [x, y] position p
         if s != '':
-            rendered_text = self.code_font.render(s, True, self.get_fg_color())
-            position = (self.left_margin + pos[X] * self.char_width,
-                        self.top_margin + pos[Y] * self.line_height)
-            self.surface.blit(rendered_text, position)
+            column = pos[X]
+            for char in s:
+                if self.in_marked_block(column, pos[Y]):
+                    text_colour = (255,0,0)
+                else:
+                    text_colour = self.get_fg_color()
+                rendered_char = self.code_font.render(char, True, text_colour)
+                position = (self.left_margin + column * self.char_width,
+                            self.top_margin + pos[Y] * self.line_height)
+                column += 1
+                self.surface.blit(rendered_char, position)
+
+# original code before implementing selection
+#            rendered_text = self.code_font.render(s, True, self.get_fg_color())
+#            position = (self.left_margin + pos[X] * self.char_width,
+#                        self.top_margin + pos[Y] * self.line_height)
+#            self.surface.blit(rendered_text, position)
+
 
     def print_line_number(self, n, row):
         # print the line number n, padded correctly at the specified row
@@ -370,6 +404,13 @@ class Editor:
 
     def draw(self):
         # display editor UI and current program, if any
+
+        console_msg("Current selection: ("
+                    + str(self.selection_start[X]) + ","
+                    + str(self.selection_start[Y]) + "), ("
+                    + str(self.selection_end[X]) + ","
+                    + str(self.selection_end[Y]) + ")",
+                    8)
 
         # fill background and draw border
         self.surface.fill(self.get_bg_color())

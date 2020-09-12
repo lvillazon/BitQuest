@@ -5,6 +5,8 @@ import operator
 import sys
 import time
 import types
+
+from console_messages import console_msg
 from constants import CONSOLE_VERBOSE, Y
 
 
@@ -162,10 +164,12 @@ class VirtualMachine:
                     if current_value == target_value:
                         done = True
                     else:
-                        timeout_counter += 1
+                        if current_value == previous_value:  # check if movement is blocked
+                            timeout_counter += 1
                         if timeout_counter > UPDATE_TIMEOUT:
                             # error message suppressed for now
                             # self.BIT.error("can't complete this instruction")
+                            console_msg("world var timeout", 3)
                             # correct the program variable to match the world
                             frame.global_names[v] = current_value
                             done = True
