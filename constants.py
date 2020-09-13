@@ -1,7 +1,8 @@
-'''
+"""
 Global constants for BitQuest
-'''
-CONSOLE_VERBOSE = True # when true enables extra debug messages in the console
+"""
+
+CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
 
 X = 0  # index values into a variety of positional tuples
 Y = 1
@@ -15,6 +16,7 @@ EDITOR_HEIGHT = 300
 DISPLAY_SIZE = (227, 170)
 SCALING_FACTOR = 4
 EDITOR_POPUP_SPEED = 25  # how fast the editor scrolls into view
+EDITOR_UNDO_HISTORY = 100  # how many keystrokes can be undone
 BLOCK_SIZE = 16  # size in pixels of a the block 'grid'
 GRAVITY = 0.2
 COLLIDE_THRESHOLD = 1  # how many pixels overlap are required for a collision

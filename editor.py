@@ -51,13 +51,15 @@ class Editor:
         # there are no line terminator characters or padding characters
         # we initialise with a single row
         self.text = [[]]
+        self.history = []  # undo history is a list where each element is a copy of self.text
         # absolute line number of the cursor
         self.cursor_line = 0
         # character position of the cursor within the current line
         self.cursor_col = 0
-        self.selecting = False;  # True when currently marking a block of text
-        self.selection_start = (0,0)  # cursor coords of the start and end of the marked block
-        self.selection_end = (0,0)
+        self.selecting = False  # True when currently marking a block of text
+        self.selection_start = (0, 0)  # cursor coords of the start and end of the marked block
+        self.selection_end = (0, 0)
+        self.deleting_block = False
         self.buttons = button_tray.ButtonTray('editor icons.png', self.surface)
 
         console_msg("Editor row width =" + str(self.row_width), 8)
@@ -73,48 +75,83 @@ class Editor:
     def is_active(self):
         return self.active
 
-    def add_keystroke(self, char):
+    def add_keystroke(self, char, undo=True):
         # insert char at the current cursor pos
         # and update the cursor
-        # don't allow typing past the end of the line
-        if self.cursor_col < self.row_width:
+        if undo:
+            self.save_history()  # preserve undo history
+        self.delete_selected_text()  # typing always replaces any selected block
+        if self.cursor_col < self.row_width:  # don't allow typing past the end of the line
             self.text[self.cursor_line].insert(self.cursor_col, char)
             self.cursor_col += 1
 
-    def backspace(self):
+    def backspace(self, undo=True):
         """ back up the cursor and remove the character at that pos """
 
-        # if there are 4 spaces to the left of the cursor,
-        # remove them in one go, since we treat this as a tab
-        if (self.text[self.cursor_line][self.cursor_col-4: self.cursor_col]
-            == [' ', ' ', ' ', ' ']):
-            for i in range(4):
+        if undo:
+            self.save_history()
+        # if there is no selection or we are in the middle of deleting one, then just delete a single character
+        if self.deleting_block or self.selection_start == self.selection_end:
+            # if there are 4 spaces to the left of the cursor,
+            # remove them in one go, since we treat this as a tab
+            if self.text[self.cursor_line][self.cursor_col-4: self.cursor_col] == [' ', ' ', ' ', ' ']:
+                for i in range(4):
+                    self.cursor_left()
+                    del self.text[self.cursor_line][self.cursor_col]
+            else:  # otherwise just delete one char
                 move = self.cursor_left()
+                if move == CURSOR_OK:
+                    del self.text[self.cursor_line][self.cursor_col]
+                if move == CURSOR_LINE_WRAP:
+                    # if we backspace at the start of a line,
+                    # merge this line with the one above
+                    self.text[self.cursor_line].extend(self.text[self.cursor_line + 1])
+                    # delete empty line
+                    del self.text[self.cursor_line + 1]
+        else:
+            # delete the selected text (if any)
+            self.delete_selected_text()
+
+    def delete(self):
+        # if there is no selection, then just delete a single character
+        # the delete_selected_text function never calls delete(), so we don't need to check
+        # if we are in the middle of deleting a block, like we do for backspace()
+        self.save_history()
+        if self.selection_start == self.selection_end:
+            # suck up text at the cursor
+            if self.cursor_col < len(self.text[self.cursor_line]):
                 del self.text[self.cursor_line][self.cursor_col]
-        else:  # otherwise just delete one char
-            move = self.cursor_left()
-            if move == CURSOR_OK:
-                del self.text[self.cursor_line][self.cursor_col]
-            if move == CURSOR_LINE_WRAP:
-                # if we backspace at the start of a line,
+            # suck up the line below if there is nothing to suck on this line
+            elif self.cursor_line < len(self.text) - 1:
                 # merge this line with the one above
                 self.text[self.cursor_line].extend(self.text[self.cursor_line + 1])
                 # delete empty line
                 del self.text[self.cursor_line + 1]
+        else:
+            self.delete_selected_text()
 
-    def delete(self):
-        # suck up text at the cursor
-        if self.cursor_col < len(self.text[self.cursor_line]):
-            del self.text[self.cursor_line][self.cursor_col]
-        # suck up the line below if there is nothing to suck on this line
-        elif self.cursor_line < len(self.text) - 1:
-            # merge this line with the one above
-            self.text[self.cursor_line].extend(self.text[self.cursor_line + 1])
-            # delete empty line
-            del self.text[self.cursor_line + 1]
+    def delete_selected_text(self):
+        if self.selection_start != self.selection_end:
+            console_msg("Deleting selection", 8, line_end='')
+            self.save_history()
+            self.deleting_block = True  # used to prevent backspace() also trying to delete the block
+            # make sure the cursor is positioned at the end of the selection
+            self.cursor_col, self.cursor_line = self.selection_end
+            # backspace all the way to the first char in the selection
+            while (self.cursor_col, self.cursor_line) != self.selection_start:
+                self.backspace(undo=False)  # turn off undo for the individual deletions, since we have alsready saved
+                print(".", end='')
+            # cancel this selection
+            self.selection_start = (0, 0)
+            self.selection_end = (0, 0)
+            self.deleting_block = False
+            print(" done.")
 
-    def carriage_return(self):
+    def carriage_return(self, undo=True):
         """break the line at the cursor"""
+        if undo:
+            self.save_history()
+        self.delete_selected_text()  # typing always replaces any selected block
 
         # we want to match the indentation of the current line
         # so we must check for spaces at the start of the current line
@@ -143,12 +180,21 @@ class Editor:
     def cursor_left(self):
         # moves cursor with line wrap
         # returns true if the cursor successfully moved
+
+        # check if SHIFT is held, to see if we should be starting a new selection
+        if (pygame.key.get_mods() & pygame.KMOD_SHIFT) and not self.selecting:
+                self.start_selecting()
+
         if self.cursor_col > 0:
             self.cursor_col -= 1
+            if self.selecting:  # extend selection
+                self.selection_end = (self.cursor_col, self.cursor_line)
             return CURSOR_OK
         elif self.cursor_line > 0:
             self.cursor_line -= 1
             self.cursor_col = len(self.text[self.cursor_line])
+            if self.selecting:  # extend selection
+                self.selection_end = (self.cursor_col, self.cursor_line)
             return CURSOR_LINE_WRAP
         else:
             return CURSOR_FAIL
@@ -156,12 +202,21 @@ class Editor:
     def cursor_right(self):
         # moves cursor with line wrap
         # returns true if the cursor successfully moved
+
+        # check if SHIFT is held, to see if we should be starting a new selection
+        if (pygame.key.get_mods() & pygame.KMOD_SHIFT) and not self.selecting:
+                self.start_selecting()
+
         if self.cursor_col < len(self.text[self.cursor_line]):
             self.cursor_col += 1
+            if self.selecting:  # extend selection
+                self.selection_end = (self.cursor_col, self.cursor_line)
             return CURSOR_OK
         elif self.cursor_line < len(self.text) - 1:
             self.cursor_line += 1
             self.cursor_col = 0
+            if self.selecting:  # extend selection
+                self.selection_end = (self.cursor_col, self.cursor_line)
             return CURSOR_LINE_WRAP
         else:
             return CURSOR_FAIL
@@ -169,6 +224,11 @@ class Editor:
     def cursor_up(self):
         # moves cursor, snapping to the end of the line if necessary
         # returns true if the cursor successfully moved
+
+        # check if SHIFT is held, to see if we should be starting a new selection
+        if (pygame.key.get_mods() & pygame.KMOD_SHIFT) and not self.selecting:
+                self.start_selecting()
+
         if self.cursor_line > 0:
             self.cursor_line -= 1
             # scroll if necessary
@@ -177,6 +237,8 @@ class Editor:
             # snap to end of line
             if self.cursor_col > len(self.text[self.cursor_line]):
                 self.cursor_col = len(self.text[self.cursor_line])
+            if self.selecting:  # extend selection
+                self.selection_end = (self.cursor_col, self.cursor_line)
             return CURSOR_OK
         else:
             return CURSOR_FAIL
@@ -184,6 +246,11 @@ class Editor:
     def cursor_down(self):
         # moves cursor, snapping to the end of the line if necessary
         # returns true if the cursor successfully moved
+
+        # check if SHIFT is held, to see if we should be starting a new selection
+        if (pygame.key.get_mods() & pygame.KMOD_SHIFT) and not self.selecting:
+                self.start_selecting()
+
         if self.cursor_line < len(self.text) - 1:
             self.cursor_line += 1
             # scroll if necessary
@@ -192,6 +259,8 @@ class Editor:
             # snap to end of line
             if self.cursor_col > len(self.text[self.cursor_line]):
                 self.cursor_col = len(self.text[self.cursor_line])
+            if self.selecting:  # extend selection
+                self.selection_end = (self.cursor_col, self.cursor_line)
             return CURSOR_OK
         else:
             return CURSOR_FAIL
@@ -237,27 +306,67 @@ class Editor:
 
     def tab(self):
         # insert 4 spaces
+        self.save_history()
         TAB = '    '
         for i in TAB:
-            self.add_keystroke(i)
+            self.add_keystroke(i, undo=False)  # turn off undo for the individual spaces, since we already saved
 
     def clipboard_cut(self):
         console_msg("CUT", 8)
+        self.save_history()
 
     def clipboard_copy(self):
         console_msg("COPY", 8)
 
     def clipboard_paste(self):
         console_msg("PASTE", 8)
+        self.save_history()
         clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT) \
             .decode("utf-8").replace('\0', '')  # strip trailing nulls
 
         for char in clipboard_text:
             # paste the chars in the keyboard, 1 at a time
             if char is chr(13):
-                self.carriage_return()
+                self.carriage_return(undo=False)
             elif char >= chr(32) and char <= chr(126):  # only allow ASCII
-                self.add_keystroke(char)
+                self.add_keystroke(char, undo=False)
+
+    def start_selecting(self):
+        self.selecting = True
+        self.selection_start = (self.cursor_col, self.cursor_line)
+        console_msg("Begin selection", 8)
+
+    def stop_selecting(self):
+        self.selecting = False
+        console_msg("End selection", 8)
+
+    def select_all(self):
+        # mark all the text in the editor
+        self.selection_start = (0, 0)
+        last_line = len(self.text) - 1
+        last_col = len(self.text[last_line])
+        self.selection_end = (last_col, last_line)
+        self.cursor_line = last_line
+        self.cursor_col = last_col
+
+    def save_history(self):
+        # preserve a snapshot of the current code
+        # to do this, we need to make a deep copy of the current self.text data structure
+        snapshot = []
+        for line in self.text:
+            snapshot_line = line.copy()
+            snapshot.append(snapshot_line)
+        # save this snapshot, together with the current cursor position
+        self.history.append((snapshot, self.cursor_col, self.cursor_line))
+
+    def undo(self):
+        # roll back the editor text to the last snapshot saved in the undo history
+        print(self.history)
+        if len(self.history) > 0:
+            snapshot = self.history.pop()
+            self.text = snapshot[0]
+            self.cursor_col = snapshot[1]  # also restore the save position of the cursor
+            self.cursor_line = snapshot[2]
 
     def get_cursor_xy(self):
         # return the (x,y) character coords represented by
@@ -312,9 +421,6 @@ class Editor:
                       pygame.K_TAB: self.tab,
                       pygame.K_F5: self.run_program,
                       }
-        shifted = {lower: upper for lower, upper in
-                   zip("1234567890-=[]#;',./abcdefghijklmnopqrstuvwxyz ",
-                       '!"£$%^&*()_+{}~:@<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ ')}
         printable = "1234567890-=[]#;',./abcdefghijklmnopqrstuvwxyz " \
                     '!"£$%^&*()_+{}~:@<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         for event in pygame.event.get():
@@ -329,6 +435,8 @@ class Editor:
                                  pygame.K_v: self.clipboard_paste,
                                  pygame.K_s: self.save_program,
                                  pygame.K_o: self.load_program,
+                                 pygame.K_a: self.select_all,
+                                 pygame.K_z: self.undo,
                                  }
                     if event.key in shortcuts:
                         shortcuts[event.key]()
@@ -337,6 +445,9 @@ class Editor:
                     if event.unicode != '' and event.unicode in printable:
                         self.add_keystroke(event.unicode)
 
+            elif event.type == pygame.KEYUP:
+                if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT):
+                    self.stop_selecting()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_button = {1: self.left_click,
                                 # 2: middle button
@@ -359,37 +470,43 @@ class Editor:
                 console_msg("WARNING: Save code before quitting?", 2)
 
         if self.selecting:
-            self.cursor_to_mouse_pos()
+            # use the mouse to update the selected block, provided SHIFT is not held down
+            # this keeps mouse and keyboard selections from interfering with each other
+            if not (pygame.key.get_mods() & pygame.KMOD_SHIFT):
+                self.cursor_to_mouse_pos()
 
     def in_marked_block(self, x, y):
         char_pos = y * self.row_width + x
-        if ((char_pos >= self.selection_start[Y] * self.row_width + self.selection_start[X]) and
-            (char_pos < self.selection_end[Y] * self.row_width + self.selection_end[X])):
+        start_pos = self.selection_start[Y] * self.row_width + self.selection_start[X]
+        end_pos = self.selection_end[Y] * self.row_width + self.selection_end[X]
+        if start_pos > end_pos:
+            # swap them over so that start is always early in the text than end
+            temp = start_pos
+            start_pos = end_pos
+            end_pos = temp
+        if (char_pos >= start_pos) and (char_pos < end_pos):
             return True
         else:
             return False
 
-    def print(self, s, pos):
+    def print(self, s, pos, transparent = False):
         # renders a string s onto the editor surface at [x, y] position p
         if s != '':
             column = pos[X]
             for char in s:
                 if self.in_marked_block(column, pos[Y]):
-                    text_colour = (255,0,0)
+                    # draw the characters using inverse colours
+                    if transparent:
+                        rendered_char = self.code_font.render(char, True, self.get_bg_color())  # omit bg col
+                    else:
+                        rendered_char = self.code_font.render(char, True, self.get_bg_color(), self.get_fg_color())
                 else:
-                    text_colour = self.get_fg_color()
-                rendered_char = self.code_font.render(char, True, text_colour)
+                    # unselected text always uses a transparent background
+                    rendered_char = self.code_font.render(char, True, self.get_fg_color())
                 position = (self.left_margin + column * self.char_width,
                             self.top_margin + pos[Y] * self.line_height)
                 column += 1
                 self.surface.blit(rendered_char, position)
-
-# original code before implementing selection
-#            rendered_text = self.code_font.render(s, True, self.get_fg_color())
-#            position = (self.left_margin + pos[X] * self.char_width,
-#                        self.top_margin + pos[Y] * self.line_height)
-#            self.surface.blit(rendered_text, position)
-
 
     def print_line_number(self, n, row):
         # print the line number n, padded correctly at the specified row
@@ -404,13 +521,6 @@ class Editor:
 
     def draw(self):
         # display editor UI and current program, if any
-
-        console_msg("Current selection: ("
-                    + str(self.selection_start[X]) + ","
-                    + str(self.selection_start[Y]) + "), ("
-                    + str(self.selection_end[X]) + ","
-                    + str(self.selection_end[Y]) + ")",
-                    8)
 
         # fill background and draw border
         self.surface.fill(self.get_bg_color())
@@ -427,7 +537,7 @@ class Editor:
                 self.print(''.join(self.text[line_number]), (0, line))
 
         # draw the cursor
-        self.print("_", self.get_cursor_xy())
+        self.print("_", self.get_cursor_xy(), transparent=True)
 
         # draw UI buttons
         self.buttons.draw(self.get_fg_color(), self.get_bg_color())
@@ -450,6 +560,7 @@ class Editor:
     def load_program(self):
         """load source code from a default filename"""
         # TODO add open dialogue to change name/folder
+        self.save_history()
         with open('BitQuest_user_program.py', 'r') as file:
             lines = file.readlines()
             self.text = []
@@ -469,7 +580,7 @@ class Editor:
             if p.compile_time_error:
                 error_msg = p.compile_time_error['error']
                 error_line = p.compile_time_error['line']
-                console_msg('BIT found a SYNTAX ERROR:',5)
+                console_msg('BIT found a SYNTAX ERROR:', 5)
                 msg = error_msg + " on line " + str(error_line)
                 console_msg(msg, 5)
         else:
