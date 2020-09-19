@@ -21,6 +21,7 @@ https://wiki.libsdl.org/Installation
 https://github.com/pygame/pygame/issues/1722
 '''
 
+
 class World:
     def __init__(self, screen, display):
         console_msg('Started.', 0)
@@ -120,24 +121,24 @@ class World:
     player_y = property(get_player_y, set_player_y)
 
     def update(self):
-        '''update all the game world stuff'''''
+        """update all the game world stuff"""
 
         display = self.display  # for brevity
 
         frame_start_time = time.time_ns()  # used to calculate fps
 
         # track the camera with the player, but with a bit of lag
-        self.true_scroll[X] += (self.player.location.x
-                             - self.true_scroll[X] - CAMERA_X_OFFSET) / 16
+        self.true_scroll[X] += (self.player.location.x -
+                                self.true_scroll[X] - CAMERA_X_OFFSET) / 16
         if self.true_scroll[X] < 0:
             # can't scroll past the start of the world
             self.true_scroll[X] = 0
-        self.true_scroll[Y] += (self.player.location.y
-                             - self.true_scroll[Y] - CAMERA_Y_OFFSET) / 16
+        self.true_scroll[Y] += (self.player.location.y -
+                                self.true_scroll[Y] - CAMERA_Y_OFFSET) / 16
         scroll = [int(self.true_scroll[X]), int(self.true_scroll[Y])]
         if self.camera_shake:
-            scroll[X] += random.randint(-1,1)
-            scroll[Y] += random.randint(-1,1)
+            scroll[X] += random.randint(-1, 1)
+            scroll[Y] += random.randint(-1, 1)
 
         # render the background
         self.scenery.draw_background(display, scroll)
@@ -167,11 +168,9 @@ class World:
             pressed = pygame.key.get_pressed()
             if pressed[K_a]:
                 self.player.move_left()
-            elif pressed[K_d]: # or True:  # DEBUG ensure the scene is always moving to check multitasking works
+            elif pressed[K_d]:  # or True:  # DEBUG ensure the scene is always moving to check multitasking works
 
                 self.player.move_right()
-            #else: - NOW STOPPING AUTOMATICALLY AFTER ONE BLOCK DISTANCE
-            #    self.player.stop_moving()
 
             if pressed[K_SPACE]:
                 self.player.jump()
@@ -248,7 +247,7 @@ class World:
 
         # scale the rendering area to the actual game window
         self.screen.blit(pygame.transform.scale(display, WINDOW_SIZE),
-                    self.game_origin)
+                         self.game_origin)
         self.scenery.draw_foreground(self.screen, scroll)
 
         # blit the editor underneath the game surface
@@ -263,7 +262,7 @@ class World:
             position = ((self.dog.location.x - scroll[X] + 16)
                         * SCALING_FACTOR + self.game_origin[X],
                         (self.dog.location.y - scroll[Y])
-                        * SCALING_FACTOR  + self.game_origin[Y]
+                        * SCALING_FACTOR + self.game_origin[Y]
                         - self.dog.text_size[Y])
             self.screen.blit(self.dog.bubble, position)
 
@@ -274,4 +273,3 @@ class World:
 
         self.frame_draw_time = time.time_ns() - frame_start_time
         self.clock.tick(60)  # lock the framerate to 60fps
-

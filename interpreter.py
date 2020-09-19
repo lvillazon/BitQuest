@@ -37,6 +37,7 @@ class Frame(object):
         self.last_instruction = 0
         self.block_stack = []
 
+
 class Function(object):
     """ calling a function creates a new frame on the call stack"""
     '''
@@ -70,7 +71,6 @@ class Function(object):
         if closure:
             kw['closure'] = tuple(make_cell(0) for _ in closure)
         self._func = types.FunctionType(code, globs, **kw)
-
 
     def __call__(self, *args, **kwargs):
         """ constructs and runs the call frame """
@@ -127,7 +127,6 @@ class VirtualMachine:
     def load(self, source):
         # set the source code to interpret
         self.source = source
-        #self.source.insert(0, 'import world_access')  # invisible import present for all programs to allow access to game vars]  # a list of lines of source code
 
     def is_running(self):
         return self.running
@@ -752,4 +751,3 @@ class VirtualMachine:
         'NOT': operator.not_,
         'INVERT': operator.inv,
     }
-
