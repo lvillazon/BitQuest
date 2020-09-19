@@ -61,12 +61,13 @@ class World:
         # intialise the python interpreter and editor
         if pygame.font.get_init() is False:
             pygame.font.init()
-        self.code_font = pygame.font.SysFont("dejavusansmono", 18)
         console_msg("Font system initialised", 2)
+        self.code_font = pygame.font.SysFont("dejavusansmono", 18)
+        console_msg("Deja Vu Sans Mono font loaded", 3)
 
         if pygame.scrap.get_init() is False:
             pygame.scrap.init()
-            console_msg("Clipboard initialised", 2)
+        console_msg("Clipboard initialised", 2)
 
         self.program = interpreter.VirtualMachine(self)
         console_msg("Interpreter initialised", 2)
