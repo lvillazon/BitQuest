@@ -133,13 +133,23 @@ class Editor:
     def delete_selected_text(self):
         if self.selection_start != self.selection_end:
             console_msg("Deleting selection", 8, line_end='')
+            # make sure the selection start is the top left of the block
+            start_pos = (self.selection_start[Y] * self.row_width
+                        + self.selection_start[X])
+            end_pos = (self.selection_end[Y] * self.row_width
+                        + self.selection_end[X])
+            if start_pos > end_pos:
+                temp = self.selection_start
+                self.selection_start = self.selection_end
+                self.selection_end = temp
+
             self.save_history()
             self.deleting_block = True  # used to prevent backspace() also trying to delete the block
             # make sure the cursor is positioned at the end of the selection
             self.cursor_col, self.cursor_line = self.selection_end
             # backspace all the way to the first char in the selection
             while (self.cursor_col, self.cursor_line) != self.selection_start:
-                self.backspace(undo=False)  # turn off undo for the individual deletions, since we have alsready saved
+                self.backspace(undo=False)  # turn off undo for the individual deletions, since we have already saved
                 print(".", end='')
             # cancel this selection
             self.selection_start = (0, 0)

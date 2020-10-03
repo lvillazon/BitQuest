@@ -8,6 +8,7 @@ import io
 from constants import *
 import sprite_sheet
 from particles import Jet
+from speech_bubble import SpeechBubble
 
 
 class Character:
@@ -50,11 +51,12 @@ class Character:
         self.jumping = False
         self.run_speed = run_speed
         self.speaking = False
-        self.speech_bubble_fg = (0, 0, 0)
-        self.speech_bubble_bg = (0, 0, 0)
-        self.speech_bubble_size = [0, 0]
-        self.text = []
-        self.text_size = [0, 0]
+        self.speech = None
+        #self.speech_bubble_fg = (0, 0, 0)
+        #self.speech_bubble_bg = (0, 0, 0)
+        #self.speech_bubble_size = [0, 0]
+        #self.text = []
+        #self.text_size = [0, 0]
         self.jets = []  # the particle streams that appear when flying
         # create 2 jets, 1 for each leg
         # the origin coordinates are just zero,
@@ -159,7 +161,9 @@ class Character:
             self.jets[1].nozzle[Y] = self.location.bottom + 2
             self.jets[1].update(surface, scroll)
 
-        self.draw_speech_bubble(surface)
+        # update the speech bubble if there is one
+        if self.speech != None:
+            self.speech.draw(surface, scroll)
 
     def gridX(self):
         # current location in terms of block coords, rather than pixels
@@ -205,6 +209,30 @@ class Character:
     def stop_moving(self):
         self.moving = False
 
+    def say(self, *t):
+        # show the message t in a speak-bubble above the character
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f):
+            print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still use the end= keyword
+            speech = f.getvalue()
+        if self.speech == None:  # create the bubble if it doesn't exist
+            self.speech = SpeechBubble(speech, self)
+            # register the bubble with the global list
+            self.world.bubbles.add_bubble(self.speech)
+        else:
+            self.speech.add(speech)
+        #self.create_speech_bubble(speech,
+        #                          self.world.editor.get_fg_color(),
+        #                          self.world.editor.get_bg_color())
+
+    def error(self, msg):
+        # show the error in a speak-bubble above the character
+        self.create_speech_bubble("Syntax error!" + msg,
+                                  (0, 0, 0),
+                                  (254, 0, 0))  # red, but not 255 because that's the alpha
+
+
+"""
     def create_speech_bubble(self, text, fg_col, bg_col):
         # show a speak-bubble above the character with the text in it
         new_text = str(text)
@@ -216,7 +244,6 @@ class Character:
             self.text_size[Y] += self.speech_bubble_size[Y]
         self.speech_bubble_fg = fg_col
         self.speech_bubble_bg = bg_col
-        self.speech_bubble_size = [0, 0]
         self.speaking = True
 
     def draw_speech_bubble(self, surface):
@@ -254,19 +281,5 @@ class Character:
 
     def update_speech_bubble(self):
         pass
+"""
 
-    def say(self, *t):
-        # show the message t in a speak-bubble above the character
-        f = io.StringIO()
-        with contextlib.redirect_stdout(f):
-            print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still use the end= keyword
-            speech = f.getvalue()
-        self.create_speech_bubble(speech,
-                                  self.world.editor.get_fg_color(),
-                                  self.world.editor.get_bg_color())
-
-    def error(self, msg):
-        # show the error in a speak-bubble above the character
-        self.create_speech_bubble("Syntax error!" + msg,
-                                  (0, 0, 0),
-                                  (254, 0, 0))  # red, but not 255 because that's the alpha

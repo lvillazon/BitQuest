@@ -62,7 +62,10 @@ class World:
         if pygame.font.get_init() is False:
             pygame.font.init()
         console_msg("Font system initialised", 2)
-        self.code_font = pygame.font.SysFont("dejavusansmono", 18)
+        # we're not using the built-in SysFont any more
+        # so that the TTF can be bundled to run on other PCs
+        # self.code_font = pygame.font.SysFont("dejavusansmono", 18)
+        self.code_font = pygame.font.Font("DejaVuSansMono.ttf", 18)
         console_msg("Deja Vu Sans Mono font loaded", 3)
 
         if pygame.scrap.get_init() is False:
@@ -74,6 +77,9 @@ class World:
 
         self.editor = editor.Editor(screen, 300, self.code_font, self.program)
         console_msg("Editor initialised", 2)
+
+        #self.bubbles = AllBubbles()
+        console_msg("Speech bubbles initialised", 2)
 
         self.camera_shake = False
         self.game_running = True
@@ -257,15 +263,16 @@ class World:
         self.screen.blit(self.editor.surface, editor_position)
 
         # overlay all text at the native resolution to avoid scaling ugliness
-        if self.dog.speaking:
-            # position the tip of the speak bubble at the middle
-            # of the top edge of the sprite box
-            position = ((self.dog.location.x - scroll[X] + 16)
-                        * SCALING_FACTOR + self.game_origin[X],
-                        (self.dog.location.y - scroll[Y])
-                        * SCALING_FACTOR + self.game_origin[Y]
-                        - self.dog.text_size[Y])
-            self.screen.blit(self.dog.bubble, position)
+        #self.bubbles.draw_bubbles(self.screen, scroll)
+        #if self.dog.speaking:
+        #    # position the tip of the speak bubble at the middle
+        #    # of the top edge of the sprite box
+        #    position = ((self.dog.location.x - scroll[X] + 16)
+        #                * SCALING_FACTOR + self.game_origin[X],
+        #                (self.dog.location.y - scroll[Y])
+        #                * SCALING_FACTOR + self.game_origin[Y]
+        #                - self.dog.text_size[Y])
+        #    self.screen.blit(self.dog.bubble, position)
 
         # draw the swirling dust
         #self.dust_storm.update(self.screen, self.game_origin[Y], scroll)

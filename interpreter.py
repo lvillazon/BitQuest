@@ -148,7 +148,7 @@ class VirtualMachine:
         for v in self.world_variables:
             w = self.world_variables[v]  # for brevity
             target_value = frame.global_names[v]
-            current_value = w[GET]
+            current_value = w[GET]()
             if current_value != target_value:
                 # request a change to the word variable
                 w[SET](target_value)

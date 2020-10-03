@@ -2,12 +2,16 @@
  BitQuest module to handle the game world rendering
  and character movement
 """
+import random
+import time
 
 import pygame
 
 import world
 from console_messages import console_msg
 from constants import *
+from speech_bubble import SpeechBubble
+
 '''
 https://wiki.libsdl.org/Installation
 https://github.com/pygame/pygame/issues/1722
@@ -27,6 +31,36 @@ screen = pygame.display.set_mode(WINDOW_SIZE)
 display = pygame.Surface(DISPLAY_SIZE)
 
 #######################################################
+
+# TEST - experimenting with speech bubbles
+bubble = SpeechBubble("Hello world")
+bubble2 = SpeechBubble("test")
+bubble2.position = (100, 600)
+# TEST green bg, just to check colour key
+screen.fill((113, 201, 168))
+
+while True:
+    for height in range(50, 450, 50):
+        bubble.set_target_size((300, height))
+        bubble2.set_target_size((300, 500-height))
+
+        while bubble.resizing or bubble2.resizing:
+            bubble.draw(screen)
+            bubble2.draw(screen)
+            pygame.display.update()
+        time.sleep(2)
+
+    for height in range(450, 50, -50):
+        bubble.set_target_size((300, height))
+        bubble2.set_target_size((300, 500-height))
+
+        while bubble.resizing or bubble2.resizing:
+            bubble.draw(screen)
+            bubble2.draw(screen)
+            pygame.display.update()
+        time.sleep(2)
+
+# END TEST
 
 # create the world
 world = world.World(screen, display)
