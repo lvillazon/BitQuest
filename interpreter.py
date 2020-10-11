@@ -7,7 +7,7 @@ import time
 import types
 
 from console_messages import console_msg
-from constants import CONSOLE_VERBOSE, Y
+from constants import CONSOLE_VERBOSE
 
 
 def is_a_number(p):
@@ -60,7 +60,9 @@ class Function(object):
         self.func_defaults = tuple(defaults)
         self.func_globals = globs
         self.func_locals = self._vm.frame.local_names
-#        self.__dict__ = {}  # crashes if uncommented - may be due to new function call types since 3.7
+        # crashes if uncommented
+        # may be due to new function call types since 3.7
+        # self.__dict__ = {}
         self.func_closure = closure
         self.__doc__ = code.co_consts[0] if code.co_consts else None
 
@@ -114,7 +116,8 @@ class VirtualMachine:
         self.running = False  # true when a program is executing
         # functions that replace the standard python functions
         self.overridden_builtins = {
-            'print': self.BIT.say
+            'print': self.BIT.say,
+            'input': self.BIT.input,
         }
         # getters and setters for all the programmable world variables
         self.world_variables = {
@@ -123,6 +126,9 @@ class VirtualMachine:
             'playerX': (self.world.get_player_x, self.world.set_player_x),
             'playerY': (self.world.get_player_y, self.world.set_player_y),
         }
+        # read/write variables need special treatment,
+        # so we track them separately
+        self.writable_names = ['bitX', 'bitY']
 
     def load(self, source):
         # set the source code to interpret
@@ -149,7 +155,13 @@ class VirtualMachine:
             w = self.world_variables[v]  # for brevity
             target_value = frame.global_names[v]
             current_value = w[GET]()
-            if current_value != target_value:
+            # the dog coords are the only variables that are read/write
+            # so we only wait for these to sync up with the real world
+            # Waiting for all variables causes the interpreter to stall
+            # when the player is running around, because its internal
+            # values for playerX and playerY are always lagging behind
+            # the world values.
+            if (v in self.writable_names) and current_value != target_value:
                 # request a change to the word variable
                 w[SET](target_value)
                 # loop until the change is complete or timeout
@@ -159,11 +171,13 @@ class VirtualMachine:
                     previous_value = current_value
                     # give world variables a chance to change
                     self.world.update()
+
                     current_value = w[GET]()
                     if current_value == target_value:
                         done = True
                     else:
-                        if current_value == previous_value:  # check if movement is blocked
+                        # check if movement is blocked
+                        if current_value == previous_value:
                             timeout_counter += 1
                         if timeout_counter > UPDATE_TIMEOUT:
                             # error message suppressed for now
@@ -183,8 +197,10 @@ class VirtualMachine:
                                     local_names=local_names)
             result = self.run_frame(frame)
             if result in ('exception', 'quit'):
+                self.running = False
                 return False
             else:
+                self.running = False
                 return True
         else:
             self.running = False  # no bytecode to execute
@@ -269,39 +285,39 @@ class VirtualMachine:
             traceback, value, exctype = self.popn(3)
             self.last_exception = exctype, value, traceback
 
-        def manage_block_stack(self, stack_unwind_reason):
-            frame = self.frame
-            block = frame.block_stack[-1]
-            if block.type == 'loop' and stack_unwind_reason == 'continue':
-                self.jump(self.return_value)
-                stack_unwind_reason = None
-                return stack_unwind_reason
-
-            self.pop_block()
-            self.unwind_block(block)
-
-            if block.type == 'loop' and stack_unwind_reason == 'break':
-                stack_unwind_reason = None
-                self.jump(block.handler)
-                return stack_unwind_reason
-
-            if (block.type in ['setup-except', 'finally'] and
-                    stack_unwind_reason == 'exception'):
-                exctype, value, tb = self.last_exception
-                self.push(tb, value, exctype)
-                self.push(tb, value, exctype)  # needs to be twice (but why??)
-                stack_unwind_reason = None
-                self.jump(block.handler)
-                return stack_unwind_reason
-            elif block.type == 'finally':
-                if stack_unwind_reason in ('return', 'continue'):
-                    self.push(self.return_value)
-
-                self.push(stack_unwind_reason)
-                stack_unwind_reason = None
-                self.jump(block.handler)
-                return stack_unwind_reason
+    def manage_block_stack(self, stack_unwind_reason):
+        frame = self.frame
+        block = frame.block_stack[-1]
+        if block.type == 'loop' and stack_unwind_reason == 'continue':
+            self.jump(self.return_value)
+            stack_unwind_reason = None
             return stack_unwind_reason
+
+        self.pop_block()
+        self.unwind_block(block)
+
+        if block.type == 'loop' and stack_unwind_reason == 'break':
+            stack_unwind_reason = None
+            self.jump(block.handler)
+            return stack_unwind_reason
+
+        if (block.type in ['setup-except', 'finally'] and
+                stack_unwind_reason == 'exception'):
+            exctype, value, tb = self.last_exception
+            self.push(tb, value, exctype)
+            self.push(tb, value, exctype)  # needs to be twice (but why??)
+            stack_unwind_reason = None
+            self.jump(block.handler)
+            return stack_unwind_reason
+        elif block.type == 'finally':
+            if stack_unwind_reason in ('return', 'continue'):
+                self.push(self.return_value)
+
+            self.push(stack_unwind_reason)
+            stack_unwind_reason = None
+            self.jump(block.handler)
+            return stack_unwind_reason
+        return stack_unwind_reason
 
     def parse_byte_and_args(self):
         """ parse the bytecode instruction
@@ -550,7 +566,7 @@ class VirtualMachine:
         posargs = self.popn(lenPos)
 
         func = self.pop()
-        frame = self.frame
+        # frame = self.frame
         retval = func(*posargs)
         self.push(retval)
 
@@ -610,7 +626,8 @@ class VirtualMachine:
         level, fromlist = self.popn(2)
         frame = self.frame
         self.push(
-            __import__(name, frame.global_names, frame.local_names, fromlist, level)
+            __import__(name, frame.global_names,
+                       frame.local_names, fromlist, level)
         )
 
     def byte_IMPORT_STAR(self):
@@ -670,11 +687,12 @@ class VirtualMachine:
     def byte_LOAD_METHOD(self, name):
         object = self.pop()
         method = getattr(object, name, None)
-        if method is not None:  # make sure the object actually has a method with this name
+        # make sure the object actually has a method with this name
+        if method is not None:
             self.push(object)
             self.push(method)
         else:
-            # push NULL and the object returned by the attribute lookup, otherwise
+            # push NULL and the object returned by the attribute lookup
             print("ERROR: '{0}' is unrecognised.".format(name))
             self.push(None)
             self.push(method)

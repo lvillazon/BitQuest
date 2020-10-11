@@ -356,9 +356,8 @@ class BlockMap:
         for b in self.foreground_blocks:
             surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
 
-    def draw_grid(self, surface, scroll):
+    def draw_grid(self, surface, scroll, grid_colour):
         """ overlays a grid to show the block spacing """
-        grid_colour = self.world.editor.get_bg_color()
         offset = scroll[X] % BLOCK_SIZE
         for x in range(-offset, DISPLAY_SIZE[X] - offset, BLOCK_SIZE):
             pygame.draw.line(surface, grid_colour, (x, 0),

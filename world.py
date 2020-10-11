@@ -40,7 +40,8 @@ class World:
         console_msg("Map loaded", 1)
 
         # initialise the environmental dust effect
-        # self.dust_storm = DustStorm(self)  # DEBUG disabled due to looking bad
+        # DEBUG disabled due to looking bad
+        # self.dust_storm = DustStorm(self)
 
         # load character sprites
         self.player = characters.Character(self, 'player', 'new_character.png')
@@ -63,7 +64,7 @@ class World:
             pygame.font.init()
         console_msg("Font system initialised", 2)
         # we're not using the built-in SysFont any more
-        # so that the TTF can be bundled to run on other PCs
+        # so that the TTF file can be bundled to run on other PCs
         # self.code_font = pygame.font.SysFont("dejavusansmono", 18)
         self.code_font = pygame.font.Font("DejaVuSansMono.ttf", 18)
         console_msg("Deja Vu Sans Mono font loaded", 3)
@@ -75,15 +76,17 @@ class World:
         self.program = interpreter.VirtualMachine(self)
         console_msg("Interpreter initialised", 2)
 
-        self.editor = editor.Editor(screen, 300, self.code_font, self.program)
-        console_msg("Editor initialised", 2)
-
-        #self.bubbles = AllBubbles()
-        console_msg("Speech bubbles initialised", 2)
+        self.editor = editor.CodeWindow(screen, 300,
+                                        self.code_font,
+                                        self.program)
+        input_height = self.code_font.get_linesize()*3
+        self.input = editor.InputDialog(screen, input_height, self.code_font)
+        console_msg("Editors initialised", 2)
 
         self.camera_shake = False
         self.game_running = True
         self.frame_draw_time = 1
+        self.frame_counter = 0
         self.clock = pygame.time.Clock()
 
     def get_bit_x(self):
@@ -161,22 +164,20 @@ class World:
 
         # draw the grid overlay last so it is on top of everything
         if self.show_grid:
-            self.blocks.draw_grid(display, scroll)
+            self.blocks.draw_grid(display, scroll, self.editor.get_fg_color())
 
-        # allocate some cpu time to the in-game interpreter running player's code
-        if self.program.is_running():
-            self.program.update()
-
-        # draw and update the editor, if necessary
-        if self.editor.is_active():
+        # update the input window and editor, if necessary
+        # the input window takes precedence if both are open
+        if self.input.is_active():
+            self.input.update()
+        elif self.editor.is_active():
             self.editor.update()
         else:
             # only handle keystrokes for game control if the editor isn't open
             pressed = pygame.key.get_pressed()
             if pressed[K_a]:
                 self.player.move_left()
-            elif pressed[K_d]:  # or True:  # DEBUG ensure the scene is always moving to check multitasking works
-
+            elif pressed[K_d]:
                 self.player.move_right()
 
             if pressed[K_SPACE]:
@@ -207,7 +208,8 @@ class World:
                 if pressed[K_DOWN]:
                     self.blocks.cursor_down()
                     self.repeat_lock = True
-                if pressed[K_RETURN]:  # change/add a block to at the current grid cursor location
+                if pressed[K_RETURN]:
+                    # change/add a block to at the current grid cursor location
                     self.blocks.change_block()
                     self.repeat_lock = True
 
@@ -217,7 +219,7 @@ class World:
                 if self.show_fps:
                     self.show_fps = False
                 else:
-                    self.debug_frame_counter = 0
+                    self.frame_counter = 0
                     self.show_fps = True
 
             if pressed[K_g]:
@@ -234,9 +236,9 @@ class World:
                     self.game_running = False
 
         if self.show_fps:
-            self.debug_frame_counter += 1
-            if self.debug_frame_counter > 60:
-                self.debug_frame_counter = 0
+            self.frame_counter += 1
+            if self.frame_counter > 60:
+                self.frame_counter = 0
                 console_msg(
                     'frame draw:{0}ms fps:{1} render budget left:{2}ms'.format(
                         self.frame_draw_time / 1000000,
@@ -257,25 +259,37 @@ class World:
                          self.game_origin)
         self.scenery.draw_foreground(self.screen, scroll)
 
-        # blit the editor underneath the game surface
+        # the input window and code editor sit below the game surface
+        # ie at a higher Y value, not below in the sense of a different layer
         editor_position = (self.game_origin[X],
                            self.game_origin[Y] + WINDOW_SIZE[Y])
         self.screen.blit(self.editor.surface, editor_position)
 
-        # overlay all text at the native resolution to avoid scaling ugliness
-        #self.bubbles.draw_bubbles(self.screen, scroll)
-        #if self.dog.speaking:
-        #    # position the tip of the speak bubble at the middle
-        #    # of the top edge of the sprite box
-        #    position = ((self.dog.location.x - scroll[X] + 16)
-        #                * SCALING_FACTOR + self.game_origin[X],
-        #                (self.dog.location.y - scroll[Y])
-        #                * SCALING_FACTOR + self.game_origin[Y]
-        #                - self.dog.text_size[Y])
-        #    self.screen.blit(self.dog.bubble, position)
+        # draw the input window, if it is currently active
+        if self.input.is_active():
+            self.input.draw()
+            input_dialog_position = (self.game_origin[X],
+                                     self.game_origin[Y]
+                                     + WINDOW_SIZE[Y]
+                                     - self.input.height)
+            self.screen.blit(self.input.surface, input_dialog_position)
 
-        # draw the swirling dust
-        #self.dust_storm.update(self.screen, self.game_origin[Y], scroll)
+        # overlay all speech bubble at the native resolution
+        if self.dog.speaking:
+            # position the tip of the speak bubble at the middle
+            # of the top edge of the sprite box
+            position = (
+                (self.dog.location.x - scroll[X] + 16)
+                * SCALING_FACTOR + self.game_origin[X],
+                (self.dog.location.y - scroll[Y])
+                * SCALING_FACTOR + self.game_origin[Y]
+                - self.dog.text_size[Y]
+            )
+            self.dog.draw_speech_bubble(display)
+            self.screen.blit(self.dog.bubble, position)
+
+        # draw the swirling dust - DEBUG disabled due to looking bad
+        # self.dust_storm.update(self.screen, self.game_origin[Y], scroll)
 
         pygame.display.update()  # actually display
 
