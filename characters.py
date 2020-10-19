@@ -224,9 +224,9 @@ class Character:
                                  self.world.editor.get_fg_color(),
                                  self.world.editor.get_bg_color())
 
-    def error(self, msg):
+    def error(self, msg, type="Syntax error!"):
         # show the error in a speak-bubble above the character
-        self.create_speech_bubble("Syntax error!" + msg,
+        self.create_speech_bubble(type + msg,
                                   (0, 0, 0),
                                   (254, 0, 0))  # red, but not 255 because that's the alpha
 

@@ -438,7 +438,7 @@ class VirtualMachine:
         return chr(13).join(self.source)
 
     def compile(self):
-        # built bytecode from the source using compile
+        # build bytecode from the source using compile
         # and display the dissassembled instructions using dis
 
         print("Lexing...")
@@ -449,6 +449,7 @@ class VirtualMachine:
             token_list = dis.get_instructions(code_object)
         except Exception as e:
             # handle lexing errors
+            console_msg("Compiler error!",3)
             error_type = e.args[0]
             error_details = e.args[1]
             error_line = error_details[1]
@@ -485,11 +486,11 @@ class VirtualMachine:
 
                 if not defined:
                     unrecognised.append(instruction.opname)
-            if unrecognised:
-                print("UNDEFINED BYTECODE INSTRUCTIONS:")
-                for i in unrecognised:
-                    print("\t%s" % i)
-                success = False
+        if unrecognised:
+            print("UNDEFINED BYTECODE INSTRUCTIONS:")
+            for i in unrecognised:
+                print("\t%s" % i)
+            success = False
 
         if success:
             self.byte_code = code_object
@@ -499,10 +500,15 @@ class VirtualMachine:
                 print(c, ', ', sep='', end='')
             print()
         else:
-            error_msg = self.compile_time_error['error']
-            error_line = self.compile_time_error['line']
-            msg = error_msg + " on line " + str(error_line)
-            self.BIT.error(msg)
+            if self.compile_time_error:
+                error_msg = self.compile_time_error['error']
+                error_line = self.compile_time_error['line']
+                msg = error_msg + " on line " + str(error_line)
+            elif unrecognised:
+                msg = "Unrecognised bytecode: " + unrecognised[0]
+            else:
+                msg = "Undefined compilation error"
+            self.BIT.error(msg, type="Compiler error:")
 
         return success
 

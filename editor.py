@@ -172,23 +172,28 @@ class Editor:
             self.deleting_block = False
             print(" done.")
 
-    def carriage_return(self, undo=True):
+    def carriage_return(self, pasting=False, undo=True):
         """break the line at the cursor"""
         if undo:
             self.save_history()
         # typing always replaces any selected block
         self.delete_selected_text()
 
-        # we want to match the indentation of the current line
-        # so we must check for spaces at the start of the current line
-        # which we do by comparing the length of the line with the length
-        # of the lstripped string version of the line
-        indent = (len(self.text[self.cursor_line]) -
-                  len(''.join(self.text[self.cursor_line]).lstrip()))
+        if pasting:
+            indent = 0
+        else:
+            # we want to match the indentation of the current line
+            # so we must check for spaces at the start of the current line
+            # which we do by comparing the length of the line with the length
+            # of the lstripped string version of the line
+            indent = (len(self.text[self.cursor_line]) -
+                      len(''.join(self.text[self.cursor_line]).lstrip()))
 
-        # if the previous line ends in a :, we increase the indent by 4 spaces
-        if self.text[self.cursor_line][self.cursor_col-1] == ':':
-            indent += 4
+            # if the previous line ends in a :,
+            # we increase the indent by 4 spaces
+            if self.cursor_col > 0 \
+                    and self.text[self.cursor_line][self.cursor_col-1] == ':':
+                indent += 4
 
         # at the cursor, split the line into two
         # beginning with indentation spaces as required
@@ -351,15 +356,23 @@ class Editor:
         console_msg("COPY", 8)
 
     def clipboard_paste(self):
-        console_msg("PASTE", 8)
+        """ paste the clipboard contents into the editor window
+        currently this does not validate the clipboard contents
+        It assumes text is encoded using UTF-8
+        and ignores all non-UTF-8 characters
+        Text pasted from pycharm (and possibly IDLE too?) is encoded as HTML
+        but this seems to paste ok for now
+        """
+        console_msg("PASTE, 8")
         self.save_history()
+        # strip trailing nulls
         clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT) \
-            .decode("utf-8").replace('\0', '')  # strip trailing nulls
+            .decode("utf-8", errors='ignore').replace('\0', '')
 
         for char in clipboard_text:
             # paste the chars in the keyboard, 1 at a time
             if char is chr(13):
-                self.carriage_return(undo=False)
+                self.carriage_return(undo=False, pasting=True)
             elif chr(32) <= char <= chr(126):  # only allow ASCII
                 self.add_keystroke(char, undo=False)
 
@@ -571,9 +584,23 @@ class Editor:
     def convert_to_lines(self):
         """ convert the raw editor characters into lines of source code
          so that they can be saved/parsed etc conveniently"""
+        console_msg("Converting to lines...", 8)
         source = []
-        for line in self.text:
-            source.append(''.join(line))
+        line_number = 0
+        while line_number < len(self.text):
+            # join the chars on this line into a single string
+            # and remove trailing whitespace
+            line = ''.join(self.text[line_number]).rstrip()
+            # check for a continuation character (\)
+            while line and line.rstrip()[-1] == '\\':
+                line_number += 1
+                # remove continuation char and join lines
+                line = line.rstrip('\\') + \
+                       ''.join(self.text[line_number]).lstrip()
+                console_msg("continuation line=" + line, 8)
+            source.append(line)
+            line_number += 1
+        console_msg("...done", 8)
         return source
 
 
@@ -613,7 +640,8 @@ class CodeWindow(Editor):
             button_result = self.buttons.click(mouse_pos)
             if button_result is None:
                 self.cursor_to_mouse_pos()
-                self.selecting = True  # begin marking a selection at the current position
+                # begin marking a selection at the current position
+                self.selecting = True
             else:
                 # clicking a button should never affect text selection
                 self.selecting = False
