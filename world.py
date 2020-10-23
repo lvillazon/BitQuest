@@ -65,9 +65,10 @@ class World:
         console_msg("Font system initialised", 2)
         # we're not using the built-in SysFont any more
         # so that the TTF file can be bundled to run on other PCs
-        # self.code_font = pygame.font.SysFont("dejavusansmono", 18)
         self.code_font = pygame.font.Font("DejaVuSansMono.ttf", 18)
         console_msg("Deja Vu Sans Mono font loaded", 3)
+        self.grid_font = pygame.font.Font("Pixel.ttf", 8)
+        console_msg("Pixel font loaded", 3)
 
         if pygame.scrap.get_init() is False:
             pygame.scrap.init()
@@ -162,10 +163,6 @@ class World:
         # draw the foreground scenery on top of the characters
         self.blocks.update(display, scroll)
 
-        # draw the grid overlay last so it is on top of everything
-        if self.show_grid:
-            self.blocks.draw_grid(display, scroll, self.editor.get_fg_color())
-
         # update the input window and editor, if necessary
         # the input window takes precedence if both are open
         if self.input.is_active():
@@ -173,7 +170,8 @@ class World:
         elif self.editor.is_active():
             self.editor.update()
         else:
-            # only handle keystrokes for game control if the editor isn't open
+            # only handle keystrokes for game control
+            # if the code editor isn't open
             pressed = pygame.key.get_pressed()
             if pressed[K_a]:
                 self.player.move_left()
@@ -190,28 +188,30 @@ class World:
                     self.editor.show()
 
             if MAP_EDITOR_MODE and not self.repeat_lock:
+                self.repeat_lock = True
                 if pressed[K_F9]:
                     console_msg("Saving map...", 1, line_end='')
                     self.blocks.save_grid()
                     console_msg("done", 1)
-                    self.repeat_lock = True
-
-                if pressed[K_RIGHT]:
+                elif pressed[K_RIGHT]:
                     self.blocks.cursor_right()
-                    self.repeat_lock = True
-                if pressed[K_LEFT]:
+                elif pressed[K_LEFT]:
                     self.blocks.cursor_left()
-                    self.repeat_lock = True
-                if pressed[K_UP]:
+                elif pressed[K_UP]:
                     self.blocks.cursor_up()
-                    self.repeat_lock = True
-                if pressed[K_DOWN]:
+                elif pressed[K_DOWN]:
                     self.blocks.cursor_down()
-                    self.repeat_lock = True
-                if pressed[K_RETURN]:
+                elif pressed[K_LEFTBRACKET]: # [
+                    self.blocks.previous_editor_tile()
+                elif pressed[K_RIGHTBRACKET]:  # ]
+                    self.blocks.next_editor_tile()
+                elif pressed[K_BACKSPACE]:
+                    self.blocks.blank_editor_tile()
+                elif pressed[K_RETURN]:
                     # change/add a block to at the current grid cursor location
                     self.blocks.change_block()
-                    self.repeat_lock = True
+                else:
+                    self.repeat_lock = False  # reset, since no key pressed
 
             # DEBUG stats
             if pressed[K_f]:
@@ -290,6 +290,11 @@ class World:
 
         # draw the swirling dust - DEBUG disabled due to looking bad
         # self.dust_storm.update(self.screen, self.game_origin[Y], scroll)
+
+        # draw the grid overlay last so it is on top of everything
+        if self.show_grid:
+            self.blocks.draw_grid(self.screen, self.game_origin, scroll,
+                                  self.editor.get_fg_color())
 
         pygame.display.update()  # actually display
 

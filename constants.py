@@ -9,7 +9,7 @@ Y = 1
 
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console
-MSG_VERBOSITY = 9  # 0-9, 0= no console messages, 9 = max
+MSG_VERBOSITY = 7  # 0-9, 0= no console messages, 9 = max
 MAP_EDITOR_MODE = True  # when true allows the game map to be edited in-game
 SKY_BLUE = (0, 155, 255)
 LIGHT_GREY = (230, 230, 230)
@@ -46,3 +46,6 @@ TEXT_MARGIN = 4  # pixel gap between the sides of the speech bubble and text
 BALLOON_THICKNESS = 3  # line thickness around speech bubbles
 SPEECH_EXPIRY_TIME = 3000 # number of ms before the text begins to disappear
 SPEECH_EXPIRY_RATE = 1000 # ms between each line of text disappearing
+
+# Block map constants
+GRID_LINE_WIDTH = 2

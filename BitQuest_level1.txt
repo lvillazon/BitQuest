@@ -1,41 +1,43 @@
-# level data is split into 4 sections, each section ends with ### on its own line
-# 1. this section is for comments only and is ignored
-# 2. the midground section shows the arrangements of collidable blocks and triggers
-# 3. foreground layer is drawn on top of the player and doesn't collide
-# 4. the next section defines the blocks that move when triggered
-# 5. this section defines the trigger locations, as x, y and block group number, each on their own line
+Level data is split into 4 sections, each section ends with ### on its own line:
+   1. This section is for comments only and is ignored.
+   2. The midground section shows the arrangements of collidable blocks and triggers.
+   3. Foreground layer is drawn on top of the player and doesn't collide.
+   4. The next section defines the blocks that move when triggered.
+   5. This section defines the trigger locations, as x, y and block group number, each on their own line.
 ###
-
-
-
-
-
-
-                                                                      []
-                                                                      []
- Pp                                                   Pp              []
- []                                                   []              []
- Bb                                                 = Bb   Pp=    =   Bb
-1111111111111111111111111111111111111111111111111111111111111111111111111111111111
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                   
+     1                                                                             
+     1                                                                []           
+                                                                      []           
+ Pp     Pp                                            Pp              []           
+ []     []                                            []              []           
+ Bb    =[b                                          = Bb   Pp=    =   Bb           
+1111111111111111111111111111111111111111111111111111111111111111111111111111111111 
 11111111111111111111111111111111111111111111111111111111111111111111111111111111111
 ###
-
-
-
-
-
-
-
-
-
--                                       -            -                -
-{|/}                                    {|/}         {|/}             {|
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                   
+-                                       -            -                -            
+{|/}                                    {|/}         {|/}             {|           
+                                                                                   
+                                                                                   
 ###
-54, 8, 2, 3, 'down', 3
-59, 10, 2, 1, 'down', 1
-70, 6, 2, 5, 'down', 5
+54, 8, 2, 3,      'down', 3
+59, 10, 2, 1,      'down', 1
+70, 6, 2, 5,      'down', 5
 ###
-52,10,0
-61,10,1
-66,10,2
+52, 10, 0
+61, 10, 1
+66, 10, 2
 ###
