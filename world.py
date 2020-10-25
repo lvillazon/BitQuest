@@ -29,7 +29,9 @@ class World:
         self.display = display
 
         # load scenery layers
-        self.scenery = scenery.Scenery('Day', 'Desert')
+#        self.scenery = scenery.Scenery('Day', 'Desert')
+        self.scenery = scenery.Scenery('Day', 'Field')
+
         self.true_scroll = [0.0, 0.0]
         # location of the game area on the window
         # used to scroll the game area out of the way of the code editor
@@ -85,6 +87,7 @@ class World:
         console_msg("Editors initialised", 2)
 
         self.camera_shake = False
+        self.camera_pan = [0,0]
         self.game_running = True
         self.frame_draw_time = 1
         self.frame_counter = 0
@@ -146,7 +149,8 @@ class World:
             self.true_scroll[X] = 0
         self.true_scroll[Y] += (self.player.location.y -
                                 self.true_scroll[Y] - CAMERA_Y_OFFSET) / 16
-        scroll = [int(self.true_scroll[X]), int(self.true_scroll[Y])]
+        scroll = [int(self.true_scroll[X]) + self.camera_pan[X],
+                  int(self.true_scroll[Y]) + self.camera_pan[Y]]
         if self.camera_shake:
             scroll[X] += random.randint(-1, 1)
             scroll[Y] += random.randint(-1, 1)
@@ -162,6 +166,7 @@ class World:
 
         # draw the foreground scenery on top of the characters
         self.blocks.update(display, scroll)
+        #self.scenery.draw_foreground(display, scroll)
 
         # update the input window and editor, if necessary
         # the input window takes precedence if both are open
@@ -178,8 +183,9 @@ class World:
             elif pressed[K_d]:
                 self.player.move_right()
 
-            if pressed[K_SPACE]:
-                self.player.jump()
+            # player jumping disabled, since it is utterly pointless
+            #if pressed[K_SPACE]:
+            #    self.player.jump()
 
             if pressed[K_ESCAPE]:
                 # only show editor when it is completely hidden
@@ -187,31 +193,46 @@ class World:
                 if self.game_origin[Y] == 0:
                     self.editor.show()
 
-            if MAP_EDITOR_MODE and not self.repeat_lock:
-                self.repeat_lock = True
-                if pressed[K_F9]:
-                    console_msg("Saving map...", 1, line_end='')
-                    self.blocks.save_grid()
-                    console_msg("done", 1)
-                elif pressed[K_RIGHT]:
-                    self.blocks.cursor_right()
-                elif pressed[K_LEFT]:
-                    self.blocks.cursor_left()
-                elif pressed[K_UP]:
-                    self.blocks.cursor_up()
-                elif pressed[K_DOWN]:
-                    self.blocks.cursor_down()
-                elif pressed[K_LEFTBRACKET]: # [
-                    self.blocks.previous_editor_tile()
-                elif pressed[K_RIGHTBRACKET]:  # ]
-                    self.blocks.next_editor_tile()
-                elif pressed[K_BACKSPACE]:
-                    self.blocks.blank_editor_tile()
-                elif pressed[K_RETURN]:
-                    # change/add a block to at the current grid cursor location
-                    self.blocks.change_block()
-                else:
-                    self.repeat_lock = False  # reset, since no key pressed
+            if MAP_EDITOR_ENABLED and self.show_grid:
+                # these actions do not auto repeat when held down
+                if not self.repeat_lock:
+                    self.repeat_lock = True
+                    ctrl = pygame.key.get_mods() & KMOD_CTRL
+
+                    if pressed[K_LSHIFT] and not self.blocks.selecting():
+                        self.blocks.begin_selection()
+                    if not pressed[K_LSHIFT] and self.blocks.selecting():
+                        self.blocks.end_selection()
+
+                    if pressed[K_F9]:
+                        console_msg("Saving map...", 1, line_end='')
+                        self.blocks.save_grid()
+                        console_msg("done", 1)
+                    elif pressed[K_RIGHT]:
+                        self.blocks.cursor_right()
+                    elif pressed[K_LEFT]:
+                        self.blocks.cursor_left()
+                    elif pressed[K_UP]:
+                        if ctrl:
+                            self.camera_pan[Y] -= BLOCK_SIZE
+                        else:
+                            self.blocks.cursor_up()
+                    elif pressed[K_DOWN]:
+                        if ctrl:
+                            self.camera_pan[Y] += BLOCK_SIZE
+                        else:
+                            self.blocks.cursor_down()
+                    elif pressed[K_LEFTBRACKET]: # [
+                        self.blocks.previous_editor_tile()
+                    elif pressed[K_RIGHTBRACKET]:  # ]
+                        self.blocks.next_editor_tile()
+                    elif pressed[K_BACKSPACE]:
+                        self.blocks.blank_editor_tile()
+                    elif pressed[K_RETURN]:
+                        # change/add a block to at the current grid cursor location
+                        self.blocks.change_block()
+                    else:
+                        self.repeat_lock = False  # reset, since no key pressed
 
             # DEBUG stats
             if pressed[K_f]:
@@ -257,7 +278,6 @@ class World:
         # scale the rendering area to the actual game window
         self.screen.blit(pygame.transform.scale(display, WINDOW_SIZE),
                          self.game_origin)
-        self.scenery.draw_foreground(self.screen, scroll)
 
         # the input window and code editor sit below the game surface
         # ie at a higher Y value, not below in the sense of a different layer
@@ -294,7 +314,9 @@ class World:
         # draw the grid overlay last so it is on top of everything
         if self.show_grid:
             self.blocks.draw_grid(self.screen, self.game_origin, scroll,
-                                  self.editor.get_fg_color())
+                                  (0, 0, 0))
+# previously, the grid took the colour from the editor choice
+#                                  self.editor.get_fg_color())
 
         pygame.display.update()  # actually display
 

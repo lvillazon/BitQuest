@@ -21,8 +21,19 @@ class Scenery:
             if CONSOLE_VERBOSE:
                 print('loading', path + file_name)
             image = pygame.image.load(path + file_name).convert()
-            # use white as the alpha transparency color
-            image.set_colorkey((0, 0, 0), pygame.RLEACCEL)
+            # set the transparency colour on a case-by-case basis
+            transparency = {
+                "DayCity": (255, 255, 255),
+                "DayDesert": (0, 0, 0),
+                "DayField": (0, 0, 0),
+                "DayForest": (255, 255, 255),
+                "DayHills": (255, 255, 255),
+                "DayMysterious": (255, 255, 255),
+                "DaySnow": (255, 255, 255),
+                "DayVolcano": (0, 0, 0),
+            }
+            image.set_colorkey(transparency[time_of_day+landscape],
+                               pygame.RLEACCEL)
             # parallax is scaled to make distant layers *much* slower
             layer = {'tile': image, 'parallax': (i - 1) ** 2 / 100}
             scenery.append(layer)
@@ -36,7 +47,7 @@ class Scenery:
 
         # each tile is drawn using a relative offset, so that it will repeat
         # once it has slid completely off the screen
-        for layer in self.scenery_layers[0:-1]:
+        for layer in self.scenery_layers:
             scenery_x = - (int(scroll[X] * layer['parallax'])
                            % self.tile_width)
             surface.blit(layer['tile'],

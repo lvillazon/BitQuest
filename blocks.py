@@ -31,8 +31,8 @@ class Moveable:
         self.world = world  # so we can set camera_shake
         self.block_range = block_range  # makes it easier when saving the map
         self.blocks = []
-        for x in range(block_range[0], block_range[0] + block_range[2]):
-            for y in range(block_range[1], block_range[1] + block_range[3]):
+        for x in range(block_range[0][X], block_range[1][X]+1):
+            for y in range(block_range[0][Y], block_range[1][Y]+1):
                 self.blocks.append(block_map.get_block(
                     block_map.midground_blocks, x, y))
 
@@ -53,7 +53,10 @@ class Moveable:
             return
         else:
             for b in self.blocks:
-                b.y += self.speed
+                if self.action == 'down':
+                    b.y += self.speed
+                elif self.action == 'up':
+                    b.y -= self.speed
             self.current_offset += self.speed
             if self.current_offset >= self.distance * BLOCK_SIZE:
                 self.world.camera_shake = False
@@ -63,7 +66,7 @@ class Block:
     """ any of the block tiles that define the foreground 'puzzle' blocks """
 
     def __init__(self, block_tiles, type, grid_position):
-        self.tile_sheet = block_tiles
+        self.block_tiles = block_tiles
 
         self.x = grid_position[X] * BLOCK_SIZE
         # to align the blocks with the bottom of the screen
@@ -72,85 +75,21 @@ class Block:
         self.y = grid_position[Y] * BLOCK_SIZE
 
         self.frame_count = 1
+        self.frames = []
         self.type = ''
         self.name = ''
         self.image = None
         self.setType(type)
 
-        # set default frame list for tiles that do not animate
-        if self.frame_count == 1:
-            self.frames = [self.image]
-
     def setType(self, type):
         """use the ASCII character passed as type to indicate which tile"""
         self.type = type
-        if type == '1':
-            self.name = 'ground type 1'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 8, BLOCK_SIZE * 1, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == 'P':
-            self.name = 'left pillar top'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 12, BLOCK_SIZE * 22, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == 'p':
-            self.name = 'right pillar top'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 13, BLOCK_SIZE * 22, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == '[':
-            self.name = 'left pillar middle'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 12, BLOCK_SIZE * 23, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == ']':
-            self.name = 'right pillar middle'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 13, BLOCK_SIZE * 23, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == 'B':
-            self.name = 'left pillar bottom'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 12, BLOCK_SIZE * 24, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == 'b':
-            self.name = 'right pillar bottom'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 13, BLOCK_SIZE * 24, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == '-':
-            self.name = 'left leaf top'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 8, BLOCK_SIZE * 23, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == '{':
-            self.name = 'left leaf1'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 8, BLOCK_SIZE * 24, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == '|':
-            self.name = 'left leaf2'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 9, BLOCK_SIZE * 24, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == '/':
-            self.name = 'right leaf1'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 10, BLOCK_SIZE * 24, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == '}':
-            self.name = 'right leaf2'
-            self.image = self.tile_sheet.image_at(
-                (BLOCK_SIZE * 11, BLOCK_SIZE * 24, BLOCK_SIZE, BLOCK_SIZE),
-                ALPHA)
-        elif type == '=':
-            self.name = 'pressure plate'
-            self.frame_count = 2
-            self.frames = self.tile_sheet.images_at(
-                ((BLOCK_SIZE * 25, BLOCK_SIZE * 27, BLOCK_SIZE, BLOCK_SIZE),
-                 (BLOCK_SIZE * 24, BLOCK_SIZE * 27, BLOCK_SIZE, BLOCK_SIZE)),
-                ALPHA)
+
+        # initialise the block from the tile sheet coordinates
+        # given by the tile dictionary
+        if type in self.block_tiles:
+            self.frames = self.block_tiles[type]
+            self.frame_count = len(self.frames)
             self.image = self.frames[0]
         else:
             console_msg("UNRECOGNISED BLOCK CODE:" + type, 3)
@@ -176,7 +115,47 @@ class Block:
 class BlockMap:
 
     def __init__(self, world):
+        """ The level maps are defined using text files that use
+        ASCII symbols to represent each tile type.
+        For example a complete pillar is
+            Pp
+           ¬[]
+           |Bb/
+        """
         self.world = world  # link back to the world game state
+
+        # The tile dictionary is used to convert the ASCII tile symbols
+        # used in the map file to the images for the tiles themselves.
+        # It is read from a text file, to make it easy to add new tile types
+        # key is an ASCII symbol used for the map file
+        # value is another dictionary containing:
+        #    * descriptive label,
+        #    * list of (x,y) tuples giving the coordinates of the tile image
+        #      in the tile sheet file. The coords are in multiples
+        #      of the standard block size.
+        #      The list is normally just one element long
+        #      but triggers will have extra elements for animation frames
+
+        file_name = 'BitQuest_tileset.txt'
+        with open(file_name, 'r') as file:
+            lines = file.readlines()
+            tile_dict = {}
+            for file_line in lines:
+                # remove brackets around coords (which are just for looks)
+                # so we convert "(8,1), (12,15)" to "8,1,12,15"
+                csv_line = file_line.replace('(', '')
+                csv_line = csv_line.replace(')', '')
+                # convert comma separated text into a tile_dict record
+                tile_info = csv_line.split(',')
+                tile_coords = []
+                for i in range(2, len(tile_info), 2):
+                    tile_coords.append(
+                        (int(tile_info[i]), int(tile_info[i+1]))
+                    )
+                tile_dict[tile_info[0]] = {
+                    'name': tile_info[1],
+                    'tiles': tile_coords
+                }
 
         # editing cursor (used when editing the map)
         self.cursor = [5, 5]
@@ -186,25 +165,69 @@ class BlockMap:
                                        grid_size - GRID_LINE_WIDTH,
                                        grid_size - GRID_LINE_WIDTH)
 
-        # pillars
-        # a complete pillar is
-        #
-        #    Pp
-        #   ¬[]
-        #   |Bb/
-        self.block_tiles = sprite_sheet.SpriteSheet('assets/' + TILE_FILE)
+        self.tile_sheet = sprite_sheet.SpriteSheet('assets/' + TILE_FILE)
         self.midground_blocks = []
         self.foreground_blocks = []
         self.movers = []
         self.triggers = {}
+        self.tile_images = {}
+
+        # build the dictionary of tile images from the dictionary
+        # previously read in from the file
+        for definition in tile_dict:
+            images = []
+            for coords in tile_dict[definition]['tiles']:
+                images.append(self.tile_sheet.image_at(
+                    (BLOCK_SIZE * coords[X], BLOCK_SIZE * coords[Y],
+                     BLOCK_SIZE, BLOCK_SIZE),
+                    ALPHA))
+            self.tile_images[definition] = images
         self.load_grid()
         self.editor_palette = '1Pp[]Bb='
         # set the default starting tile for the editor
         self.current_editor_tile = self.editor_palette[0]
-        self.cursor_block = Block(self.block_tiles,
+        self.cursor_block = Block(self.tile_images,
                                   self.current_editor_tile,
                                   self.cursor)
         self.erasing = False
+        self.selection = []
+
+    def begin_selection(self):
+        self.selection = [(self.cursor[X], self.cursor[Y])]
+
+    def end_selection(self):
+        # Create a new moving block group
+        # they are defined by their (left, top) & (right, bottom) coords
+        # in the block coordinate system
+        # plus a move direction as a string
+        # and a number of blocks to move
+        self.selection.append((self.cursor[X], self.cursor[Y]))
+        print("Blocks", self.selection[0], "to", self.selection[1], "selected")
+        trigger_pos = eval(input("Enter trigger block coords:"))
+        direction = \
+            input("Enter direction to move (up/down/left/right):").lower()
+        distance = int(input("Enter number of blocks to move:"))
+
+        mover = Moveable(self, self.world,
+                         (self.selection[0], self.selection[1]),
+                         direction,
+                         distance)
+        self.movers.append(mover)
+
+        # assign a trigger to this block group
+        # the triggers dictionary uses the grid coords of the trigger tile
+        # as the key and the value is the index of the moveable object
+        # that is activated
+        self.triggers[trigger_pos] = len(self.movers)-1  # index most recently added
+
+    def selecting(self):
+        # true if we are in the middle of selecting a group of blocks
+        # which we detect by checking if there is a start coordinate in
+        # the selection list, but no end coordinate
+        if len(self.selection) == 1:
+            return True
+        else:
+            return False
 
     def save_grid(self, level=1):
         """save current grid map to the level file
@@ -241,6 +264,8 @@ class BlockMap:
             file.write(delimiter)
             # sections 2 and 3
             for blocks in (self.midground_blocks, self.foreground_blocks):
+ #DEBUG               # 2 blank lines as padding at the top of the level
+ #               file.write('\n\n')
                 for y in range(max_y + 1):
                     for x in range(max_x + 1):
                         b = self.get_block(blocks, x, y)
@@ -255,14 +280,14 @@ class BlockMap:
             for m in self.movers:
                 for br in m.block_range:
                     file.write(str(br) + ', ')
-                file.write(m.action + ', ')
+                file.write("'" + m.action + "', ")
                 file.write(str(m.distance) + '\n')
             file.write(delimiter)
 
             # section 5
             for t in self.triggers:
-                file.write(str(t[0]) + ', ')
-                file.write(str(t[1]) + ', ')
+                file.write(str(t) + ', ')
+#                file.write(str(t[1]) + ', ')
                 file.write(str(self.triggers[t]) + '\n')
             file.write(delimiter)
 
@@ -303,10 +328,10 @@ class BlockMap:
         x = 0
         y = 0
         for row in midground_map:
-            for tile in row:
-                if tile != ' ':
+            for tile_symbol in row:
+                if tile_symbol != ' ':
                     self.midground_blocks.append(
-                        Block(self.block_tiles, tile, (x, y)))
+                        Block(self.tile_images, tile_symbol, (x, y)))
                 x += 1
             x = 0
             y += 1
@@ -314,28 +339,28 @@ class BlockMap:
         x = 0
         y = 0
         for row in foreground_map:
-            for tile in row:
-                if tile != ' ':
+            for tile_symbol in row:
+                if tile_symbol != ' ':
                     self.foreground_blocks.append(
-                        Block(self.block_tiles, tile, (x, y)))
+                        Block(self.tile_images, tile_symbol, (x, y)))
                 x += 1
             x = 0
             y += 1
 
         # the moveable objects are groups of blocks that all move together
         # in response to a trigger
-        # they are defined by their top, left, width & height values
+        # they are defined by their (left, top) & (right, bottom) coords
         # in the block coordinate system
         # plus a move direction as a string
         # and a number of blocks to move
         i += 1  # skip over the ### section delimiter
         while i < len(level_data) and level_data[i] != '###':
-            values = level_data[i].split(',')
+            values = eval(level_data[i])
             mover = Moveable(self, self.world,
-                             (int(values[0]), int(values[1]),
-                              int(values[2]), int(values[3])),
-                             values[4],
-                             int(values[5]))
+                             (values[0], values[1]),
+                              values[2],
+                              values[3],
+                             )
             self.movers.append(mover)
             i += 1
 
@@ -345,9 +370,9 @@ class BlockMap:
         i += 1  # skip over the ### section delimiter
         console_msg("Block triggers:", 8)
         while i < len(level_data) and level_data[i] != '###':
-            values = level_data[i].split(',')
+            values = eval(level_data[i])
             console_msg(values, 8)
-            self.triggers[(int(values[0]), int(values[1]))] = int(values[2])
+            self.triggers[values[0]] = int(values[1])
             i += 1
 
     def get_block(self, blocklist, x, y):
@@ -400,26 +425,24 @@ class BlockMap:
                              (limit[X], y + origin[Y]),
                              GRID_LINE_WIDTH)
             if y + label_offset[Y] < limit[Y]:
-                axis_label = "{0:2d} ".format(int(y / grid_size) + 1)
+                axis_label = "{0:2d} ".format(int(y / grid_size +
+                                                  scroll[Y] / BLOCK_SIZE))
                 rendered_text = self.world.code_font.render(
                     axis_label, True, grid_colour)
                 self.world.screen.blit(rendered_text,
                                        (GRID_LINE_WIDTH * 2,
                                         y + origin[Y] + label_offset[Y]))
 
-        if MAP_EDITOR_MODE:
-            # the cursor is drawn 1 block higher than the actual block number
-            # to make it agree with the way that BIT reports its own position.
-            # Because the dog states his Y coord as being the block number that
-            # his paws are touching, which means he reports that he is
-            # "at" Y=9 when his sprite actually occupies the block above
-            # By subtracting one from Y when we draw the cursor, we make it
-            # select the block that BIT would occupy when he reports that he is
-            # standing at bitY = cursorY
-            self.cursor_rect.x = (self.cursor[X] * grid_size) \
-                - offset[X] + GRID_LINE_WIDTH
-            self.cursor_rect.y = ((self.cursor[Y] - 1) * grid_size) \
-                - offset[Y] + origin[Y] + GRID_LINE_WIDTH
+        if MAP_EDITOR_ENABLED:
+            # +2 added to Y to make the cursor line up with the grid labels
+            # this is arbitrary, just to make 0,0 be the first whole block
+            # in the top left of the screen
+            self.cursor_rect.x = (self.cursor[X] * grid_size
+                                  - scroll[X] * SCALING_FACTOR
+                                  + GRID_LINE_WIDTH)
+            self.cursor_rect.y = (self.cursor[Y] * grid_size
+                                  - scroll[Y] * SCALING_FACTOR
+                                  + origin[Y] + GRID_LINE_WIDTH)
 
             if not self.erasing:
                 # draw translucent image of the currently selected tile
@@ -434,21 +457,42 @@ class BlockMap:
 
             # highlight cursor
             pygame.draw.rect(surface, (255, 255, 255),
-                             self.cursor_rect, GRID_LINE_WIDTH)
+                             self.cursor_rect,
+                             GRID_LINE_WIDTH)
+            # add grid coords of cursor
+            # the cursor is labelled as if it is 1 block higher
+            # than the actual block number to make it agree with the
+            # way that BIT reports its own position.
+            # Because the dog states his Y coord as being the block number that
+            # his paws are *resting on*, he reports that he is
+            # "at" Y=9 when his sprite actually occupies the block above
+            # By subtracting one from Y when we label the cursor, we make the
+            # coordinates indicated by the cursor match the coordinates
+            # reported by BIT.
+            cursor_label = "({0},{1})".format(self.cursor[X], self.cursor[Y])
+            rendered_text = self.world.code_font.render(
+                cursor_label, True, grid_colour)
+            self.world.screen.blit(rendered_text,
+                                   (self.cursor_rect[X],
+                                    self.cursor_rect[Y] - 25))
 
     def cursor_right(self):
         self.cursor[X] += 1
+        print(self.cursor)
 
     def cursor_left(self):
         if self.cursor[X] > 0:
             self.cursor[X] -= 1
+        print(self.cursor)
 
     def cursor_up(self):
         if self.cursor[Y] > 0:
             self.cursor[Y] -= 1
+        print(self.cursor)
 
     def cursor_down(self):
         self.cursor[Y] += 1
+        print(self.cursor)
 
     def _change_editor_tile(self, direction):
         """ cycle the selected editor tile the number of places
@@ -486,7 +530,7 @@ class BlockMap:
             existing_block.setType(self.current_editor_tile)
         else:
             # create new block
-            b = Block(self.block_tiles, self.current_editor_tile, self.cursor)
+            b = Block(self.tile_images, self.current_editor_tile, self.cursor)
             self.midground_blocks.append(b)
 
     def collision_test(self, character_rect, movement, scroll):
@@ -496,7 +540,7 @@ class BlockMap:
         trigger - characters can overlap the block, activating the trigger
         cosmetic - no collision physics or trigger (but may animate)
         """
-        if DEBUG:
+        if SHOW_COLLIDERS:
             # DEBUG draw character collider in green
             draw_collider(self.world.display,
                           (0, 255, 0), character_rect, 1, scroll)
@@ -507,6 +551,10 @@ class BlockMap:
                 collider = pygame.Rect(t.x,
                                        t.y,
                                        BLOCK_SIZE, BLOCK_SIZE)
+                if SHOW_COLLIDERS:
+                    # DEBUG draw block colliders in yellow
+                    draw_collider(self.world.display,
+                                  (255, 255, 0), collider, 1, scroll)
                 if character_rect.colliderect(collider):
                     if t.grid_position in self.triggers.keys():
                         t.image = t.frames[1]  # switch to 'pressed' state
@@ -527,7 +575,7 @@ class BlockMap:
                 collider = pygame.Rect(b.x,
                                        b.y,
                                        BLOCK_SIZE, BLOCK_SIZE)
-                if DEBUG:
+                if SHOW_COLLIDERS:
                     # DEBUG draw block colliders in yellow
                     draw_collider(self.world.display,
                                   (255, 255, 0), collider, 1, scroll)
@@ -551,7 +599,7 @@ class BlockMap:
                                 collisions['left'] is None):
                             collisions['left'] = collider
                             # DEBUG draw active colliders in red
-                            if DEBUG:
+                            if SHOW_COLLIDERS:
                                 draw_collider(self.world.display,
                                               (255, 0, 0), collider, 0, scroll)
 
@@ -566,11 +614,6 @@ class BlockMap:
                             character_rect.bottom >= collider.top and
                             collisions['down'] is None):
                         collisions['down'] = collider
-
-                        # DEBUG draw active colliders in red
-        #                    if DEBUG:
-        #                        draw_collider(self.world.display,
-        #                                      (255, 0, 0), collider, 0, scroll)
 
         return collisions
 

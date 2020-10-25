@@ -3,14 +3,14 @@ Global constants for BitQuest
 """
 
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
-
+SHOW_COLLIDERS = False  # draws outline around object colliders
 X = 0  # index values into a variety of positional tuples
 Y = 1
 
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console
 MSG_VERBOSITY = 7  # 0-9, 0= no console messages, 9 = max
-MAP_EDITOR_MODE = True  # when true allows the game map to be edited in-game
+MAP_EDITOR_ENABLED = True  # when true allows the game map to be edited in-game
 SKY_BLUE = (0, 155, 255)
 LIGHT_GREY = (230, 230, 230)
 BLACK = (0, 0, 0)

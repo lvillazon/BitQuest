@@ -175,7 +175,7 @@ class Character:
         return int(self.location[X] / BLOCK_SIZE)
 
     def gridY(self):
-        return int(self.location[Y] / BLOCK_SIZE)
+        return int(self.location[Y] / BLOCK_SIZE)-1
 
     def move_left(self, distance=1):
         # move a whole number of blocks to the left
