@@ -3,7 +3,7 @@ import pygame
 from constants import *
 
 class Scenery:
-    GROUND_LEVEL_OFFSET = -80  # offset for background layers
+    GROUND_LEVEL_OFFSET = -112  # offset for background layers
 
     def __init__(self, time_of_day, landscape):
         self.scenery_layers = self.load_scenery('assets', time_of_day,
@@ -35,7 +35,10 @@ class Scenery:
             image.set_colorkey(transparency[time_of_day+landscape],
                                pygame.RLEACCEL)
             # parallax is scaled to make distant layers *much* slower
-            layer = {'tile': image, 'parallax': (i - 1) ** 2 / 100}
+            # I was using i-1, instead of i but this causes even the 1st
+            # layer to have some parallax, which looks odd, at least for
+            # the Field level.
+            layer = {'tile': image, 'parallax': i ** 2 / 100}
             scenery.append(layer)
         print(len(scenery), "scenery layers loaded")
         return scenery

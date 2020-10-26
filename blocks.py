@@ -31,23 +31,38 @@ class Moveable:
         self.world = world  # so we can set camera_shake
         self.block_range = block_range  # makes it easier when saving the map
         self.blocks = []
+        self.starting_positions = []  # initial x,y coords of all blocks
         for x in range(block_range[0][X], block_range[1][X]+1):
             for y in range(block_range[0][Y], block_range[1][Y]+1):
-                self.blocks.append(block_map.get_block(
-                    block_map.midground_blocks, x, y))
+                b = block_map.get_block(block_map.midground_blocks, x, y)
+                self.blocks.append(b)
+                self.starting_positions.append((b.x, b.y))
 
         self.action = action
         self.distance = distance
         self.activated = False
         self.current_offset = 0
         self.speed = 1
+        self.triggers = []
 
     def activate(self):
         if not self.activated:
             self.activated = True
             self.world.camera_shake = True
 
+    def reset(self):
+        # return all blocks to their orginal (pre-triggered) locations
+        for i in range(len(self.blocks)):
+            self.blocks[i].x = self.starting_positions[i][X]
+            self.blocks[i].y = self.starting_positions[i][Y]
+            self.activated = False
+            self.current_offset = 0
+            # reset the connected trigger blocks too
+            for t in self.triggers:
+                t.image = t.frames[0]
+
     def update(self):
+        """ move the blocks if this group has been triggered """
         if (not self.activated or
                 self.current_offset >= self.distance * BLOCK_SIZE):
             return
@@ -60,6 +75,31 @@ class Moveable:
             self.current_offset += self.speed
             if self.current_offset >= self.distance * BLOCK_SIZE:
                 self.world.camera_shake = False
+
+    def draw_bounding_box(self, surface, scroll):
+        """ draw an outline around the group of blocks and connect this with
+        a line to the trigger block"""
+        colour = (0, 0, 255)  # blue
+        left = self.blocks[0].x - scroll[X]
+        top = self.blocks[0].y - scroll[Y]
+        # the block x,y are for the top left corner of the block
+        # so we need to add one extra block's worth for the full width/height
+        width = self.blocks[-1].x - scroll[X] - left + BLOCK_SIZE
+        height = self.blocks[-1].y - scroll[Y] - top + BLOCK_SIZE
+        rect = pygame.Rect(left, top, width, height)
+        pygame.draw.rect(surface, colour, rect, 1)
+
+        # draw connecting lines to any trigger blocks affecting this group
+        for t in self.triggers:
+            trigger_rect = pygame.Rect(
+                t.x - scroll[X], t.y - scroll[Y],
+                BLOCK_SIZE, BLOCK_SIZE,
+            )
+            pygame.draw.rect(surface, colour, trigger_rect, 1)
+            pygame.draw.line(surface, colour,
+                             (left, top),
+                             (t.x - scroll[X], t.y - scroll[Y])
+                            )
 
 
 class Block:
@@ -191,6 +231,22 @@ class BlockMap:
                                   self.cursor)
         self.erasing = False
         self.selection = []
+        self.show_grid = False
+        self.current_layer = self.midground_blocks
+
+    def reset(self):
+        # reset the whole map to its initial state
+        # TODO reset checkpoint flags and other stuff that has changed
+        for m in self.movers:
+            m.reset()
+
+    def switch_layer(self):
+        """ toggle the map editor between the midground and foreground
+         block layers"""
+        if self.current_layer == self.midground_blocks:
+            self.current_layer = self.foreground_blocks
+        else:
+            self.current_layer = self.midground_blocks
 
     def begin_selection(self):
         self.selection = [(self.cursor[X], self.cursor[Y])]
@@ -219,6 +275,8 @@ class BlockMap:
         # as the key and the value is the index of the moveable object
         # that is activated
         self.triggers[trigger_pos] = len(self.movers)-1  # index most recently added
+        mover.triggers.append(self.get_block(
+            self.midground_blocks, *trigger_pos))
 
     def selecting(self):
         # true if we are in the middle of selecting a group of blocks
@@ -233,6 +291,10 @@ class BlockMap:
         """save current grid map to the level file
         this function is only accessible in map editor mode"""
         # TODO add save dialogue to change name/folder
+
+        # reset the map to its original state before saving
+        # otherwise triggered blocks will be saved in their current state
+        self.reset()
 
         # find size of the map by looking for the largest x & y coords
         max_x = 0
@@ -264,8 +326,6 @@ class BlockMap:
             file.write(delimiter)
             # sections 2 and 3
             for blocks in (self.midground_blocks, self.foreground_blocks):
- #DEBUG               # 2 blank lines as padding at the top of the level
- #               file.write('\n\n')
                 for y in range(max_y + 1):
                     for x in range(max_x + 1):
                         b = self.get_block(blocks, x, y)
@@ -373,6 +433,9 @@ class BlockMap:
             values = eval(level_data[i])
             console_msg(values, 8)
             self.triggers[values[0]] = int(values[1])
+            # also add the trigger tile object to the mover object
+            self.movers[int(values[1])].triggers.append(
+                self.get_block(self.midground_blocks, *values[0]))
             i += 1
 
     def get_block(self, blocklist, x, y):
@@ -390,6 +453,8 @@ class BlockMap:
         # give any moving blocks a chance to update before we draw them
         for m in self.movers:
             m.update()
+            if MAP_EDITOR_ENABLED and self.show_grid:
+                m.draw_bounding_box(surface, scroll)
 
         # now draw each tile in its current location
         for b in self.midground_blocks:
@@ -413,10 +478,8 @@ class BlockMap:
                              GRID_LINE_WIDTH)
             axis_label = "{0:2d} ".format(int(x / grid_size +
                                               scroll[X] / BLOCK_SIZE))
-            rendered_text = self.world.code_font.render(
-                axis_label, True, grid_colour)
-            self.world.screen.blit(rendered_text,
-                                   (x + label_offset[X], 20))
+            self.display_text(axis_label,
+                              (x + label_offset[X], 20), grid_colour)
 
         # horizontal grid lines & Y-axis labels
         for y in range(-offset[Y], limit[Y], grid_size):
@@ -427,16 +490,13 @@ class BlockMap:
             if y + label_offset[Y] < limit[Y]:
                 axis_label = "{0:2d} ".format(int(y / grid_size +
                                                   scroll[Y] / BLOCK_SIZE))
-                rendered_text = self.world.code_font.render(
-                    axis_label, True, grid_colour)
-                self.world.screen.blit(rendered_text,
-                                       (GRID_LINE_WIDTH * 2,
-                                        y + origin[Y] + label_offset[Y]))
+                self.display_text(axis_label,
+                                  (GRID_LINE_WIDTH * 2,
+                                   y + origin[Y] + label_offset[Y]),
+                                  grid_colour
+                                  )
 
         if MAP_EDITOR_ENABLED:
-            # +2 added to Y to make the cursor line up with the grid labels
-            # this is arbitrary, just to make 0,0 be the first whole block
-            # in the top left of the screen
             self.cursor_rect.x = (self.cursor[X] * grid_size
                                   - scroll[X] * SCALING_FACTOR
                                   + GRID_LINE_WIDTH)
@@ -445,14 +505,14 @@ class BlockMap:
                                   + origin[Y] + GRID_LINE_WIDTH)
 
             if not self.erasing:
-                # draw translucent image of the currently selected tile
-    #            surface.blit(self.cursor_block.image,
-    #                         (self.cursor_rect[X], self.cursor_rect[Y]))
-
+                # draw the currently selected tile type at the cursor pos
+                # this has to be separately scaled, because we are drawing
+                # on the unscaled surface (so the grid axes text looks nice)
                 surface.blit(
-                    pygame.transform.scale(self.cursor_block.image,
-                                           (grid_size-1, grid_size-1)),
-                    (self.cursor_rect[X], self.cursor_rect[Y])
+                    pygame.transform.scale(
+                        self.cursor_block.image,
+                        (grid_size, grid_size)),
+                        (self.cursor_rect[X], self.cursor_rect[Y])
                     )
 
             # highlight cursor
@@ -460,39 +520,36 @@ class BlockMap:
                              self.cursor_rect,
                              GRID_LINE_WIDTH)
             # add grid coords of cursor
-            # the cursor is labelled as if it is 1 block higher
-            # than the actual block number to make it agree with the
-            # way that BIT reports its own position.
-            # Because the dog states his Y coord as being the block number that
-            # his paws are *resting on*, he reports that he is
-            # "at" Y=9 when his sprite actually occupies the block above
-            # By subtracting one from Y when we label the cursor, we make the
-            # coordinates indicated by the cursor match the coordinates
-            # reported by BIT.
             cursor_label = "({0},{1})".format(self.cursor[X], self.cursor[Y])
-            rendered_text = self.world.code_font.render(
-                cursor_label, True, grid_colour)
-            self.world.screen.blit(rendered_text,
-                                   (self.cursor_rect[X],
-                                    self.cursor_rect[Y] - 25))
+            self.display_text(cursor_label,
+                              (self.cursor_rect[X], self.cursor_rect[Y] - 25),
+                              grid_colour)
+            # add a label to say which block layer is currently selected
+            if self.current_layer == self.midground_blocks:
+                self.display_text("midground layer", (4, -2), grid_colour)
+            else:
+                self.display_text("foreground layer", (4, -2), grid_colour)
+
+    def display_text(self, text, position, colour):
+        """ render text at the native resolution to make it look nicer"""
+        rendered_text = self.world.code_font.render(
+            text, True, colour)
+        self.world.screen.blit(rendered_text, position)
+
 
     def cursor_right(self):
         self.cursor[X] += 1
-        print(self.cursor)
 
     def cursor_left(self):
         if self.cursor[X] > 0:
             self.cursor[X] -= 1
-        print(self.cursor)
 
     def cursor_up(self):
         if self.cursor[Y] > 0:
             self.cursor[Y] -= 1
-        print(self.cursor)
 
     def cursor_down(self):
         self.cursor[Y] += 1
-        print(self.cursor)
 
     def _change_editor_tile(self, direction):
         """ cycle the selected editor tile the number of places
@@ -520,18 +577,18 @@ class BlockMap:
     def change_block(self):
         """ changes the block at the cursor location to the current
         cursor block. If erasing is True, remove the block entirely."""
-        existing_block = self.get_block(self.midground_blocks,
+        existing_block = self.get_block(self.current_layer,
                                         self.cursor[X],
                                         self.cursor[Y])
         if self.erasing:
             if existing_block:
-                self.midground_blocks.remove(existing_block)
+                self.current_layer.remove(existing_block)
         elif existing_block:
             existing_block.setType(self.current_editor_tile)
         else:
             # create new block
             b = Block(self.tile_images, self.current_editor_tile, self.cursor)
-            self.midground_blocks.append(b)
+            self.current_layer.append(b)
 
     def collision_test(self, character_rect, movement, scroll):
         """ check if this character is colliding with any of the blocks

@@ -46,17 +46,22 @@ class World:
         # self.dust_storm = DustStorm(self)
 
         # load character sprites
-        self.player = characters.Character(self, 'player', 'new_character.png')
+        self.player = characters.Character(self,
+                                           'player',
+                                           'new_character.png',
+                                           (16, 20))
         console_msg("player sprite initialised", 1)
-        self.dog = characters.Character(self, 'dog', 'bit basic1.png',
+        self.dog = characters.Character(self,
+                                        'dog',
+                                        'bit basic1.png',
+                                        (16, 16),
                                         run_speed=2)
         console_msg("BIT sprite initialised", 1)
         self.player.location.x = 4 * BLOCK_SIZE
-        self.player.location.y = 8 * BLOCK_SIZE
+        self.player.location.y = 6 * BLOCK_SIZE
         self.dog.location.x = 11 * BLOCK_SIZE
-        self.dog.location.y = self.player.location.y
+        self.dog.location.y = 8 * BLOCK_SIZE
         self.show_fps = False
-        self.show_grid = False
         # this flag prevents certain key actions from automatically repeating
         # it is cleared when any key is released
         self.repeat_lock = False
@@ -109,7 +114,7 @@ class World:
 
     def set_bit_y(self, new_y):
         # attempt to move the dog to the new position
-        distance = new_y - int(self.dog.location.y / BLOCK_SIZE)
+        distance = new_y - int(self.dog.location.y / BLOCK_SIZE)  # TODO can this just be changed to -self.dog.gridY() ?
         if distance < 0:
             self.dog.move_up(distance)
             self.dog.flying = True
@@ -193,7 +198,7 @@ class World:
                 if self.game_origin[Y] == 0:
                     self.editor.show()
 
-            if MAP_EDITOR_ENABLED and self.show_grid:
+            if MAP_EDITOR_ENABLED and self.blocks.show_grid:
                 # these actions do not auto repeat when held down
                 if not self.repeat_lock:
                     self.repeat_lock = True
@@ -231,6 +236,12 @@ class World:
                     elif pressed[K_RETURN]:
                         # change/add a block to at the current grid cursor location
                         self.blocks.change_block()
+                    elif pressed[K_TAB]:
+                        # switch between midground and foreground block layers
+                        self.blocks.switch_layer()
+                    elif pressed[K_r]:
+                        # reset all block triggers
+                        self.blocks.reset()
                     else:
                         self.repeat_lock = False  # reset, since no key pressed
 
@@ -246,7 +257,7 @@ class World:
             if pressed[K_g]:
                 if not self.repeat_lock:
                     # toggle the block grid overlay
-                    self.show_grid = not self.show_grid
+                    self.blocks.show_grid = not self.blocks.show_grid
                     self.repeat_lock = True
 
             # process all other events to clear the queue
@@ -312,7 +323,7 @@ class World:
         # self.dust_storm.update(self.screen, self.game_origin[Y], scroll)
 
         # draw the grid overlay last so it is on top of everything
-        if self.show_grid:
+        if self.blocks.show_grid:
             self.blocks.draw_grid(self.screen, self.game_origin, scroll,
                                   (0, 0, 0))
 # previously, the grid took the colour from the editor choice

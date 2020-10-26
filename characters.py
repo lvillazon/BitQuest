@@ -15,14 +15,14 @@ class Character:
     ANIMATION_LENGTH = 8  # number of frames per movement
     STANDING_FRAME = 7  # the run frame used when standing still
 
-    def __init__(self, world, name, sprite_file, run_speed=2):
+    def __init__(self, world, name, sprite_file, size, run_speed=2):
         self.world = world  # link back to the world game state
         self.name = name  # for debugging only, right now
         # load character animation frames
         self.character_sheet = \
             sprite_sheet.SpriteSheet('assets/' + sprite_file)
         self.run_right_frames = self.character_sheet.load_strip(
-            pygame.Rect(0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT), 8, -1)
+            pygame.Rect(0, 0, size[X], size[Y]), 8, -1)
 
         # self.run_right_frames = self.character_sheet.load_block_of_8(0, 0, -1)
         self.run_left_frames = [pygame.transform.flip(sprite, True, False)
@@ -39,11 +39,11 @@ class Character:
         self.flying = False
         self.facing_right = True
         self.momentum = [0, 0]
-        self.location = pygame.Rect(0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT)
+        self.location = pygame.Rect(0, 0, size[X], size[Y])
         # TODO different collider heights for different characters
-        self.collider = pygame.Rect(0, 0, COLLIDER_WIDTH, COLLIDER_HEIGHT)
+        self.collider = pygame.Rect(0, 0, size[X], size[Y])
         self.ground_proximity = \
-            pygame.Rect(0, 0, COLLIDER_WIDTH, COLLIDER_HEIGHT)
+            pygame.Rect(0, 0, size[X], size[Y])
         self.frame_number = 0
         self.frame_count = len(self.run_right_frames)
         self.jumping = False
@@ -76,6 +76,7 @@ class Character:
                 direction = copysign(self.run_speed, self.momentum[X])
                 movement[X] = direction
                 self.momentum[X] = self.momentum[X] - direction
+                print("momentum X:", self.momentum[X])
 
             if self.momentum[X] == 0:  # [0, 0]:
                 self.moving = False
@@ -132,10 +133,11 @@ class Character:
             self.location.x = 0
         self.location.y += movement[Y]
 
-        if not self.flying:
+        if self.name == "player":
             self.momentum[Y] += GRAVITY  # constant downward pull
         else:
-            # check for ground underneath
+            # BIT is not subject to gravity, since he can fly
+            # check for ground underneath so we know when he has landed
             self.ground_proximity.centerx = self.location.centerx + movement[X]
             self.ground_proximity.bottom = self.location.bottom + movement[Y] + BLOCK_SIZE / 2
 
@@ -172,10 +174,10 @@ class Character:
 
     def gridX(self):
         # current location in terms of block coords, rather than pixels
-        return int(self.location[X] / BLOCK_SIZE)
+        return self.location[X] / BLOCK_SIZE
 
     def gridY(self):
-        return int(self.location[Y] / BLOCK_SIZE)-1
+        return self.location[Y] / BLOCK_SIZE
 
     def move_left(self, distance=1):
         # move a whole number of blocks to the left

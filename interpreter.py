@@ -176,6 +176,7 @@ class VirtualMachine:
                     if current_value == target_value:
                         done = True
                     else:
+                        # DEBUG print("target:", target_value, "current:",current_value)
                         # check if movement is blocked
                         if current_value == previous_value:
                             timeout_counter += 1
@@ -186,12 +187,13 @@ class VirtualMachine:
                             # correct the program variable to match the world
                             frame.global_names[v] = current_value
                             done = True
+                # DEBUG print("SET is done. Target was", target_value, "actual is", self.world.dog.location[0] / 16)
 
     def run(self, global_names=None, local_names=None):
         """ creates an entry point for code execution on the vm"""
 
         if self.byte_code:
-            print('Executing...')
+            console_msg('Executing...', 5)
             self.running = True
             frame = self.make_frame(self.byte_code, global_names=global_names,
                                     local_names=local_names)
@@ -379,7 +381,7 @@ class VirtualMachine:
                     # raise VirtualMachineError(
                     #    "unsupported bytecode type: %s" % byte_name
                     # )
-                    print("BIT doesn't recognise the bytecode", byte_name)
+                    console_msg("BIT doesn't recognise the bytecode" + byte_name, 0)
                     stack_unwind_reason = 'quit'
             else:
                 stack_unwind_reason = bytecode_fn(*argument)
