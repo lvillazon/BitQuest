@@ -32,8 +32,8 @@ class Moveable:
         self.block_range = block_range  # makes it easier when saving the map
         self.blocks = []
         self.starting_positions = []  # initial x,y coords of all blocks
-        for x in range(block_range[0][X], block_range[1][X]+1):
-            for y in range(block_range[0][Y], block_range[1][Y]+1):
+        for x in range(block_range[0][X], block_range[1][X] + 1):
+            for y in range(block_range[0][Y], block_range[1][Y] + 1):
                 b = block_map.get_block(block_map.midground_blocks, x, y)
                 self.blocks.append(b)
                 self.starting_positions.append((b.x, b.y))
@@ -48,7 +48,9 @@ class Moveable:
     def activate(self):
         if not self.activated:
             self.activated = True
-            self.world.camera_shake = True
+            # self.world.camera_shake = True
+            for b in self.blocks:
+                b.movement = [0.0, -(self.speed + 2 * GRAVITY)]
 
     def reset(self):
         # return all blocks to their orginal (pre-triggered) locations
@@ -75,6 +77,8 @@ class Moveable:
             self.current_offset += self.speed
             if self.current_offset >= self.distance * BLOCK_SIZE:
                 self.world.camera_shake = False
+                for b in self.blocks:
+                    b.movement = [0, 0]
 
     def draw_bounding_box(self, surface, scroll):
         """ draw an outline around the group of blocks and connect this with
@@ -99,7 +103,7 @@ class Moveable:
             pygame.draw.line(surface, colour,
                              (left, top),
                              (t.x - scroll[X], t.y - scroll[Y])
-                            )
+                             )
 
 
 class Block:
@@ -120,6 +124,7 @@ class Block:
         self.name = ''
         self.image = None
         self.setType(type)
+        self.movement = [0, 0]
 
     def setType(self, type):
         """use the ASCII character passed as type to indicate which tile"""
@@ -140,7 +145,7 @@ class Block:
     grid_position = property(get_grid_position)  # read only property
 
     def is_collidable(self):
-        if self.type in '1Pp[]Bb':
+        if self.type not in '-{|/}=':
             return True
         else:
             return False
@@ -190,12 +195,14 @@ class BlockMap:
                 tile_coords = []
                 for i in range(2, len(tile_info), 2):
                     tile_coords.append(
-                        (int(tile_info[i]), int(tile_info[i+1]))
+                        (int(tile_info[i]), int(tile_info[i + 1]))
                     )
                 tile_dict[tile_info[0]] = {
                     'name': tile_info[1],
                     'tiles': tile_coords
                 }
+        # load all the tile types into the editor palette
+        self.editor_palette = [t for t in tile_dict]
 
         # editing cursor (used when editing the map)
         self.cursor = [5, 5]
@@ -223,7 +230,6 @@ class BlockMap:
                     ALPHA))
             self.tile_images[definition] = images
         self.load_grid()
-        self.editor_palette = '1Pp[]Bb='
         # set the default starting tile for the editor
         self.current_editor_tile = self.editor_palette[0]
         self.cursor_block = Block(self.tile_images,
@@ -251,6 +257,9 @@ class BlockMap:
     def begin_selection(self):
         self.selection = [(self.cursor[X], self.cursor[Y])]
 
+    def cancel_selection(self):
+        self.selection = []
+
     def end_selection(self):
         # Create a new moving block group
         # they are defined by their (left, top) & (right, bottom) coords
@@ -259,24 +268,26 @@ class BlockMap:
         # and a number of blocks to move
         self.selection.append((self.cursor[X], self.cursor[Y]))
         print("Blocks", self.selection[0], "to", self.selection[1], "selected")
-        trigger_pos = eval(input("Enter trigger block coords:"))
-        direction = \
-            input("Enter direction to move (up/down/left/right):").lower()
-        distance = int(input("Enter number of blocks to move:"))
+        response = input("Enter trigger block coords:")
+        if response != "":
+            trigger_pos = eval(response)
+            direction = \
+                input("Enter direction to move (up/down/left/right):").lower()
+            distance = int(input("Enter number of blocks to move:"))
 
-        mover = Moveable(self, self.world,
-                         (self.selection[0], self.selection[1]),
-                         direction,
-                         distance)
-        self.movers.append(mover)
+            mover = Moveable(self, self.world,
+                             (self.selection[0], self.selection[1]),
+                             direction,
+                             distance)
+            self.movers.append(mover)
 
-        # assign a trigger to this block group
-        # the triggers dictionary uses the grid coords of the trigger tile
-        # as the key and the value is the index of the moveable object
-        # that is activated
-        self.triggers[trigger_pos] = len(self.movers)-1  # index most recently added
-        mover.triggers.append(self.get_block(
-            self.midground_blocks, *trigger_pos))
+            # assign a trigger to this block group
+            # the triggers dictionary uses the grid coords of the trigger tile
+            # as the key and the value is the index of the moveable object
+            # that is activated
+            self.triggers[trigger_pos] = len(self.movers) - 1  # index most recently added
+            mover.triggers.append(self.get_block(
+                self.midground_blocks, *trigger_pos))
 
     def selecting(self):
         # true if we are in the middle of selecting a group of blocks
@@ -347,7 +358,7 @@ class BlockMap:
             # section 5
             for t in self.triggers:
                 file.write(str(t) + ', ')
-#                file.write(str(t[1]) + ', ')
+                #                file.write(str(t[1]) + ', ')
                 file.write(str(self.triggers[t]) + '\n')
             file.write(delimiter)
 
@@ -418,8 +429,8 @@ class BlockMap:
             values = eval(level_data[i])
             mover = Moveable(self, self.world,
                              (values[0], values[1]),
-                              values[2],
-                              values[3],
+                             values[2],
+                             values[3],
                              )
             self.movers.append(mover)
             i += 1
@@ -512,8 +523,8 @@ class BlockMap:
                     pygame.transform.scale(
                         self.cursor_block.image,
                         (grid_size, grid_size)),
-                        (self.cursor_rect[X], self.cursor_rect[Y])
-                    )
+                    (self.cursor_rect[X], self.cursor_rect[Y])
+                )
 
             # highlight cursor
             pygame.draw.rect(surface, (255, 255, 255),
@@ -536,7 +547,6 @@ class BlockMap:
             text, True, colour)
         self.world.screen.blit(rendered_text, position)
 
-
     def cursor_right(self):
         self.cursor[X] += 1
 
@@ -551,6 +561,14 @@ class BlockMap:
     def cursor_down(self):
         self.cursor[Y] += 1
 
+    def home_cursor(self, scroll):
+        """ move the cursor to the centre of the screen
+        taking into account the current scroll value"""
+        self.cursor = [
+            int(scroll[X] / BLOCK_SIZE + DISPLAY_SIZE[X] / BLOCK_SIZE / 2),
+            int(scroll[Y] / BLOCK_SIZE + DISPLAY_SIZE[Y] / BLOCK_SIZE / 2)
+        ]
+
     def _change_editor_tile(self, direction):
         """ cycle the selected editor tile the number of places
         given by direction - should be just +/- 1"""
@@ -558,7 +576,7 @@ class BlockMap:
             palette_index = self.editor_palette.index(
                 self.current_editor_tile)
             palette_index = (palette_index + direction) \
-                % len(self.editor_palette)
+                            % len(self.editor_palette)
             self.current_editor_tile = self.editor_palette[palette_index]
             self.cursor_block.setType(self.current_editor_tile)
 
@@ -582,6 +600,14 @@ class BlockMap:
                                         self.cursor[Y])
         if self.erasing:
             if existing_block:
+                # if the block is a trigger, remove from the trigger list
+                # to do this we need to build a tuple with the same coords
+                # as the cursor pos, and see if this is listed in the
+                # triggers dictionary
+                block_coords = (self.cursor[X], self.cursor[Y])
+                if block_coords in self.triggers:
+                    self.triggers.pop(block_coords)
+                # now remove the block itself
                 self.current_layer.remove(existing_block)
         elif existing_block:
             existing_block.setType(self.current_editor_tile)
@@ -589,6 +615,28 @@ class BlockMap:
             # create new block
             b = Block(self.tile_images, self.current_editor_tile, self.cursor)
             self.current_layer.append(b)
+
+    def remove_moveable_group(self):
+        """ Remove the moveable block group from the map
+        if the cursor is currently over any of the blocks, the entire
+        group is removed.
+        The blocks themselves are not affected - they just don't count
+        as a movable group anymore.
+        """
+        existing_block = self.get_block(self.current_layer,
+                                        self.cursor[X],
+                                        self.cursor[Y])
+        if existing_block:
+            for m in self.movers:
+                if existing_block in m.blocks:
+                    # confirmation dialog
+                    if input("Delete this movable group? (y/n)") == 'y':
+                        self.movers.remove(m)
+                        # deleting an element inside the for loop
+                        # could cause the  loop to skip an element
+                        # but we can quit the loop immediately anyway,
+                        # so it's ok (albeit a bit scruffy)
+                        break
 
     def collision_test(self, character_rect, movement, scroll):
         """ check if this character is colliding with any of the blocks
@@ -642,19 +690,19 @@ class BlockMap:
                     # mean we want to call it a collision. We only count collisions
                     # where the character is moving towards the block
                     # this prevents characters from getting stuck in blocks
-                    if (movement[X] > 0 and
+                    if (movement[X] >= 0 and
                             character_rect.centerx < collider.centerx and
                             (character_rect.bottom > collider.top
                              + COLLIDE_THRESHOLD) and
                             collisions['right'] is None):
-                        collisions['right'] = collider
+                        collisions['right'] = b  # collider
 
-                    if movement[X] < 0:
+                    if movement[X] <= 0:
                         if (character_rect.left <= collider.right and
                                 (character_rect.bottom > collider.top
                                  + COLLIDE_THRESHOLD) and
                                 collisions['left'] is None):
-                            collisions['left'] = collider
+                            collisions['left'] = b
                             # DEBUG draw active colliders in red
                             if SHOW_COLLIDERS:
                                 draw_collider(self.world.display,
@@ -662,15 +710,27 @@ class BlockMap:
 
                     # TODO may need similar logic for Y movement, to allow
                     # falling when you are next to a wall
-                    if (movement[Y] < 0 and
-                            character_rect.top <= collider.bottom and
-                            collisions['up'] is None):
-                        collisions['up'] = collider
+                    #if (movement[Y] <= 0 and
+                    #        character_rect.top <= collider.bottom and
+                    #        collisions['up'] is None):
+                    #    collisions['up'] = b
 
-                    if (movement[Y] > 0 and
+                    if (movement[Y] - b.movement[Y] >= 0 and
                             character_rect.bottom >= collider.top and
                             collisions['down'] is None):
-                        collisions['down'] = collider
+                        collisions['down'] = b
+
+
+
+                    # if (movement[Y] <= 0 and
+                    #         character_rect.top <= collider.bottom and
+                    #         collisions['up'] is None):
+                    #     collisions['up'] = b
+                    #
+                    # if ((movement[Y] >= 0 or b.movement[Y] < 0) and
+                    #         character_rect.bottom >= collider.top):# and
+                    #        # collisions['down'] is None):
+                    #     collisions['down'] = b
 
         return collisions
 

@@ -48,7 +48,7 @@ class Scenery:
         # all but the last layer are used as background
         # the very last layer is drawn in front of the character
 
-        # each tile is drawn using a relative offset, so that it will repeat
+        # each layer is drawn using a relative offset, so that it will repeat
         # once it has slid completely off the screen
         for layer in self.scenery_layers:
             scenery_x = - (int(scroll[X] * layer['parallax'])

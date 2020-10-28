@@ -9,7 +9,7 @@ Y = 1
 
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console
-MSG_VERBOSITY = 7  # 0-9, 0= no console messages, 9 = max
+MSG_VERBOSITY = 8  # 0-9, 0= no console messages, 9 = max
 MAP_EDITOR_ENABLED = True  # when true allows the game map to be edited in-game
 SKY_BLUE = (0, 155, 255)
 LIGHT_GREY = (230, 230, 230)
@@ -25,7 +25,7 @@ SCALING_FACTOR = 4
 EDITOR_POPUP_SPEED = 25  # how fast the editor scrolls into view
 EDITOR_UNDO_HISTORY = 100  # how many keystrokes can be undone
 BLOCK_SIZE = 16  # size in pixels of a the block 'grid'
-GRAVITY = 0.2
+GRAVITY = .2
 COLLIDE_THRESHOLD = 1  # how many pixels overlap are required for a collision
 COLLIDER_WIDTH = 16
 COLLIDER_HEIGHT = 16

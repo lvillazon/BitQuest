@@ -119,6 +119,12 @@ class Jet:
         # this checks the number of particles, rather than simply querying
         # self.active, so that the jet continues to update after calling
         # turn_off() until all the particles have aged out
+        # TODO the test for len(self.particles) doesn't work
+        # because the list is prepopulated with the max particles and they
+        # are never removed - they just age and reset.
+        # try removing this test after block collision is working ok
+        # because currently it is wasting time checking jets
+        # even on the player character, which doesn't have any!
         if self.active or len(self.particles) > 0:
             return True
         else:

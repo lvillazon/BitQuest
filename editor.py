@@ -312,11 +312,15 @@ class Editor:
             char_y = (int((mouse_pos[Y] - self.top_margin) / self.line_height)
                       + self.v_scroll)
             # now snap to the nearest actual char in the text
-            if char_y < len(self.text):
+            if char_y < 0:
+                self.cursor_line = 0
+            elif char_y < len(self.text):
                 self.cursor_line = char_y
             else:
                 self.cursor_line = len(self.text) - 1
-            if char_x < len(self.text[self.cursor_line]):
+            if char_x <0:
+                self.cursor_col = 0
+            elif char_x < len(self.text[self.cursor_line]):
                 self.cursor_col = char_x
             else:
                 self.cursor_col = len(self.text[self.cursor_line])

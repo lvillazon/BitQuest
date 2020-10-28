@@ -1,5 +1,6 @@
 """ movement and animation for all the player and npc sprites """
 import math
+import random
 from math import copysign
 
 import pygame
@@ -38,7 +39,8 @@ class Character:
         self.moving = False
         self.flying = False
         self.facing_right = True
-        self.momentum = [0, 0]
+        self.momentum = [0.0, 0.0]
+        self.position = [0.0, 0.0]
         self.location = pygame.Rect(0, 0, size[X], size[Y])
         # TODO different collider heights for different characters
         self.collider = pygame.Rect(0, 0, size[X], size[Y])
@@ -64,19 +66,31 @@ class Character:
                                  (0, 0),      # dummy start position
                                  (0, 1),      # initial velocity vector
                                  ))
+        self.wobble = []  # random drift when hovering
+        rx = 4
+        ry = 2
+        for i in range(32):
+            x = i/2 - 8 #rx * math.cos(i*2*math.pi/32)
+            y = ry * math.sin(i*2*math.pi/32)
+            self.wobble.append((x, y))
+        for i in range(31,-1,-1):
+            x = i/2 - 8 #rx * math.cos(i*2*math.pi/32)
+            y = -ry * math.sin(i*2*math.pi/32)
+            self.wobble.append((x, y))
+        self.wobble_counter = 0
 
     def update(self, surface, scroll):
         f = int(self.frame_number) % self.frame_count
         self.frame_number = self.frame_number + .25
-        movement = [0, 0]
-        movement[Y] += self.momentum[Y]
+        wobble_factor = [0.0, 0.0]
+        movement = [0, self.momentum[Y]]
         if self.moving:
             if self.momentum[X] != 0:
-                # use the direction of the momentum to set the movement
+                # reduce the horizontal momentum by run_speed
+                # so that it reaches 0 as we arrive at the correct point
                 direction = copysign(self.run_speed, self.momentum[X])
                 movement[X] = direction
                 self.momentum[X] = self.momentum[X] - direction
-                print("momentum X:", self.momentum[X])
 
             if self.momentum[X] == 0:  # [0, 0]:
                 self.moving = False
@@ -93,6 +107,7 @@ class Character:
                 if self.momentum[Y] == 0:
                     self.reason = "line 88"
 
+        # choose the correct animation frame, based on movement type
         if self.jumping:
             if self.facing_right:
                 frame = self.jump_right_frames[f]
@@ -117,21 +132,27 @@ class Character:
         self.collider.bottom = self.location.bottom + movement[Y]
         blocked = self.world.blocks.collision_test(self.collider,
                                                    movement, scroll)
-
-        if blocked['up']:
+        #if blocked['up']:
+        #    movement[Y] = 0.0
+        #    self.momentum[Y] = 0.0
+        if blocked['down']:
             movement[Y] = 0.0
             self.momentum[Y] = 0.0
-        if blocked['down'] and movement[Y] >0.0:
-            movement[Y] = 0.0
-            self.momentum[Y] = 0.0
+            movement[Y] = blocked['down'].movement[Y]
+            self.momentum[Y] = blocked['down'].movement[Y]
         if blocked['left'] or blocked['right']:
-            movement[X] = 0
-            self.momentum[X] = 0
+            movement[X] = 0.0
+            self.momentum[X] = 0.0
 
-        self.location.x += movement[X]
+        self.position[X] += movement[X]
+        self.location.x = self.position[X]
         if self.location.x < 0:  # can't move past start of the world
             self.location.x = 0
-        self.location.y += movement[Y]
+
+        # position keeps track of the decimal portion
+        # so we don't get weird int conversion glitches
+        self.position[Y] += movement[Y]
+        self.location.y = self.position[Y]
 
         if self.name == "player":
             self.momentum[Y] += GRAVITY  # constant downward pull
@@ -139,26 +160,40 @@ class Character:
             # BIT is not subject to gravity, since he can fly
             # check for ground underneath so we know when he has landed
             self.ground_proximity.centerx = self.location.centerx + movement[X]
-            self.ground_proximity.bottom = self.location.bottom + movement[Y] + BLOCK_SIZE / 2
+            self.ground_proximity.bottom = (self.location.bottom
+                                            + movement[Y]
+                                            + BLOCK_SIZE / 2)
 
             blocked = self.world.blocks.collision_test(self.ground_proximity,
                                                        movement, scroll)
-            if blocked['down']:
+            # if there is a tile directly underneath and we aren't moving up
+            # turn off the jets
+            # if there is no tile underneath, turn on the jets
+            if blocked['down'] and self.momentum[Y] >= 0:
                 self.flying = False
                 self.jets[0].turn_off()
                 self.jets[1].turn_off()
+            elif not blocked['down']:
+                self.flying = True
+                self.jets[0].turn_on()
+                self.jets[1].turn_on()
+                # when hovering, add some random wobble to the position
+                # to make the flying look more convincing
+                if self.momentum == [0,0]:
+                    wobble_factor= self.wobble[self.wobble_counter]
+                    self.wobble_counter = (self.wobble_counter + 1) % len(self.wobble)
 
         # draw the sprite at the new location
-        surface.blit(frame, (self.location.x - scroll[X],
-                             self.location.y - scroll[Y]))
+        surface.blit(frame, (self.location.x + wobble_factor[X] - scroll[X],
+                             self.location.y + wobble_factor[Y] - scroll[Y]))
         # update the jets if they are running
         if self.jets[0].is_active():
-            self.jets[0].nozzle[X] = self.location.left + 4
-            self.jets[0].nozzle[Y] = self.location.bottom + 2
+            self.jets[0].nozzle[X] = self.location.left + wobble_factor[X] + 4
+            self.jets[0].nozzle[Y] = self.location.bottom + wobble_factor[Y] + 2
             self.jets[0].update(surface, scroll)
         if self.jets[1].is_active():
-            self.jets[1].nozzle[X] = self.location.right - 4
-            self.jets[1].nozzle[Y] = self.location.bottom + 2
+            self.jets[1].nozzle[X] = self.location.right + wobble_factor[X] - 4
+            self.jets[1].nozzle[Y] = self.location.bottom + wobble_factor[Y] + 2
             self.jets[1].update(surface, scroll)
 
         # remove text from the speech bubble if it has been there for too long

@@ -57,10 +57,13 @@ class World:
                                         (16, 16),
                                         run_speed=2)
         console_msg("BIT sprite initialised", 1)
-        self.player.location.x = 4 * BLOCK_SIZE
+        self.player.location.x = 60 * BLOCK_SIZE  # was 4
         self.player.location.y = 6 * BLOCK_SIZE
-        self.dog.location.x = 11 * BLOCK_SIZE
+        self.dog.location.x = 50 * BLOCK_SIZE
         self.dog.location.y = 8 * BLOCK_SIZE
+        self.player.position = [self.player.location.x, self.player.location.y]
+        self.dog.position = [self.dog.location.x, self.dog.location.y]
+        self.dog.facing_right = False
         self.show_fps = False
         # this flag prevents certain key actions from automatically repeating
         # it is cleared when any key is released
@@ -106,7 +109,7 @@ class World:
 
     def set_bit_x(self, new_x):
         # attempt to move the dog to the new position
-        distance = new_x - self.dog.gridX()
+        distance = int(new_x) - self.dog.gridX()
         if distance < 0:
             self.dog.move_left(abs(distance))
         elif distance > 0:
@@ -114,7 +117,8 @@ class World:
 
     def set_bit_y(self, new_y):
         # attempt to move the dog to the new position
-        distance = new_y - int(self.dog.location.y / BLOCK_SIZE)  # TODO can this just be changed to -self.dog.gridY() ?
+        #distance = new_y - int(self.dog.location.y / BLOCK_SIZE)  # TODO can this just be changed to -self.dog.gridY() ?
+        distance = int(new_y) - self.dog.gridY()
         if distance < 0:
             self.dog.move_up(distance)
             self.dog.flying = True
@@ -203,6 +207,7 @@ class World:
                 if not self.repeat_lock:
                     self.repeat_lock = True
                     ctrl = pygame.key.get_mods() & KMOD_CTRL
+                    shift = pygame.key.get_mods() & KMOD_SHIFT
 
                     if pressed[K_LSHIFT] and not self.blocks.selecting():
                         self.blocks.begin_selection()
@@ -232,7 +237,11 @@ class World:
                     elif pressed[K_RIGHTBRACKET]:  # ]
                         self.blocks.next_editor_tile()
                     elif pressed[K_BACKSPACE]:
-                        self.blocks.blank_editor_tile()
+                        if shift:
+                            self.blocks.cancel_selection()
+                            self.blocks.remove_moveable_group()
+                        else:
+                            self.blocks.blank_editor_tile()
                     elif pressed[K_RETURN]:
                         # change/add a block to at the current grid cursor location
                         self.blocks.change_block()
@@ -242,6 +251,9 @@ class World:
                     elif pressed[K_r]:
                         # reset all block triggers
                         self.blocks.reset()
+                    elif pressed[K_h]:
+                        # home the cursor to the centre of the screen
+                        self.blocks.home_cursor(scroll)
                     else:
                         self.repeat_lock = False  # reset, since no key pressed
 
