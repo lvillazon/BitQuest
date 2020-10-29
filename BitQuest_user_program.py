@@ -1,1 +1,3 @@
-bitY=6
+bitY = 7
+bitX = 65
+bitY = 8

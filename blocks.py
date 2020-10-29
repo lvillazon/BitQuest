@@ -48,9 +48,19 @@ class Moveable:
     def activate(self):
         if not self.activated:
             self.activated = True
-            # self.world.camera_shake = True
+            self.world.camera_shake = True
+            # the movement value of the block is used to transfer momentum
+            # to any characters that are touching the blocks
+            # this allows pillars to lift or push characters around
             for b in self.blocks:
-                b.movement = [0.0, -(self.speed + 2 * GRAVITY)]
+                if self.action == 'up':
+                    b.movement = [0.0, -(self.speed + GRAVITY)]
+                elif self.action == 'down':
+                    b.movement = [0.0, self.speed]
+                elif self.action == 'left':
+                    b.movement = [-self.speed, 0.0]
+                elif self.action == 'right':
+                    b.movement = [self.speed, 0.0]
 
     def reset(self):
         # return all blocks to their orginal (pre-triggered) locations
@@ -74,6 +84,10 @@ class Moveable:
                     b.y += self.speed
                 elif self.action == 'up':
                     b.y -= self.speed
+                elif self.action == 'left':
+                    b.x -= self.speed
+                elif self.action == 'right':
+                    b.x += self.speed
             self.current_offset += self.speed
             if self.current_offset >= self.distance * BLOCK_SIZE:
                 self.world.camera_shake = False
@@ -461,17 +475,17 @@ class BlockMap:
         """ draw all the blocks on the map """
         # TODO optimise to draw just the ones on screen ?
 
+        # draw each tile in its current location
+        for b in self.midground_blocks:
+            surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
+        for b in self.foreground_blocks:
+            surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
+
         # give any moving blocks a chance to update before we draw them
         for m in self.movers:
             m.update()
             if MAP_EDITOR_ENABLED and self.show_grid:
                 m.draw_bounding_box(surface, scroll)
-
-        # now draw each tile in its current location
-        for b in self.midground_blocks:
-            surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
-        for b in self.foreground_blocks:
-            surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
 
     def draw_grid(self, surface, origin, scroll, grid_colour):
         """ overlays a grid to show the block spacing """
@@ -650,6 +664,61 @@ class BlockMap:
             draw_collider(self.world.display,
                           (0, 255, 0), character_rect, 1, scroll)
 
+        # check for collisions with solid objects
+        collisions = {'left': None,
+                      'right': None,
+                      'up': None,
+                      'down': None,
+                      'down left': None,
+                      'down right': None}
+        # find the first colliding block in each direction
+        for b in self.midground_blocks:
+            if b.is_collidable():
+                collider = pygame.Rect(b.x,
+                                       b.y,
+                                       BLOCK_SIZE, BLOCK_SIZE)
+                if SHOW_COLLIDERS:
+                    # DEBUG draw block colliders in yellow
+                    draw_collider(self.world.display,
+                                  (255, 255, 0), collider, 1, scroll)
+
+                if character_rect.colliderect(collider):
+                    # just because the rectangles overlap, doesn't necessarily
+                    # mean we want to call it a collision. We only count collisions
+                    # where the character is moving towards the block
+                    # or vice versa. This prevents characters from getting
+                    # stuck in blocks
+                    if (movement[X] - b.movement[X] > 0 and
+                            character_rect.right >= collider.left and
+                            (character_rect.bottom > collider.top
+                             + COLLIDE_THRESHOLD_Y) and
+                            collisions['right'] is None):
+                        collisions['right'] = b  # collider
+
+                    if (movement[X] - b.movement[X] < 0 and
+                            character_rect.left <= collider.right and
+                            (character_rect.bottom > collider.top
+                             + COLLIDE_THRESHOLD_Y) and
+                            collisions['left'] is None):
+                        collisions['left'] = b
+
+                    if (movement[Y] - b.movement[Y] >= 0 and
+                            character_rect.bottom >= collider.top and
+                            abs(character_rect.centerx
+                                - collider.centerx) < BLOCK_OVERLAP and
+                            collisions['down'] is None):
+                        collisions['down'] = b
+
+                    #if (movement)
+
+                    # DEBUG draw active colliders in red
+                    if SHOW_COLLIDERS:
+                        draw_collider(self.world.display,
+                                      (255, 0, 0), collider, 0, scroll)
+
+        return collisions
+
+    def trigger_test(self, character_rect, movement, scroll):
         # check for collisions with triggers
         for t in self.midground_blocks:
             if t.is_trigger():
@@ -668,71 +737,6 @@ class BlockMap:
                             "trigger "
                             + str(self.triggers[t.grid_position])
                             + " activated!", 8)
-
-        # check for collisions with solid objects
-        collisions = {'left': None,
-                      'right': None,
-                      'up': None,
-                      'down': None}
-        # find the first colliding block in each direction
-        for b in self.midground_blocks:
-            if b.is_collidable():
-                collider = pygame.Rect(b.x,
-                                       b.y,
-                                       BLOCK_SIZE, BLOCK_SIZE)
-                if SHOW_COLLIDERS:
-                    # DEBUG draw block colliders in yellow
-                    draw_collider(self.world.display,
-                                  (255, 255, 0), collider, 1, scroll)
-
-                if character_rect.colliderect(collider):
-                    # just because the rectangles overlap, doesn't necessarily
-                    # mean we want to call it a collision. We only count collisions
-                    # where the character is moving towards the block
-                    # this prevents characters from getting stuck in blocks
-                    if (movement[X] >= 0 and
-                            character_rect.centerx < collider.centerx and
-                            (character_rect.bottom > collider.top
-                             + COLLIDE_THRESHOLD) and
-                            collisions['right'] is None):
-                        collisions['right'] = b  # collider
-
-                    if movement[X] <= 0:
-                        if (character_rect.left <= collider.right and
-                                (character_rect.bottom > collider.top
-                                 + COLLIDE_THRESHOLD) and
-                                collisions['left'] is None):
-                            collisions['left'] = b
-                            # DEBUG draw active colliders in red
-                            if SHOW_COLLIDERS:
-                                draw_collider(self.world.display,
-                                              (255, 0, 0), collider, 0, scroll)
-
-                    # TODO may need similar logic for Y movement, to allow
-                    # falling when you are next to a wall
-                    #if (movement[Y] <= 0 and
-                    #        character_rect.top <= collider.bottom and
-                    #        collisions['up'] is None):
-                    #    collisions['up'] = b
-
-                    if (movement[Y] - b.movement[Y] >= 0 and
-                            character_rect.bottom >= collider.top and
-                            collisions['down'] is None):
-                        collisions['down'] = b
-
-
-
-                    # if (movement[Y] <= 0 and
-                    #         character_rect.top <= collider.bottom and
-                    #         collisions['up'] is None):
-                    #     collisions['up'] = b
-                    #
-                    # if ((movement[Y] >= 0 or b.movement[Y] < 0) and
-                    #         character_rect.bottom >= collider.top):# and
-                    #        # collisions['down'] is None):
-                    #     collisions['down'] = b
-
-        return collisions
 
     def point_collision_test(self, position):
         """ a much simpler collision test used for the particle system

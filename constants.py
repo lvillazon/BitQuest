@@ -26,7 +26,8 @@ EDITOR_POPUP_SPEED = 25  # how fast the editor scrolls into view
 EDITOR_UNDO_HISTORY = 100  # how many keystrokes can be undone
 BLOCK_SIZE = 16  # size in pixels of a the block 'grid'
 GRAVITY = .2
-COLLIDE_THRESHOLD = 1  # how many pixels overlap are required for a collision
+COLLIDE_THRESHOLD_Y = 1  # how many pixels overlap are required for a collision
+BLOCK_OVERLAP = 9 # half of BLOCK_SIZE +1  - used to for collision tests
 COLLIDER_WIDTH = 16
 COLLIDER_HEIGHT = 16
 

@@ -71,11 +71,11 @@ class Character:
         ry = 2
         for i in range(32):
             x = i/2 - 8 #rx * math.cos(i*2*math.pi/32)
-            y = ry * math.sin(i*2*math.pi/32)
+            y = ry * math.sin(i*2*math.pi/32) - ry - 2
             self.wobble.append((x, y))
         for i in range(31,-1,-1):
             x = i/2 - 8 #rx * math.cos(i*2*math.pi/32)
-            y = -ry * math.sin(i*2*math.pi/32)
+            y = -ry * math.sin(i*2*math.pi/32) - ry - 2
             self.wobble.append((x, y))
         self.wobble_counter = 0
 
@@ -127,32 +127,27 @@ class Character:
             else:
                 frame = self.run_left_frames[self.STANDING_FRAME]
 
+        # activate any triggers we have collided with
+        self.world.blocks.trigger_test(self.collider, movement, scroll)
+
         # check collisions with the world blocks - pillars etc
         self.collider.centerx = self.location.centerx + movement[X]
         self.collider.bottom = self.location.bottom + movement[Y]
         blocked = self.world.blocks.collision_test(self.collider,
                                                    movement, scroll)
         #if blocked['up']:
-        #    movement[Y] = 0.0
-        #    self.momentum[Y] = 0.0
+            # the player cannot move up by themself
+            # so being blocked upwards can only happen if a block carries them
+            # which should result in a SQUISH
+            # the dog can get blocked when flying though
+            # so we'll need to check for this eventually
         if blocked['down']:
-            movement[Y] = 0.0
-            self.momentum[Y] = 0.0
             movement[Y] = blocked['down'].movement[Y]
             self.momentum[Y] = blocked['down'].movement[Y]
-        if blocked['left'] or blocked['right']:
-            movement[X] = 0.0
-            self.momentum[X] = 0.0
-
-        self.position[X] += movement[X]
-        self.location.x = self.position[X]
-        if self.location.x < 0:  # can't move past start of the world
-            self.location.x = 0
-
-        # position keeps track of the decimal portion
-        # so we don't get weird int conversion glitches
-        self.position[Y] += movement[Y]
-        self.location.y = self.position[Y]
+        if blocked['left']:
+            movement[X] = blocked['left'].movement[X]
+        if blocked['right']:
+            movement[X] = blocked['right'].movement[X]
 
         if self.name == "player":
             self.momentum[Y] += GRAVITY  # constant downward pull
@@ -169,19 +164,36 @@ class Character:
             # if there is a tile directly underneath and we aren't moving up
             # turn off the jets
             # if there is no tile underneath, turn on the jets
+            #if self.gridX() == 61:
+            #    self.flying = True
+            #    self.jets[0].turn_on()
+            #    self.jets[1].turn_on()
+
             if blocked['down'] and self.momentum[Y] >= 0:
                 self.flying = False
                 self.jets[0].turn_off()
                 self.jets[1].turn_off()
             elif not blocked['down']:
-                self.flying = True
-                self.jets[0].turn_on()
-                self.jets[1].turn_on()
-                # when hovering, add some random wobble to the position
-                # to make the flying look more convincing
-                if self.momentum == [0,0]:
-                    wobble_factor= self.wobble[self.wobble_counter]
-                    self.wobble_counter = (self.wobble_counter + 1) % len(self.wobble)
+                if not self.flying:
+                    self.flying = True
+                    self.jets[0].turn_on()
+                    self.jets[1].turn_on()
+
+            # when hovering, add some random wobble to the position
+            # to make the flying look more convincingg
+            if self.flying and self.momentum == [0,0]:
+                wobble_factor= self.wobble[self.wobble_counter]
+                self.wobble_counter = (self.wobble_counter + 1) % len(self.wobble)
+
+        self.position[X] += movement[X]
+        self.location.x = self.position[X]
+        if self.location.x < 0:  # can't move past start of the world
+            self.location.x = 0
+
+        # position keeps track of the decimal portion
+        # so we don't get weird int conversion glitches
+        self.position[Y] += movement[Y]
+        self.location.y = self.position[Y]
 
         # draw the sprite at the new location
         surface.blit(frame, (self.location.x + wobble_factor[X] - scroll[X],

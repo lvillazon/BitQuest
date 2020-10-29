@@ -259,12 +259,11 @@ class World:
 
             # DEBUG stats
             if pressed[K_f]:
-                # toggle fps stats
-                if self.show_fps:
-                    self.show_fps = False
-                else:
-                    self.frame_counter = 0
-                    self.show_fps = True
+                if not self.repeat_lock:
+                    # toggle fps stats
+                    self.show_fps = not self.show_fps
+                    if not self.show_fps:
+                        self.frame_counter = 0
 
             if pressed[K_g]:
                 if not self.repeat_lock:
