@@ -57,9 +57,14 @@ class World:
                                         (16, 16),
                                         run_speed=2)
         console_msg("BIT sprite initialised", 1)
-        self.player.location.x = 60 * BLOCK_SIZE  # was 4
+        # set x for starting level
+        # level 0 = 4
+        # level 1 = 58
+        # level 2 = 80
+        # level 3 = 91
+        self.player.location.x = 91 * BLOCK_SIZE
         self.player.location.y = 6 * BLOCK_SIZE
-        self.dog.location.x = 50 * BLOCK_SIZE
+        self.dog.location.x = self.player.location.x + BLOCK_SIZE
         self.dog.location.y = 8 * BLOCK_SIZE
         self.player.position = [self.player.location.x, self.player.location.y]
         self.dog.position = [self.dog.location.x, self.dog.location.y]
@@ -121,7 +126,7 @@ class World:
         distance = int(new_y) - self.dog.gridY()
         if distance < 0:
             self.dog.move_up(distance)
-            self.dog.flying = True
+            #self.dog.flying = True # TODO check we don't need this
         elif distance > 0:
             self.dog.move_down(distance)
 

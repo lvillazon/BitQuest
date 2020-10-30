@@ -40,6 +40,15 @@ CHARACTER_SIZE = 32
 CHARACTER_WIDTH = 16
 CHARACTER_HEIGHT = 16
 
+# character movement states
+STANDING = 0
+RUNNING = 1
+TAKING_OFF = 2
+HOVERING = 3
+FLYING = 4
+LANDING = 5
+JUMPING = 6  # currently unused
+
 # speech bubble constants
 MAX_BUBBLE_TEXT_LINES = 10  # 10 lines maximum in a speech bubble
 BUBBLE_MARGIN = 8  # 10-pixel border around text in the speech bubble

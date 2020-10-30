@@ -38,6 +38,8 @@ class Character:
                                 for sprite in self.die_right_frames]
         self.moving = False
         self.flying = False
+        self.take_off = False
+        self.state = STANDING
         self.facing_right = True
         self.momentum = [0.0, 0.0]
         self.position = [0.0, 0.0]
@@ -76,15 +78,20 @@ class Character:
         for i in range(31,-1,-1):
             x = i/2 - 8 #rx * math.cos(i*2*math.pi/32)
             y = -ry * math.sin(i*2*math.pi/32) - ry - 2
-            self.wobble.append((x, y))
+            self.wobble.append((0,0))
+            #self.wobble.append((x, y))
         self.wobble_counter = 0
+        self.take_off_animation = []  # take off animation sequence
+        for i in range(32):
+            self.take_off_animation.append((0, 0))
+            #self.take_off_animation.append((0, -8*i/32))
 
     def update(self, surface, scroll):
         f = int(self.frame_number) % self.frame_count
         self.frame_number = self.frame_number + .25
         wobble_factor = [0.0, 0.0]
         movement = [0, self.momentum[Y]]
-        if self.moving:
+        if self.state == RUNNING or self.state == FLYING:  # WAS self.moving:
             if self.momentum[X] != 0:
                 # reduce the horizontal momentum by run_speed
                 # so that it reaches 0 as we arrive at the correct point
@@ -92,10 +99,19 @@ class Character:
                 movement[X] = direction
                 self.momentum[X] = self.momentum[X] - direction
 
-            if self.momentum[X] == 0:  # [0, 0]:
-                self.moving = False
+            if self.momentum[X] == 0:
+                if self.state == RUNNING:
+                    # we don't check the Y momentum, because the character always has some due to gravity
+                    self.state = STANDING
+                if self.state == FLYING and self.momentum[Y] == 0:
+                    # flying character are exempt from gravity so we can check for hovering using Y momentum
+                    self.state = HOVERING
+                # WAS self.moving = False
 
-        if self.flying:
+        if self.state == TAKING_OFF:  # WAS self.take_off:
+            movement[Y] = 0
+
+        if self.state == FLYING:  # WAS self.flying:
             if self.momentum[Y] != 0:
                 # use the direction of the momentum to set the movement
                 direction = copysign(
@@ -104,23 +120,21 @@ class Character:
                 )
                 movement[Y] = direction
                 self.momentum[Y] = self.momentum[Y] - direction
-                if self.momentum[Y] == 0:
-                    self.reason = "line 88"
 
         # choose the correct animation frame, based on movement type
-        if self.jumping:
-            if self.facing_right:
-                frame = self.jump_right_frames[f]
-            else:
-                frame = self.jump_left_frames[f]
-            if self.frame_number == self.ANIMATION_LENGTH:
-                self.jumping = False
-        elif self.moving:
+        # if self.state == JUMPING: # currently unused -  WAS self.jumping:
+        #     if self.facing_right:
+        #         frame = self.jump_right_frames[f]
+        #     else:
+        #         frame = self.jump_left_frames[f]
+        #     if self.frame_number == self.ANIMATION_LENGTH:
+        #         self.jumping = False
+        if self.state == RUNNING:  # WAS self.moving:
             if self.facing_right:
                 frame = self.run_right_frames[f]
             else:
                 frame = self.run_left_frames[f]
-        else:  # standing
+        else:  # standing, flying, taking off, landing or hovering
             if self.facing_right:
                 # standing still is frame 7 on the animation cycle
                 frame = self.run_right_frames[self.STANDING_FRAME]
@@ -141,13 +155,13 @@ class Character:
             # which should result in a SQUISH
             # the dog can get blocked when flying though
             # so we'll need to check for this eventually
-        if blocked['down']:
-            movement[Y] = blocked['down'].movement[Y]
-            self.momentum[Y] = blocked['down'].movement[Y]
         if blocked['left']:
             movement[X] = blocked['left'].movement[X]
         if blocked['right']:
             movement[X] = blocked['right'].movement[X]
+        if blocked['down']:
+            movement[Y] = blocked['down'].movement[Y]
+            self.momentum[Y] = blocked['down'].movement[Y]
 
         if self.name == "player":
             self.momentum[Y] += GRAVITY  # constant downward pull
@@ -170,17 +184,34 @@ class Character:
             #    self.jets[1].turn_on()
 
             if blocked['down'] and self.momentum[Y] >= 0:
-                self.flying = False
-                self.jets[0].turn_off()
-                self.jets[1].turn_off()
-            elif not blocked['down']:
-                if not self.flying:
-                    self.flying = True
+                if self.state == FLYING: # WAS self.flying:
+                    print("land")
+                    # allow movement to finish the current grid square but then stop
+#                    self.momentum[Y] = 0
+                    self.state = RUNNING  # WAS self.flying = False
+                    self.jets[0].turn_off()
+                    self.jets[1].turn_off()
+            elif not blocked['down'] or self.momentum[Y] < 0:
+                if self.state == STANDING or self.state == RUNNING: # WAS not self.flying and not self.take_off:
+                    print("take off")
+                    self.state = FLYING
+                    # self.state = TAKING_OFF  # WAS self.flying = True
                     self.jets[0].turn_on()
                     self.jets[1].turn_on()
 
+            # PROOF OF CONCEPT - this should be integrated with the hover wobble and landing animations
+            if self.state == TAKING_OFF:  # WAS self.take_off:
+                wobble_factor= self.take_off_animation[self.wobble_counter]
+                self.wobble_counter = self.wobble_counter + 1
+                if self.wobble_counter >= len(self.take_off_animation):
+                    self.wobble_counter = 0
+                    self.state = FLYING
+                    # WAS self.take_off = False
+                    # WAS self.flying = True
+
             # when hovering, add some random wobble to the position
-            # to make the flying look more convincingg
+            # to make the flying look more convincing
+            # TODO move this to the other if FLYING block to set/unset the HOVERING state
             if self.flying and self.momentum == [0,0]:
                 wobble_factor= self.wobble[self.wobble_counter]
                 self.wobble_counter = (self.wobble_counter + 1) % len(self.wobble)
@@ -231,30 +262,36 @@ class Character:
         if self.momentum[X] == 0:  # wait until any previous move is complete
             self.facing_right = False
             self.momentum[X] = -distance * BLOCK_SIZE
-            self.moving = True
+            self.state = RUNNING  # WAS self.moving = True
 
     def move_right(self, distance=1):
         # move a whole number of blocks to the right
         if self.momentum[X] == 0:  # wait until any previous move is complete
             self.facing_right = True
             self.momentum[X] = distance * BLOCK_SIZE
-            self.moving = True
+            self.state = RUNNING  # WAS self.moving = True
 
     def move_up(self, distance=1):
         # move a whole number of blocks upwards
-        if not self.flying:  # take off 1st
-            self.flying = True
+        if self.state != FLYING and self.state != HOVERING:  # was not self.flying:  # take off 1st
+            print("take off 2")
+            self.state = TAKING_OFF  # WAS self.take_off = True
+            self.wobble_counter = 0
+#            self.flying = True
             self.jets[0].turn_on()
             self.jets[1].turn_on()
+        else:
+            self.state = FLYING  # to make sure we don't leave the state on hover
         if abs(self.momentum[Y]) < 1:  # wait until any previous move is complete
             self.momentum[Y] = distance * BLOCK_SIZE
-            self.moving = True
+            # WAS self.moving = True
 
     def move_down(self, distance=1):
         # move a whole number of blocks downwards
         if abs(self.momentum[Y]) < 1:  # wait until any previous move is complete
             self.momentum[Y] = distance * BLOCK_SIZE
-            self.moving = True
+            self.state = FLYING
+            # WAS self.moving = True
 
     def jump(self):
         self.jumping = True
