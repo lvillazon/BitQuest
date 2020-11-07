@@ -92,34 +92,35 @@ class Editor:
 
     def backspace(self, undo=True):
         """ back up the cursor and remove the character at that pos """
-
-        if undo:
-            self.save_history()
-        # if there is no selection or we are in the middle of deleting one,
-        # then just delete a single character
-        if self.deleting_block or self.selection_start == self.selection_end:
-            # if there are 4 spaces to the left of the cursor,
-            # remove them in one go, since we treat this as a tab
-            if (self.text[self.cursor_line]
-                    [self.cursor_col-4: self.cursor_col]) == \
-                    [' ', ' ', ' ', ' ']:
-                for i in range(4):
-                    self.cursor_left()
-                    del self.text[self.cursor_line][self.cursor_col]
-            else:  # otherwise just delete one char
-                move = self.cursor_left()
-                if move == CURSOR_OK:
-                    del self.text[self.cursor_line][self.cursor_col]
-                if move == CURSOR_LINE_WRAP:
-                    # if we backspace at the start of a line,
-                    # merge this line with the one above
-                    self.text[self.cursor_line].extend(
-                        self.text[self.cursor_line + 1])
-                    # delete empty line
-                    del self.text[self.cursor_line + 1]
-        else:
-            # delete the selected text (if any)
-            self.delete_selected_text()
+        if self.text:  # can't backspace if there's nothing there!
+            if undo:
+                self.save_history()
+            # if there is no selection or we are in the middle of deleting one,
+            # then just delete a single character
+            if (self.deleting_block or
+                self.selection_start == self.selection_end):
+                # if there are 4 spaces to the left of the cursor,
+                # remove them in one go, since we treat this as a tab
+                if (self.text[self.cursor_line]
+                        [self.cursor_col-4: self.cursor_col]) == \
+                        [' ', ' ', ' ', ' ']:
+                    for i in range(4):
+                        self.cursor_left()
+                        del self.text[self.cursor_line][self.cursor_col]
+                else:  # otherwise just delete one char
+                    move = self.cursor_left()
+                    if move == CURSOR_OK:
+                        del self.text[self.cursor_line][self.cursor_col]
+                    if move == CURSOR_LINE_WRAP:
+                        # if we backspace at the start of a line,
+                        # merge this line with the one above
+                        self.text[self.cursor_line].extend(
+                            self.text[self.cursor_line + 1])
+                        # delete empty line
+                        del self.text[self.cursor_line + 1]
+            else:
+                # delete the selected text (if any)
+                self.delete_selected_text()
 
     def delete(self):
         # if there is no selection, then just delete a single character
@@ -143,7 +144,8 @@ class Editor:
             self.delete_selected_text()
 
     def delete_selected_text(self):
-        if self.selection_start != self.selection_end:
+        if (self.selection_start != self.selection_end and
+            self.text):
             console_msg("Deleting selection", 8, line_end='')
             # make sure the selection start is the top left of the block
             start_pos = (self.selection_start[Y] * self.row_width

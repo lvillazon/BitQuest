@@ -227,9 +227,15 @@ class BlockMap:
                                        grid_size - GRID_LINE_WIDTH)
 
         self.tile_sheet = sprite_sheet.SpriteSheet('assets/' + TILE_FILE)
-        self.midground_blocks = []
-        self.foreground_blocks = []
-        self.movers = []
+
+        # store blocks in a dict indexed by grid position
+        # this gives way better performance than a simple list
+        # because collisions can check just the blocks in the
+        # immediate vicinity, instead of searching the entire map
+        self.midground_blocks = {}
+        self.foreground_blocks = {}
+
+        self.movers = []  # TODO should this be a dict too?
         self.triggers = {}
         self.tile_images = {}
 
@@ -243,7 +249,7 @@ class BlockMap:
                      BLOCK_SIZE, BLOCK_SIZE),
                     ALPHA))
             self.tile_images[definition] = images
-        self.load_grid()
+        self.load_grid()  # build the layer dictionaries from the level map
         # set the default starting tile for the editor
         self.current_editor_tile = self.editor_palette[0]
         self.cursor_block = Block(self.tile_images,
@@ -325,7 +331,8 @@ class BlockMap:
         max_x = 0
         max_y = 0
         for layer in [self.midground_blocks, self.foreground_blocks]:
-            for b in layer:
+            for coord in layer:
+                b = layer[coord]
                 if b.grid_position[X] > max_x:
                     max_x = b.grid_position[X]
                 if b.grid_position[Y] > max_y:
@@ -415,8 +422,8 @@ class BlockMap:
         for row in midground_map:
             for tile_symbol in row:
                 if tile_symbol != ' ':
-                    self.midground_blocks.append(
-                        Block(self.tile_images, tile_symbol, (x, y)))
+                    b = Block(self.tile_images, tile_symbol, (x, y))
+                    self.midground_blocks[(x, y)] = b
                 x += 1
             x = 0
             y += 1
@@ -426,8 +433,8 @@ class BlockMap:
         for row in foreground_map:
             for tile_symbol in row:
                 if tile_symbol != ' ':
-                    self.foreground_blocks.append(
-                        Block(self.tile_images, tile_symbol, (x, y)))
+                    b = Block(self.tile_images, tile_symbol, (x, y))
+                    self.foreground_blocks[(x, y)] = b
                 x += 1
             x = 0
             y += 1
@@ -463,23 +470,32 @@ class BlockMap:
                 self.get_block(self.midground_blocks, *values[0]))
             i += 1
 
-    def get_block(self, blocklist, x, y):
+    def get_block(self, block_dict, x, y):
         """returns the block at grid coord x,y"""
-        for b in blocklist:
-            if b.grid_position == (x, y):
-                return b
-        console_msg("No block found at " + str(x) + "," + str(y), 8)
-        return None
+        if (x, y) in block_dict:
+            return block_dict[(x, y)]
+        else:
+            console_msg("No block found at " + str(x) + "," + str(y), 8)
+            return None
 
     def update(self, surface, scroll):
-        """ draw all the blocks on the map """
-        # TODO optimise to draw just the ones on screen ?
+        """ draw any blocks that are on-screen """
+
+        # calculate the upper and lower bounds of the visible screen
+        # so that we don't waste time drawing blocks that are off screen
+        min_visible_block_x = scroll[X] // BLOCK_SIZE
+        max_visible_block_x = (min_visible_block_x
+                               + DISPLAY_SIZE[X] // BLOCK_SIZE)
 
         # draw each tile in its current location
-        for b in self.midground_blocks:
-            surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
-        for b in self.foreground_blocks:
-            surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
+        for coord in self.midground_blocks:
+            if min_visible_block_x <= coord[X] <= max_visible_block_x:
+                b = self.midground_blocks[coord]
+                surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
+        for coord in self.foreground_blocks:
+            if min_visible_block_x <= coord[X] <= max_visible_block_x:
+                b = self.foreground_blocks[coord]
+                surface.blit(b.image, (b.x - scroll[X], b.y - scroll[Y]))
 
         # give any moving blocks a chance to update before we draw them
         for m in self.movers:
@@ -671,79 +687,89 @@ class BlockMap:
                       'down': None,
                       'down left': None,
                       'down right': None}
+
+        # create a list of the blocks immediately surrounding the character
+        adjacent_blocks = []
+
         # find the first colliding block in each direction
-        for b in self.midground_blocks:
-            if b.is_collidable():
-                collider = pygame.Rect(b.x,
-                                       b.y,
-                                       BLOCK_SIZE, BLOCK_SIZE)
-                if SHOW_COLLIDERS:
-                    # DEBUG draw block colliders in yellow
-                    draw_collider(self.world.display,
-                                  (255, 255, 0), collider, 1, scroll)
-
-                if character_rect.colliderect(collider):
-                    # just because the rectangles overlap, doesn't necessarily
-                    # mean we want to call it a collision. We only count collisions
-                    # where the character is moving towards the block
-                    # or vice versa. This prevents characters from getting
-                    # stuck in blocks
-                    if (movement[X] - b.movement[X] > 0 and
-                            character_rect.right >= collider.left and
-                            (character_rect.bottom > collider.top
-                             + COLLIDE_THRESHOLD_Y) and
-                            collisions['right'] is None):
-                        collisions['right'] = b  # collider
-
-                    if (movement[X] - b.movement[X] < 0 and
-                            character_rect.left <= collider.right and
-                            (character_rect.bottom > collider.top
-                             + COLLIDE_THRESHOLD_Y) and
-                            collisions['left'] is None):
-                        collisions['left'] = b
-
-                    if (movement[Y] - b.movement[Y] >= 0 and
-                            character_rect.bottom >= collider.top and
-                            abs(character_rect.centerx
-                                - collider.centerx) < BLOCK_OVERLAP and
-                            collisions['down'] is None):
-                        collisions['down'] = b
-
-                    #if (movement)
-
-                    # DEBUG draw active colliders in red
+        for coord in self.midground_blocks:
+            # only check blocks within 1 grid of the character, horizontally
+            if abs(coord[X] - (character_rect.centerx // BLOCK_SIZE)) < 2:
+                b = self.midground_blocks[coord]
+                if b.is_collidable():
+                    collider = pygame.Rect(b.x,
+                                           b.y,
+                                           BLOCK_SIZE, BLOCK_SIZE)
                     if SHOW_COLLIDERS:
+                        # DEBUG draw block colliders in yellow
                         draw_collider(self.world.display,
-                                      (255, 0, 0), collider, 0, scroll)
+                                      (255, 255, 0), collider, 1, scroll)
+
+                    if character_rect.colliderect(collider):
+                        # just because the rectangles overlap, doesn't necessarily
+                        # mean we want to call it a collision. We only count collisions
+                        # where the character is moving towards the block
+                        # or vice versa. This prevents characters from getting
+                        # stuck in blocks
+                        if (movement[X] - b.movement[X] > 0 and
+                                character_rect.right >= collider.left and
+                                (character_rect.bottom > collider.top
+                                 + COLLIDE_THRESHOLD_Y) and
+                                collisions['right'] is None):
+                            collisions['right'] = b  # collider
+
+                        if (movement[X] - b.movement[X] < 0 and
+                                character_rect.left <= collider.right and
+                                (character_rect.bottom > collider.top
+                                 + COLLIDE_THRESHOLD_Y) and
+                                collisions['left'] is None):
+                            collisions['left'] = b
+
+                        if (movement[Y] - b.movement[Y] >= 0 and
+                                character_rect.bottom >= collider.top and
+                                abs(character_rect.centerx
+                                    - collider.centerx) < BLOCK_OVERLAP and
+                                collisions['down'] is None):
+                            collisions['down'] = b
+
+                        #if (movement)
+
+                        # DEBUG draw active colliders in red
+                        if SHOW_COLLIDERS:
+                            draw_collider(self.world.display,
+                                          (255, 0, 0), collider, 0, scroll)
 
         return collisions
 
     def trigger_test(self, character_rect, movement, scroll):
         # check for collisions with triggers
-        for t in self.midground_blocks:
-            if t.is_trigger():
-                collider = pygame.Rect(t.x,
-                                       t.y,
-                                       BLOCK_SIZE, BLOCK_SIZE)
-                if SHOW_COLLIDERS:
-                    # DEBUG draw block colliders in yellow
-                    draw_collider(self.world.display,
-                                  (255, 255, 0), collider, 1, scroll)
-                if character_rect.colliderect(collider):
-                    if t.grid_position in self.triggers.keys():
-                        t.image = t.frames[1]  # switch to 'pressed' state
-                        self.movers[self.triggers[t.grid_position]].activate()
-                        console_msg(
-                            "trigger "
-                            + str(self.triggers[t.grid_position])
-                            + " activated!", 8)
+        for coord in self.midground_blocks:
+            # only check triggers with the same grid X (performance opt)
+            if coord[X] == character_rect.centerx // BLOCK_SIZE:
+                t = self.midground_blocks[coord]
+                if t.is_trigger():
+                    collider = pygame.Rect(t.x,
+                                           t.y,
+                                           BLOCK_SIZE, BLOCK_SIZE)
+                    if SHOW_COLLIDERS:
+                        # DEBUG draw block colliders in yellow
+                        draw_collider(self.world.display,
+                                      (255, 255, 0), collider, 1, scroll)
+                    if character_rect.colliderect(collider):
+                        if t.grid_position in self.triggers.keys():
+                            t.image = t.frames[1]  # switch to 'pressed' state
+                            self.movers[self.triggers[t.grid_position]].activate()
+                            console_msg(
+                                "trigger "
+                                + str(self.triggers[t.grid_position])
+                                + " activated!", 8)
 
     def point_collision_test(self, position):
         """ a much simpler collision test used for the particle system
         returns true if the particle position is inside any block"""
         x = int(position[X] / BLOCK_SIZE)
         y = int(position[Y] / BLOCK_SIZE)
-        for b in self.midground_blocks:
-            if (x, y) == b.grid_position:
-                return True
-        return False
+        if (x, y) in self.midground_blocks:
+            return True
+        else:
+            return False

@@ -760,6 +760,8 @@ class VirtualMachine:
         setattr(obj, name, val)
 """
 
+    # THIS IS NOT MENTIONED IN https://docs.python.org/3/library/dis.html
+    # IS IT ACTUALLY USED? TODO
     def byte_STORE_MAP(self):
         map, val, key = self.popn(3)
         map[key] = val

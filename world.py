@@ -62,7 +62,7 @@ class World:
         # level 1 = 58
         # level 2 = 80
         # level 3 = 91
-        self.player.location.x = 91 * BLOCK_SIZE
+        self.player.location.x = 4 * BLOCK_SIZE
         self.player.location.y = 6 * BLOCK_SIZE
         self.dog.location.x = self.player.location.x + BLOCK_SIZE
         self.dog.location.y = 8 * BLOCK_SIZE
@@ -196,6 +196,14 @@ class World:
                 self.player.move_left()
             elif pressed[K_d]:
                 self.player.move_right()
+
+            if pressed[K_w] or pressed[K_s]:
+                if pressed[K_w]:
+                    self.camera_pan[Y] -= 2
+                else:
+                    self.camera_pan[Y] += 2
+            elif not self.blocks.show_grid:
+                self.camera_pan[Y] = int(self.camera_pan[Y] * 0.9)
 
             # player jumping disabled, since it is utterly pointless
             #if pressed[K_SPACE]:
