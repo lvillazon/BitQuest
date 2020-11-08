@@ -42,6 +42,9 @@ class Character:
         self.state = STANDING
         self.facing_right = True
         self.momentum = [0.0, 0.0]
+        # location is the rectangle used to draw the sprite
+        # position is a float version of the x,y pixel coords
+        # used to provide smooth movement
         self.position = [0.0, 0.0]
         self.location = pygame.Rect(0, 0, size[X], size[Y])
         # TODO different collider heights for different characters
@@ -86,7 +89,20 @@ class Character:
             self.take_off_animation.append((0, 0))
             #self.take_off_animation.append((0, -8*i/32))
 
-    def update(self, surface, scroll):
+    def set_position(self, grid_position):
+        # place the character at the grid coords
+        self.location.x = grid_position[X] * BLOCK_SIZE
+        self.location.y = grid_position[Y] * BLOCK_SIZE
+        self.position = [float(self.location.x),
+                         float(self.location.y)]
+
+    def nearest_grid_position(self):
+        # returns the grid coords, rounded to the nearest integer
+        return [round(self.position[X] / BLOCK_SIZE),
+                round(self.position[Y] / BLOCK_SIZE),
+               ]
+
+    def update(self, surface):
         f = int(self.frame_number) % self.frame_count
         self.frame_number = self.frame_number + .25
         wobble_factor = [0.0, 0.0]
@@ -141,14 +157,13 @@ class Character:
             else:
                 frame = self.run_left_frames[self.STANDING_FRAME]
 
-        # activate any triggers we have collided with
-        self.world.blocks.trigger_test(self.collider, movement, scroll)
+        # activate any triggers we have collided with or otherwise set off
+        self.world.blocks.trigger_test(self.collider, movement)
 
         # check collisions with the world blocks - pillars etc
         self.collider.centerx = self.location.centerx + movement[X]
         self.collider.bottom = self.location.bottom + movement[Y]
-        blocked = self.world.blocks.collision_test(self.collider,
-                                                   movement, scroll)
+        blocked = self.world.blocks.collision_test(self.collider, movement)
         #if blocked['up']:
             # the player cannot move up by themself
             # so being blocked upwards can only happen if a block carries them
@@ -157,11 +172,14 @@ class Character:
             # so we'll need to check for this eventually
         if blocked['left']:
             movement[X] = blocked['left'].movement[X]
+            self.momentum[X] = 0
         if blocked['right']:
             movement[X] = blocked['right'].movement[X]
+            self.momentum[X] = 0
         if blocked['down']:
             movement[Y] = blocked['down'].movement[Y]
             self.momentum[Y] = blocked['down'].movement[Y]
+            #self.set_position(self.nearest_grid_position())
 
         if self.name == "player":
             self.momentum[Y] += GRAVITY  # constant downward pull
@@ -174,7 +192,7 @@ class Character:
                                             + BLOCK_SIZE / 2)
 
             blocked = self.world.blocks.collision_test(self.ground_proximity,
-                                                       movement, scroll)
+                                                       movement)
             # if there is a tile directly underneath and we aren't moving up
             # turn off the jets
             # if there is no tile underneath, turn on the jets
@@ -227,17 +245,19 @@ class Character:
         self.location.y = self.position[Y]
 
         # draw the sprite at the new location
-        surface.blit(frame, (self.location.x + wobble_factor[X] - scroll[X],
-                             self.location.y + wobble_factor[Y] - scroll[Y]))
+        surface.blit(frame, (self.location.x
+                             + wobble_factor[X] - self.world.scroll[X],
+                             self.location.y
+                             + wobble_factor[Y] - self.world.scroll[Y]))
         # update the jets if they are running
         if self.jets[0].is_active():
             self.jets[0].nozzle[X] = self.location.left + wobble_factor[X] + 4
             self.jets[0].nozzle[Y] = self.location.bottom + wobble_factor[Y] + 2
-            self.jets[0].update(surface, scroll)
+            self.jets[0].update(surface, self.world.scroll)
         if self.jets[1].is_active():
             self.jets[1].nozzle[X] = self.location.right + wobble_factor[X] - 4
             self.jets[1].nozzle[Y] = self.location.bottom + wobble_factor[Y] + 2
-            self.jets[1].update(surface, scroll)
+            self.jets[1].update(surface, self.world.scroll)
 
         # remove text from the speech bubble if it has been there for too long
         if self.speaking and self.speech_expires < pygame.time.get_ticks():
@@ -252,10 +272,10 @@ class Character:
 
     def gridX(self):
         # current location in terms of block coords, rather than pixels
-        return self.location[X] / BLOCK_SIZE
+        return round(self.location[X] / BLOCK_SIZE)
 
     def gridY(self):
-        return self.location[Y] / BLOCK_SIZE
+        return round(self.location[Y] / BLOCK_SIZE)
 
     def move_left(self, distance=1):
         # move a whole number of blocks to the left

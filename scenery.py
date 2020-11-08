@@ -5,7 +5,8 @@ from constants import *
 class Scenery:
     GROUND_LEVEL_OFFSET = -112  # offset for background layers
 
-    def __init__(self, time_of_day, landscape):
+    def __init__(self, world, time_of_day, landscape):
+        self.world = world
         self.scenery_layers = self.load_scenery('assets', time_of_day,
                                                 landscape)
         self.tile_width = self.scenery_layers[0]['tile'].get_rect().size[X]
@@ -43,7 +44,7 @@ class Scenery:
         print(len(scenery), "scenery layers loaded")
         return scenery
 
-    def draw_background(self, surface, scroll):
+    def draw_background(self, surface):
         # draw the scenery before anything else, each frame
         # all but the last layer are used as background
         # the very last layer is drawn in front of the character
@@ -51,29 +52,29 @@ class Scenery:
         # each layer is drawn using a relative offset, so that it will repeat
         # once it has slid completely off the screen
         for layer in self.scenery_layers:
-            scenery_x = - (int(scroll[X] * layer['parallax'])
+            scenery_x = - (int(self.world.scroll[X] * layer['parallax'])
                            % self.tile_width)
             surface.blit(layer['tile'],
                          (scenery_x,
-                          self.GROUND_LEVEL_OFFSET - scroll[Y]))
+                          self.GROUND_LEVEL_OFFSET - self.world.scroll[Y]))
             # if the tile is partially off the screen, we also draw a second
             # copy after it, to make sure there is no gap between tiles.
             if scenery_x < -self.tile_width + surface.get_width():
                 surface.blit(layer['tile'],
                              (scenery_x + self.tile_width,
-                              self.GROUND_LEVEL_OFFSET - scroll[Y]))
+                              self.GROUND_LEVEL_OFFSET - self.world.scroll[Y]))
 
-    def draw_foreground(self, surface, scenery_scroll):
+    def draw_foreground(self, surface):
         # any layers that should appear in front of the character sprites
         tile = self.scenery_layers[-1]['tile']
-        scenery_x = -(scenery_scroll[X] % self.tile_width)
+        scenery_x = -(self.world.scroll[X] % self.tile_width)
         surface.blit(tile,
                      (scenery_x,
-                      self.GROUND_LEVEL_OFFSET - scenery_scroll[Y]))
+                      self.GROUND_LEVEL_OFFSET - self.world.scroll[Y]))
         if scenery_x < -self.tile_width + surface.get_width():
             surface.blit(tile,
                          (scenery_x + self.tile_width,
-                          self.GROUND_LEVEL_OFFSET - scenery_scroll[Y]))
+                          self.GROUND_LEVEL_OFFSET - self.world.scroll[Y]))
 
 '''
     def draw_foreground(self, surface, scenery_scroll):

@@ -30,9 +30,10 @@ class World:
 
         # load scenery layers
 #        self.scenery = scenery.Scenery('Day', 'Desert')
-        self.scenery = scenery.Scenery('Day', 'Field')
+        self.scenery = scenery.Scenery(self, 'Day', 'Field')
 
         self.true_scroll = [0.0, 0.0]
+        self.scroll = [0, 0]  # integer version of true_scroll
         # location of the game area on the window
         # used to scroll the game area out of the way of the code editor
         self.game_origin = [0, 0]
@@ -40,6 +41,21 @@ class World:
         # load puzzle blocks
         self.blocks = blocks.BlockMap(self)
         console_msg("Map loaded", 1)
+
+        # set the starting positions for each puzzle
+        player_start_pos = [(4, 6),    # puzzle 0 - the pillar
+                            (58, 6),   # puzzle 1- the pit
+                            (80, 6),   # puzzle 2 - the lift
+                            (91, 6),   # puzzle 3 - the staircase
+                            (105, 6),  # puzzle 4 - the choice
+                           ]
+        dog_start_pos = [(6, 8),    # puzzle 0 - the pillar
+                         (57, 8),   # puzzle 1- the pit
+                         (78, 8),   # puzzle 2 - the lift
+                         (90, 8),   # puzzle 3 - the staircase
+                         (103, 8),  # puzzle 4 - the choice
+                        ]
+        puzzle = 4
 
         # initialise the environmental dust effect
         # DEBUG disabled due to looking bad
@@ -57,17 +73,15 @@ class World:
                                         (16, 16),
                                         run_speed=2)
         console_msg("BIT sprite initialised", 1)
-        # set x for starting level
-        # level 0 = 4
-        # level 1 = 58
-        # level 2 = 80
-        # level 3 = 91
-        self.player.location.x = 4 * BLOCK_SIZE
-        self.player.location.y = 6 * BLOCK_SIZE
-        self.dog.location.x = self.player.location.x + BLOCK_SIZE
-        self.dog.location.y = 8 * BLOCK_SIZE
-        self.player.position = [self.player.location.x, self.player.location.y]
-        self.dog.position = [self.dog.location.x, self.dog.location.y]
+        self.player.set_position(player_start_pos[puzzle])
+        self.dog.set_position(dog_start_pos[puzzle])
+
+#        self.dog.set_position((self.player.position[X] + 1,
+#                               self.player.position[Y]))
+#        self.dog.location.x = self.player.location.x + BLOCK_SIZE
+#        self.dog.location.y = 8 * BLOCK_SIZE
+#        self.player.position = [self.player.location.x, self.player.location.y]
+#        self.dog.position = [self.dog.location.x, self.dog.location.y]
         self.dog.facing_right = False
         self.show_fps = False
         # this flag prevents certain key actions from automatically repeating
@@ -163,24 +177,24 @@ class World:
             self.true_scroll[X] = 0
         self.true_scroll[Y] += (self.player.location.y -
                                 self.true_scroll[Y] - CAMERA_Y_OFFSET) / 16
-        scroll = [int(self.true_scroll[X]) + self.camera_pan[X],
+        self.scroll = [int(self.true_scroll[X]) + self.camera_pan[X],
                   int(self.true_scroll[Y]) + self.camera_pan[Y]]
         if self.camera_shake:
-            scroll[X] += random.randint(-1, 1)
-            scroll[Y] += random.randint(-1, 1)
+            self.scroll[X] += random.randint(-1, 1)
+            self.scroll[Y] += random.randint(-1, 1)
 
         # render the background
-        self.scenery.draw_background(display, scroll)
+        self.scenery.draw_background(display)
 
         # move and render the player sprite
-        self.player.update(display, scroll)
+        self.player.update(display)
 
         # move and render the dog
-        self.dog.update(display, scroll)
+        self.dog.update(display)
 
         # draw the foreground scenery on top of the characters
-        self.blocks.update(display, scroll)
-        #self.scenery.draw_foreground(display, scroll)
+        self.blocks.update(display)
+        #self.scenery.draw_foreground(display)
 
         # update the input window and editor, if necessary
         # the input window takes precedence if both are open
@@ -266,7 +280,7 @@ class World:
                         self.blocks.reset()
                     elif pressed[K_h]:
                         # home the cursor to the centre of the screen
-                        self.blocks.home_cursor(scroll)
+                        self.blocks.home_cursor()
                     else:
                         self.repeat_lock = False  # reset, since no key pressed
 
@@ -334,9 +348,9 @@ class World:
             # position the tip of the speak bubble at the middle
             # of the top edge of the sprite box
             position = (
-                (self.dog.location.x - scroll[X] + 16)
+                (self.dog.location.x - self.scroll[X] + 16)
                 * SCALING_FACTOR + self.game_origin[X],
-                (self.dog.location.y - scroll[Y])
+                (self.dog.location.y - self.scroll[Y])
                 * SCALING_FACTOR + self.game_origin[Y]
                 - self.dog.text_size[Y]
             )
@@ -348,8 +362,7 @@ class World:
 
         # draw the grid overlay last so it is on top of everything
         if self.blocks.show_grid:
-            self.blocks.draw_grid(self.screen, self.game_origin, scroll,
-                                  (0, 0, 0))
+            self.blocks.draw_grid(self.screen, self.game_origin, (0, 0, 0))
 # previously, the grid took the colour from the editor choice
 #                                  self.editor.get_fg_color())
 
