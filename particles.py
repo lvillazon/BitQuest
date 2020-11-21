@@ -125,10 +125,11 @@ class Jet:
         # try removing this test after block collision is working ok
         # because currently it is wasting time checking jets
         # even on the player character, which doesn't have any!
-        if self.active or len(self.particles) > 0:
-            return True
-        else:
-            return False
+        #if self.active or len(self.particles) > 0:
+        #    return True
+        #else:
+        #    return False
+        return self.active
 
     def get_power(self):
         # ramps up the power when the jet is activated

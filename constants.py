@@ -3,7 +3,7 @@ Global constants for BitQuest
 """
 
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
-SHOW_COLLIDERS = False  # draws outline around object colliders
+SHOW_COLLIDERS = True  # draws outline around object colliders
 X = 0  # index values into a variety of positional tuples
 Y = 1
 
@@ -39,15 +39,6 @@ CAMERA_Y_OFFSET = DISPLAY_SIZE[Y] - 32 - 10  # 32 = sprite height
 CHARACTER_SIZE = 32
 CHARACTER_WIDTH = 16
 CHARACTER_HEIGHT = 16
-
-# character movement states
-STANDING = 0
-RUNNING = 1
-TAKING_OFF = 2
-HOVERING = 3
-FLYING = 4
-LANDING = 5
-JUMPING = 6  # currently unused
 
 # speech bubble constants
 MAX_BUBBLE_TEXT_LINES = 10  # 10 lines maximum in a speech bubble

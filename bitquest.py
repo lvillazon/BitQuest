@@ -72,7 +72,7 @@ while world.game_running:
     # so we don't want to do it here as well, because it will just slow the
     # intepreter down
     if not world.program.running:
-        world.update()
+        world.update(world.player)
 
 # tidy up and quit
 pygame.quit()

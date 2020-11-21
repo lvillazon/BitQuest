@@ -48,30 +48,32 @@ class World:
                             (80, 6),   # puzzle 2 - the lift
                             (91, 6),   # puzzle 3 - the staircase
                             (105, 6),  # puzzle 4 - the choice
+                            (11, 6),   # puzzle 5 - test position
                            ]
         dog_start_pos = [(6, 8),    # puzzle 0 - the pillar
                          (57, 8),   # puzzle 1- the pit
                          (78, 8),   # puzzle 2 - the lift
                          (90, 8),   # puzzle 3 - the staircase
                          (103, 8),  # puzzle 4 - the choice
+                         (6, 8),  # puzzle 5 - test position
                         ]
-        puzzle = 4
+        puzzle = 5
 
         # initialise the environmental dust effect
         # DEBUG disabled due to looking bad
         # self.dust_storm = DustStorm(self)
 
         # load character sprites
-        self.player = characters.Character(self,
+        self.player = characters.Person(self,
                                            'player',
                                            'new_character.png',
                                            (16, 20))
         console_msg("player sprite initialised", 1)
-        self.dog = characters.Character(self,
-                                        'dog',
-                                        'bit basic1.png',
-                                        (16, 16),
-                                        run_speed=2)
+        self.dog = characters.Dog(self,
+                                  'dog',
+                                  'bit basic1.png',
+                                  (16, 16),
+                                  )
         console_msg("BIT sprite initialised", 1)
         self.player.set_position(player_start_pos[puzzle])
         self.dog.set_position(dog_start_pos[puzzle])
@@ -139,7 +141,7 @@ class World:
         #distance = new_y - int(self.dog.location.y / BLOCK_SIZE)  # TODO can this just be changed to -self.dog.gridY() ?
         distance = int(new_y) - self.dog.gridY()
         if distance < 0:
-            self.dog.move_up(distance)
+            self.dog.move_up(abs(distance))
             #self.dog.flying = True # TODO check we don't need this
         elif distance > 0:
             self.dog.move_down(distance)
@@ -162,20 +164,36 @@ class World:
     player_x = property(get_player_x, set_player_x)
     player_y = property(get_player_y, set_player_y)
 
-    def update(self):
-        """update all the game world stuff"""
+    def busy(self):
+        """ returns true if there is anything happening that must complete
+        before the interpreter continues running the player's code.
+        This allows us to halt code execution while platforms move
+        for example, which makes it much easier to write programs to solve
+        the puzzles, since you don't need busy loops to check BIT's position
+
+        At the moment it is just the moving blocks that trigger the busy state
+        but there might be other things in the future"""
+        if self.dog.momentum != [0,0] or self.blocks.busy:
+            return True
+        else:
+            return False
+
+    def update(self, focus):
+        """update all the game world stuff
+        focus is the character that the camera follows
+        This is the dog when a program is running, otherwise the player"""
 
         display = self.display  # for brevity
 
         frame_start_time = time.time_ns()  # used to calculate fps
 
-        # track the camera with the player, but with a bit of lag
-        self.true_scroll[X] += (self.player.location.x -
+        # track the camera with the focus character, but with a bit of lag
+        self.true_scroll[X] += (focus.location.x -
                                 self.true_scroll[X] - CAMERA_X_OFFSET) / 16
         if self.true_scroll[X] < 0:
             # can't scroll past the start of the world
             self.true_scroll[X] = 0
-        self.true_scroll[Y] += (self.player.location.y -
+        self.true_scroll[Y] += (focus.location.y -
                                 self.true_scroll[Y] - CAMERA_Y_OFFSET) / 16
         self.scroll = [int(self.true_scroll[X]) + self.camera_pan[X],
                   int(self.true_scroll[Y]) + self.camera_pan[Y]]
@@ -207,21 +225,26 @@ class World:
             # if the code editor isn't open
             pressed = pygame.key.get_pressed()
             if pressed[K_a]:
-                self.player.move_left()
+                self.player.moving_left = True
+                self.player.moving_right = False
             elif pressed[K_d]:
-                self.player.move_right()
-
-            if pressed[K_w] or pressed[K_s]:
-                if pressed[K_w]:
-                    self.camera_pan[Y] -= 2
-                else:
-                    self.camera_pan[Y] += 2
-            elif not self.blocks.show_grid:
-                self.camera_pan[Y] = int(self.camera_pan[Y] * 0.9)
-
-            # player jumping disabled, since it is utterly pointless
-            #if pressed[K_SPACE]:
-            #    self.player.jump()
+                self.player.moving_left = False
+                self.player.moving_right = True
+            # DEBUG give player the ability to fly!
+            elif pressed[K_w]:
+                self.player.moving_down = False;
+                self.player.moving_up = True
+            elif pressed[K_s]:
+                self.player.moving_down = True;
+                self.player.moving_up = False
+            # DEBUG this should be uncommented when vertical movement is fixed
+#            if pressed[K_w] or pressed[K_s]:
+#                if pressed[K_w]:
+#                    self.camera_pan[Y] -= 2
+#                else:
+#                    self.camera_pan[Y] += 2
+#            elif not self.blocks.show_grid:
+#                self.camera_pan[Y] = int(self.camera_pan[Y] * 0.9)
 
             if pressed[K_ESCAPE]:
                 # only show editor when it is completely hidden

@@ -150,7 +150,8 @@ class VirtualMachine:
         # program variable, or a timeout occurs (eg due to an obstacle)
         GET = 0  # index into world_variables tuple
         SET = 1
-        UPDATE_TIMEOUT = 150  # number of updates without change before we bail
+        # TODO does this need to be as high as 100?
+        UPDATE_TIMEOUT = 50  # number of updates without change before we bail
         for v in self.world_variables:
             w = self.world_variables[v]  # for brevity
             target_value = frame.global_names[v]
@@ -170,7 +171,12 @@ class VirtualMachine:
                 while not done:
                     previous_value = current_value
                     # give world variables a chance to change
-                    self.world.update()
+                    # we guarantee to update once per bytecode,
+                    # but if the world is busy (eg moving blocks, keep calling
+                    # update until it isn't
+                    self.world.update(self.world.dog)
+                    while self.world.busy():
+                        self.world.update(self.world.dog)
 
                     current_value = w[GET]()
                     if current_value == target_value:
@@ -397,7 +403,12 @@ class VirtualMachine:
         self.push_frame(frame)
         while self.running:
             # let the game world update to reflect keyboard input and physics
-            self.world.update()
+            # we guarantee to update once per bytecode,
+            # but if the world is busy (eg moving blocks, keep calling
+            # update until it isn't
+            self.world.update(self.world.dog)
+            while self.world.busy():
+                self.world.update(self.world.dog)
             # makes sure game variables in the program affect the world
             self.sync_world_variables(frame)
 

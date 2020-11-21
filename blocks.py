@@ -1,4 +1,6 @@
 """ movement and animation for all the player and npc sprites """
+import math
+import random
 
 import pygame
 from console_messages import console_msg
@@ -20,76 +22,88 @@ def draw_collider(surface, colour, collider, width, scroll):
 
 class Moveable:
     """ pillars, drawbridges and other objects that move
-    when a trigger activates"""
+    when a trigger activates. They are simply arbitrary collections
+    of blocks that move in concert when activated."""
 
-    def __init__(self, block_map, world, block_range, action, distance=0):
-        # add all the blocks in the block_range to the list of blocks
-        # 'owned' by this movable object
-        # the range is specified as (startx, starty, width, height)
-        # and distance is how far the object moves when triggered
-        # all specified using the block grid units
+    def __init__(self, world, id, blocks):
         self.world = world  # so we can set camera_shake
-        self.block_range = block_range  # makes it easier when saving the map
-        self.blocks = []
-        self.starting_positions = []  # initial x,y coords of all blocks
-        for x in range(block_range[0][X], block_range[1][X] + 1):
-            for y in range(block_range[0][Y], block_range[1][Y] + 1):
-                b = block_map.get_block(block_map.midground_blocks, x, y)
-                if b:
-                    self.blocks.append(b)
-                    self.starting_positions.append((b.x, b.y))
-
-        self.action = action
-        self.distance = distance
+        self.id = id  # unique number used for loading/saving
+        self.blocks = blocks  # list of blocks
+        self.home_positions = []  # initial x,y coords of all blocks (pixels)
+        for b in blocks:
+            if b:
+                self.home_positions.append((b.x, b.y))
+            else:
+                # if a null block accidentally gets included in the mover list
+                # insert a placeholder, so that the reset function
+                # doesn't get out of sync
+                self.home_positions.append(None)
         self.activated = False
-        self.current_offset = 0
+        # target_offset is the number of x,y pixels the group should shift by
+        # it is set by the trigger when it activates
+        # as the group moves into place, current_offset
+        # updates until they match
+        self.current_offset = [0, 0]
+        self.target_offset = [0, 0]
         self.speed = 1
+        self.movement = [0.0, 0.0]  # movement x, y speed (set when activated)
 
-    def activate(self):
-        if not self.activated:
-            self.activated = True
-            self.world.camera_shake = True
-            # the movement value of the block is used to transfer momentum
-            # to any characters that are touching the blocks
-            # this allows pillars to lift or push characters around
-            for b in self.blocks:
-                if self.action == 'up':
-                    b.movement = [0.0, -(self.speed + GRAVITY)]
-                elif self.action == 'down':
-                    b.movement = [0.0, self.speed]
-                elif self.action == 'left':
-                    b.movement = [-self.speed, 0.0]
-                elif self.action == 'right':
-                    b.movement = [self.speed, 0.0]
+    def activate(self, offset):
+        self.activated = True
+        self.target_offset = [coord * BLOCK_SIZE for coord in offset]
+        self.world.camera_shake = True
+        # the movement value of the block is used to transfer momentum
+        # to any characters that are touching the blocks
+        # this allows pillars to lift or push characters around
+        for i in [X, Y]:
+            if self.target_offset[i] != 0:
+                self.movement[i] = math.copysign(self.speed,
+                                                 self.target_offset[i])
+        for b in self.blocks:
+            if b:  # guard against a null block in the mover list
+                b.movement = self.movement
+            # TODO what happens without this? It seems ok, but test when we ride a platform moving downwards
+            # uncommenting it causes blocks moving up, to drift out of sync with the grid
+            #if self.target_offset[Y] <0:  # moving up
+            #    b.movement[Y] -= GRAVITY
 
     def reset(self):
         # return all blocks to their orginal (pre-triggered) locations
         for i in range(len(self.blocks)):
-            self.blocks[i].x = self.starting_positions[i][X]
-            self.blocks[i].y = self.starting_positions[i][Y]
-            self.activated = False
-            self.current_offset = 0
+            if self.blocks[i]:  # guard against a null block in the list
+                self.blocks[i].x = self.home_positions[i][X]
+                self.blocks[i].y = self.home_positions[i][Y]
+                self.activated = False
+                self.target_offset = [0.0, 0.0]
+                self.current_offset = [0.0, 0.0]
+                self.movement = [0.0, 0.0]
 
     def update(self):
-        """ move the blocks if this group has been triggered """
-        if (not self.activated or
-                self.current_offset >= self.distance * BLOCK_SIZE):
-            return
-        else:
+        """ move the blocks if this group has been triggered
+        if the group is moving it returns True, otherwise False """
+        if self.activated and self.movement != [0.0, 0.0]:
             for b in self.blocks:
-                if self.action == 'down':
-                    b.y += self.speed
-                elif self.action == 'up':
-                    b.y -= self.speed
-                elif self.action == 'left':
-                    b.x -= self.speed
-                elif self.action == 'right':
-                    b.x += self.speed
-            self.current_offset += self.speed
-            if self.current_offset >= self.distance * BLOCK_SIZE:
+                b.x += self.movement[X]
+                b.y += self.movement[Y]
+            self.current_offset[X] += self.movement[X]
+            self.current_offset[Y] += self.movement[Y]
+            # check if the group has reached its destination
+            # done in a loop, since X and Y are the same
+            for i in [X, Y]:
+                if self.movement[i] > 0:
+                    if self.current_offset[i] >= self.target_offset[i]:
+                        self.movement[i] = 0.0
+                elif self.movement[i] < 0:
+                    if self.current_offset[i] <= self.target_offset[i]:
+                        self.movement[i] = 0.0
+
+            if self.movement == [0.0, 0.0]:
                 self.world.camera_shake = False
                 for b in self.blocks:
                     b.movement = [0, 0]
+                return False
+            else:
+                return True
 
     def get_bounding_box(self):
         """ return a rectangle surrounding this group of blocks """
@@ -109,21 +123,43 @@ class Trigger:
     laser tripwires that are activated when a character crosses that
     entire row or column."""
 
-    def __init__(self, world, type, block):
+    def __init__(self, world, type, random, block):
         self.world = world
         self.type = type  # a string, eg 'pressure plate'
         self.block = block
         self.enabled = True
-        self.movers = []
+        # when random == true, the trigger sets random_action to one
+        # of its possible actions. It will use this one until the trigger is
+        # reset, when it will pick another one at random
+        # when random == false, it activates all at once, every time
+        self.random = random
+        self.actions = []
+        if self.random:
+            self.pick_an_action()
+
+    def pick_an_action(self):
+        if self.actions:
+            self.random_action = random.choice(self.actions)
+        else:
+            self.random_action = None
 
     def reset(self):
         self.enabled = True
         self.block.image = self.block.frames[0]
+        if self.random:
+            self.pick_an_action()
 
-    def addMover(self, m):
-        """ associate a moveable group with this trigger
-        so that the mover will move when the trigger, triggers """
-        self.movers.append(m)
+    def addAction(self, mover, movement):
+        """ create an action - a mover + an (x,y) movement
+        This is expressed as a call to the activate method of the mover
+        When the trigger fires, this method is called to set off the mover
+        """
+        self.actions.append((mover, movement))
+        # adding a new action causes random triggers to pick which one to use
+        # at random. That way, the action is always chosen from the most
+        # recent set of available actions
+        if self.random:
+            self.pick_an_action()
 
     def check(self, character_rect):
         """ check if the trigger has activated
@@ -137,9 +173,17 @@ class Trigger:
             if character_rect.colliderect(trigger_rect):
                 # switch to 'pressed' state
                 self.block.image = self.block.frames[1]
-                # activate all connected movers
-                for m in self.movers:
-                    m.activate()
+                if self.random:
+                    if not self.random_action[0].activated:
+                        self.random_action[0].activate(self.random_action[1])
+                else:
+                    # fire all actions associated with this trigger
+                    for action in self.actions:
+                        if not action[0].activated:
+                            # the action is a tuple of mover and movement
+                            # so we call the activate method of the mover
+                            # and pass the movement as the argument
+                            action[0].activate(action[1])
                 console_msg(
                     "trigger "
                     + "(" + str(self.block.x) + str(self.block.y) + ")"
@@ -161,14 +205,15 @@ class Trigger:
         t_rect = pygame.Rect(left, top, BLOCK_SIZE, BLOCK_SIZE)
         pygame.draw.rect(surface, colour, t_rect, 1)
 
+        # TODO fix the connecting lines from triggers to movers
         # draw connecting lines to all associated movers
-        for m in self.movers:
-            m_rect = m.get_bounding_box()
-            pygame.draw.rect(surface, colour, m_rect, 1)
-            pygame.draw.line(surface, colour,
-                             (t_rect.left, t_rect.top),
-                             (m_rect.left, m_rect.top)
-                             )
+#        for m in self.movers:
+#            m_rect = m.get_bounding_box()
+#            pygame.draw.rect(surface, colour, m_rect, 1)
+#            pygame.draw.line(surface, colour,
+#                             (t_rect.left, t_rect.top),
+#                             (m_rect.left, m_rect.top)
+#                             )
 
 
 class Block:
@@ -190,6 +235,20 @@ class Block:
         self.image = None
         self.setType(type)
         self.movement = [0, 0]
+
+    def top(self):
+        return self.y
+
+    def bottom(self):
+        return self.y + BLOCK_SIZE
+
+    def left(self):
+        return self.x
+
+    def right(self):
+        return self.x + BLOCK_SIZE
+
+
 
     def setType(self, type):
         """use the ASCII character passed as type to indicate which tile"""
@@ -315,6 +374,7 @@ class BlockMap:
         self.selection = []
         self.show_grid = False
         self.current_layer = self.midground_blocks
+        self.busy = False  # True when blocks are moving
 
     def reset(self):
         # reset the whole map to its initial state
@@ -435,19 +495,24 @@ class BlockMap:
                 file.write(delimiter)
 
             # section 4
-            for m in self.movers:
-                for br in self.movers[m].block_range:
-                    file.write(str(br) + ', ')
-                file.write("'" + self.movers[m].action + "', ")
-                file.write(str(self.movers[m].distance) + '\n')
+            file.write("# movers\n")
+            for i in range(len(self.movers)):
+                file.write(str(i) + ", [")  # unique id number
+                m = self.movers[i]
+                for b in m.blocks:
+                    file.write(str(b.grid_position) + ', ')
+                file.write(']\n')
             file.write(delimiter)
 
             # section 5
+            file.write("# triggers\n")
             for t in self.triggers:
                 file.write("'" + t.type + "', ")
+                file.write(str(t.random) + ", ")
                 file.write(str(t.block.grid_position) + ', [')
-                for m in t.movers:
-                    file.write(str(m.block_range) + ', ')
+                for a in t.actions:
+                    file.write('(' + str(a[0].id) + ', ')
+                    file.write(str(a[1]) + '), ')
                 file.write(']\n')
             file.write(delimiter)
 
@@ -509,40 +574,47 @@ class BlockMap:
 
         # the moveable objects are groups of blocks that all move together
         # in response to a trigger
-        # they are defined by their (left, top) & (right, bottom) coords
-        # in the block coordinate system
-        # plus a move direction as a string
-        # and a number of blocks to move
+        # they are have a unique id number
+        # and a list of blocks, specified using the block coordinate system
         i += 1  # skip over the ### section delimiter
         while i < len(level_data) and level_data[i] != '###':
-            values = eval(level_data[i])
-            mover = Moveable(self, self.world,
-                             (values[0], values[1]),
-                             values[2],
-                             values[3],
-                             )
-            key = (values[0], values[1])
-            self.movers[key] = mover
+            if level_data[i][0] != "#": # comment lines are ignored
+                values = eval(level_data[i])
+                # create a list of block objects from the list of grid coords
+                mover_blocks = [self.get_block(
+                                self.midground_blocks, grid[X], grid[Y])
+                                for grid in values[1]]
+                mover = Moveable(self.world,
+                                 values[0],  # id
+                                 mover_blocks
+                                 )
+                key = values[0]
+                self.movers[key] = mover
             i += 1
 
-        # the triggers are stored in the file as the name of the trigger type,
-        # followed by a grid coord, then a list of (left, top, width, height)
-        # ranges, representing the moveable block groups
-        # eg: pressure, (26,8), [(25, 5, 1, 3), (1, 9, 1, 2),]
+        # the triggers are stored with the name of the trigger type,
+        # followed by a grid coord representing the trigger block
+        # then a list of actions as (id, (x, y)) tuples
+        # representing the mover id and the number of blocks to move
+        # when activated
         i += 1  # skip over the ### section delimiter
         console_msg("Block triggers:", 8)
         while i < len(level_data) and level_data[i] != '###':
-            values = eval(level_data[i])
-            console_msg(values, 8)
-            t = Trigger(self.world,
-                        values[0],
-                        self.get_block(self.midground_blocks,
-                                       values[1][X], values[1][Y]))
-            # add all the movers associated with this trigger
-            for block_range in values[2]:
-                t.addMover(self.movers[block_range])
-            # add the complete trigger to the list maintained by the map
-            self.triggers.append(t)
+            if level_data[i][0] != "#": # comment lines are ignored
+                values = eval(level_data[i])
+                console_msg(values, 8)
+                t = Trigger(self.world,
+                            values[0],  # type
+                            values[1],  # random flag
+                            # block object representing the trigger location
+                            self.get_block(self.midground_blocks,
+                                           values[2][X], values[2][Y])
+                            )
+                # add all the actions associated with this trigger
+                for action in values[3]:
+                    t.addAction(self.movers[action[0]], action[1])
+                # add the complete trigger to the list maintained by the map
+                self.triggers.append(t)
             i += 1
 
     def get_block(self, block_dict, x, y):
@@ -578,8 +650,29 @@ class BlockMap:
                               b.y - self.world.scroll[Y]))
 
         # give any moving blocks a chance to update
+        # if any are currently moving, we set busy to true, so that
+        # the player program is paused until the moves are complete
+        self.busy = False
         for m in self.movers:
-            self.movers[m].update()
+            if self.movers[m].update():
+                self.busy = True
+
+        if self.busy:
+            # also must update the block dictionary, since it is keyed
+            # by the block coords
+            # we do this by iterating over a copy of the dictionary keys
+            # so that we can modify the dictionary on the fly without
+            # throwing runtime errors. This approach has fairly low
+            # performance cost, since it only runs while a mover is moving
+            # and only changes the dictionary when the blocks have moved
+            # enough to change their position by a whole grid square.
+            for coord in self.midground_blocks.copy():
+                block = self.midground_blocks[coord]
+                if block.grid_position != coord:
+                    print("Block at", coord, "has moved to",
+                          block.grid_position)
+                    self.midground_blocks[block.grid_position] = block
+                    del self.midground_blocks[coord]
 
         if MAP_EDITOR_ENABLED and self.show_grid:
             # draw boxes around each trigger and mover
@@ -772,6 +865,50 @@ class BlockMap:
                           (0, 255, 0), character_rect, 1, self.world.scroll)
 
         # check for collisions with solid objects
+        collisions = []
+
+        # check all collidable blocks (the foreground layer is not collidable)
+        for coord in self.midground_blocks:
+            # only check blocks within 1 square of the character
+            # horizontally. This is a performance optimisation, so the
+            # collision check doesn't slow down on large maps
+            if abs(coord[X] - (character_rect.centerx // BLOCK_SIZE)) <= 1:
+                b = self.midground_blocks[coord]
+                if b.is_collidable():
+                    collider = pygame.Rect(b.x,
+                                           b.y,
+                                           BLOCK_SIZE, BLOCK_SIZE)
+                    if SHOW_COLLIDERS:
+                        # DEBUG draw block colliders in yellow
+                        draw_collider(self.world.display,
+                                      (255, 255, 0),
+                                      collider, 1, self.world.scroll)
+
+                    if character_rect.colliderect(collider):
+                        collisions.append(b)
+
+                        # DEBUG draw active colliders in red
+                        if SHOW_COLLIDERS:
+                            draw_collider(self.world.display,
+                                          (255, 0, 0),
+                                          collider, 0, self.world.scroll)
+
+        return collisions
+
+
+    def old_collision_test(self, character_rect, movement):
+        """ check if this character is colliding with any of the blocks
+        blocks are categorised as:
+        collidable - collision physics applies to characters
+        trigger - characters can overlap the block, activating the trigger
+        cosmetic - no collision physics or trigger (but may animate)
+        """
+        if SHOW_COLLIDERS:
+            # DEBUG draw character collider in green
+            draw_collider(self.world.display,
+                          (0, 255, 0), character_rect, 1, self.world.scroll)
+
+        # check for collisions with solid objects
         collisions = {'left': None,
                       'right': None,
                       'up': None,
@@ -818,13 +955,18 @@ class BlockMap:
                             collisions['left'] = b
 
                         if (movement[Y] - b.movement[Y] >= 0 and
-                                character_rect.bottom >= collider.top and
-                                abs(character_rect.centerx
-                                    - collider.centerx) < BLOCK_OVERLAP and
-                                collisions['down'] is None):
-                            collisions['down'] = b
+                            character_rect.bottom >= collider.top):
 
-                        #if (movement)
+                            # where more than one block collides
+                            # upwards-moving > stationary > downward-moving
+                            if b.movement[Y] != 0:
+                                collisions['down'] = b
+                            else:
+                                collisions['down'] = b
+
+                        if (movement[Y] - b.movement[Y] <= 0 and
+                            collisions['up'] is None):
+                                collisions['up'] = b
 
                         # DEBUG draw active colliders in red
                         if SHOW_COLLIDERS:
@@ -836,7 +978,6 @@ class BlockMap:
 
     def trigger_test(self, character_rect, movement):
         """ check each trigger on the map to see if it should go off """
-
         for t in self.triggers:
             if t.enabled:  # saves checking triggers that have already gone off
                 t.check(character_rect)
