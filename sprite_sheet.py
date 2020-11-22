@@ -1,5 +1,11 @@
 import pygame
 
+from constants import BLOCK_SIZE
+
+
+def default_image():
+    return pygame.Surface((BLOCK_SIZE, BLOCK_SIZE)).convert()
+
 class SpriteSheet(object):
     """
     converts a sprite sheet into individual sprites

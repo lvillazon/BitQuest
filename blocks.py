@@ -101,9 +101,9 @@ class Moveable:
                 self.world.camera_shake = False
                 for b in self.blocks:
                     b.movement = [0, 0]
-                return False
-            else:
-                return True
+            return True
+        else:
+            return False
 
     def get_bounding_box(self):
         """ return a rectangle surrounding this group of blocks """
@@ -872,7 +872,7 @@ class BlockMap:
             # only check blocks within 1 square of the character
             # horizontally. This is a performance optimisation, so the
             # collision check doesn't slow down on large maps
-            if abs(coord[X] - (character_rect.centerx // BLOCK_SIZE)) <= 1:
+            if abs(coord[X] - (character_rect.centerx // BLOCK_SIZE)) <= 2:
                 b = self.midground_blocks[coord]
                 if b.is_collidable():
                     collider = pygame.Rect(b.x,

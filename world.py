@@ -48,16 +48,16 @@ class World:
                             (80, 6),   # puzzle 2 - the lift
                             (91, 6),   # puzzle 3 - the staircase
                             (105, 6),  # puzzle 4 - the choice
-                            (11, 6),   # puzzle 5 - test position
+                            (8, 6),   # puzzle 5 - test position
                            ]
         dog_start_pos = [(6, 8),    # puzzle 0 - the pillar
                          (57, 8),   # puzzle 1- the pit
                          (78, 8),   # puzzle 2 - the lift
                          (90, 8),   # puzzle 3 - the staircase
                          (103, 8),  # puzzle 4 - the choice
-                         (6, 8),  # puzzle 5 - test position
+                         (12, 5),  # puzzle 5 - test position
                         ]
-        puzzle = 5
+        puzzle = 4
 
         # initialise the environmental dust effect
         # DEBUG disabled due to looking bad
@@ -131,20 +131,12 @@ class World:
     def set_bit_x(self, new_x):
         # attempt to move the dog to the new position
         distance = int(new_x) - self.dog.gridX()
-        if distance < 0:
-            self.dog.move_left(abs(distance))
-        elif distance > 0:
-            self.dog.move_right(abs(distance))
+        self.dog.move_by_amount((distance, 0))
 
     def set_bit_y(self, new_y):
         # attempt to move the dog to the new position
-        #distance = new_y - int(self.dog.location.y / BLOCK_SIZE)  # TODO can this just be changed to -self.dog.gridY() ?
         distance = int(new_y) - self.dog.gridY()
-        if distance < 0:
-            self.dog.move_up(abs(distance))
-            #self.dog.flying = True # TODO check we don't need this
-        elif distance > 0:
-            self.dog.move_down(distance)
+        self.dog.move_by_amount((0, distance))
 
     bit_x = property(get_bit_x, set_bit_x)
     bit_y = property(get_bit_y, set_bit_y)
@@ -173,7 +165,7 @@ class World:
 
         At the moment it is just the moving blocks that trigger the busy state
         but there might be other things in the future"""
-        if self.dog.momentum != [0,0] or self.blocks.busy:
+        if self.dog.busy or self.blocks.busy:
             return True
         else:
             return False

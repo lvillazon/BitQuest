@@ -14,41 +14,37 @@ from speech_bubble import SpeechBubble
 class Character:
     """Base class for player and NPC sprites
     can move in all 4 directions and is not subject to gravity"""
-    ANIMATION_LENGTH = 8  # number of frames per movement
+    #ANIMATION_LENGTH = 8  # number of frames per movement
     STANDING_FRAME = 7  # the run frame used when standing still
 
-    def __init__(self, world, name, sprite_file, size):
+    def __init__(self, world, name,
+                 sprite_file="", size=(BLOCK_SIZE, BLOCK_SIZE)):
         self.world = world  # link back to the world game state
         self.name = name  # for debugging only, right now
-        # load character animation frames
-        self.character_sheet = \
-            sprite_sheet.SpriteSheet('assets/' + sprite_file)
-        self.run_right_frames = self.character_sheet.load_strip(
-            pygame.Rect(0, 0, size[X], size[Y]), 8, -1)
-
-        self.run_left_frames = [pygame.transform.flip(sprite, True, False)
-                                for sprite in self.run_right_frames]
-#        self.jump_right_frames = self.character_sheet.load_block_of_8(0, 152,
-#                                                                      -1)
-#        self.jump_left_frames = [pygame.transform.flip(sprite, True, False)
-#                                 for sprite in self.jump_right_frames]
-#        self.die_right_frames = self.character_sheet.load_block_of_8(144, 0,
-#                                                                     -1)
-#        self.die_left_frames = [pygame.transform.flip(sprite, True, False)
-#                                for sprite in self.die_right_frames]
-        #self.state = State.STANDING  # TODO remove once we have refactored Dog to use separate flags for movement states
+        self.size = size
+        if sprite_file != "":
+            self.load_sprites(sprite_file)
+        else:
+            # create placeholder sprites
+            self.move_right_frames = [sprite_sheet.default_image()]
+            self.frame_count = 1
+            self.move_left_frames = [sprite_sheet.default_image()]
+            self.standing_left_frame = sprite_sheet.default_image()
+            self.standing_right_frame = sprite_sheet.default_image()
+            self.move_vertical_left_frames = [sprite_sheet.default_image()]
+            self.move_vertical_right_frames = [sprite_sheet.default_image()]
         self.facing_right = True
         self.moving_right = False;
         self.moving_left = False;
         self.moving_up = False;
         self.moving_down = False;
-        self.momentum = [0.0, 0.0]
-        self.location = pygame.Rect(0, 0, size[X], size[Y])
+        self.location = pygame.Rect((0, 0), self.size)
         self.frame_number = 0
-        self.frame_count = len(self.run_right_frames)
         self.run_speed = 2  # default run speed
         self.x_speed = self.run_speed
         self.y_speed = self.run_speed  # x & y speeds default to run speed
+        self.subject_to_gravity = False
+        self.y_momentum = 0.0
         # TODO different collider heights for different characters
         self.collider = pygame.Rect(0, 0, size[X], size[Y])
         self.collisions = {'left': None,
@@ -56,12 +52,35 @@ class Character:
                            'up': None,
                            'down': None,
                            }
+        self.collidable = False
+
+    def load_sprites(self, sprite_file):
+        # load character animation frames
+        self.character_sheet = \
+            sprite_sheet.SpriteSheet('assets/' + sprite_file)
+        self.move_right_frames = self.character_sheet.load_strip(
+            pygame.Rect((0, 0), self.size), 8, -1)
+        self.frame_count = len(self.move_right_frames)
+        self.move_left_frames = [pygame.transform.flip(sprite, True, False)
+                                 for sprite in self.move_right_frames]
+        self.standing_left_frame = self.move_left_frames[self.STANDING_FRAME]
+        self.standing_right_frame = self.move_right_frames[self.STANDING_FRAME]
+        self.move_vertical_left_frames = [self.standing_left_frame]\
+                                         * self.frame_count
+        self.move_vertical_right_frames = [self.standing_right_frame]\
+                                          * self.frame_count
 
     def update(self, surface):
         """movement system & collisions based on daFluffyPotato
         (https://www.youtube.com/watch?v=abH2MSBdnWc)"""
 
-        movement = [0, 0]
+        if self.subject_to_gravity:
+            self.y_momentum += GRAVITY
+            if self.y_momentum > 3:
+                self.y_momentum = 3
+            movement = [0, self.y_momentum]
+        else:
+            movement = [0, 0]
         if self.moving_right:
             movement[X] += self.x_speed
             self.facing_right = True
@@ -73,8 +92,9 @@ class Character:
         if self.moving_down:
             movement[Y] += self.y_speed
 
-        # activate any triggers we have collided with or otherwise set off
-        self.world.blocks.trigger_test(self.location, movement)
+        if self.collidable:
+            # activate any triggers we have collided with or otherwise set off
+            self.world.blocks.trigger_test(self.location, movement)
 
         # perform collision detection and update position
         self.location, self.collisions = self.move(self.location, movement)
@@ -83,15 +103,19 @@ class Character:
         f = int(self.frame_number) % self.frame_count
         self.frame_number = self.frame_number + .25
         if self.moving_right:
-            frame = self.run_right_frames[f]
+            frame = self.move_right_frames[f]
         elif self.moving_left:
-            frame = self.run_left_frames[f]
+            frame = self.move_left_frames[f]
+        elif self.moving_up or self.moving_down:
+            if self.facing_right:
+                frame = self.move_vertical_right_frames[f]
+            else:
+                frame = self.move_vertical_left_frames[f]
         else:  # standing
             if self.facing_right:
-                # standing still is frame 7 on the animation cycle
-                frame = self.run_right_frames[self.STANDING_FRAME]
+                frame = self.standing_right_frame
             else:
-                frame = self.run_left_frames[self.STANDING_FRAME]
+                frame = self.standing_left_frame
 
         surface.blit(frame, (self.location.x - self.world.scroll[X],
                              self.location.y - self.world.scroll[Y]))
@@ -101,6 +125,7 @@ class Character:
             self.moving_up = False;
         if self.collisions['down']:
             self.moving_down = False;
+            self.y_momentum = 0.0
         if self.collisions['left']:
             self.moving_left = False;
         if self.collisions['right']:
@@ -111,7 +136,7 @@ class Character:
             self.moving_right = False;
             self.moving_left = False;
             self.location.x = round(self.location.x / BLOCK_SIZE) * BLOCK_SIZE
-        if (self.location.bottom) % BLOCK_SIZE < self.run_speed:
+        if self.location.bottom % BLOCK_SIZE < self.run_speed:
             self.moving_up = False;
             self.moving_down = False;
             self.location.bottom = (round(self.location.bottom / BLOCK_SIZE)
@@ -126,49 +151,56 @@ class Character:
                                 'left': False,
                                 'right': False,
                                 }
-        rectangle.x += movement[X]
-        hit_list = self.world.blocks.collision_test(rectangle, movement)
 
-        # allow moving block to shove the player and then check again
+        # check if moving blocks will hit the character
+        # first in the X direction
+        hit_list = self.world.blocks.collision_test(rectangle, movement)
         for block in hit_list:
             if block.movement[X] < 0 and rectangle.right > block.left():
                 rectangle.right = block.left()
                 collision_directions['right'] = True
+                print("block collision right")
             elif block.movement[X] > 0 and rectangle.left < block.right():
-                    rectangle.left = block.right()
-                    collision_directions['left'] = True
+                rectangle.left = block.right()+1  # TODO this is a kludge to avoid weird collision on leftward moving blocks
+                collision_directions['left'] = True
+                print("block collision left")
 
+        # then the Y direction
+        hit_list = self.world.blocks.collision_test(rectangle, movement)
+        for block in hit_list:
+            if block.movement[Y] < 0 and rectangle.bottom > block.top():
+                rectangle.bottom = block.top()
+                collision_directions['down'] = True
+                print("block collision down")
+            elif block.movement[Y] > 0 and rectangle.top < block.bottom():
+                rectangle.top = block.bottom()
+                collision_directions['up'] = True
+                print("block collision up")
+
+        # now check if the character's own movement causes a collision
+        rectangle.x += movement[X]
         hit_list = self.world.blocks.collision_test(rectangle, movement)
         for block in hit_list:
             if movement[X] > 0 and rectangle.right > block.left():
                 rectangle.right = block.left()
                 collision_directions['right'] = True
-
+                print("char collision right")
             elif movement[X] < 0 and rectangle.left < block.right():
-                    rectangle.left = block.right()
-                    collision_directions['left'] = True
+                rectangle.left = block.right()
+                collision_directions['left'] = True
+                print("char collision left")
 
         rectangle.y += movement[Y]
-        hit_list = self.world.blocks.collision_test(rectangle, movement)
-
-        # allow moving block to shove the player and then check again
-        for block in hit_list:
-            if block.movement[Y] < 0 and rectangle.bottom > block.top():
-                rectangle.bottom = block.top()
-                collision_directions['down'] = True
-            elif block.movement[Y] > 0 and rectangle.top < block.bottom():
-                    rectangle.top = block.bottom()
-                    collision_directions['up'] = True
-
         hit_list = self.world.blocks.collision_test(rectangle, movement)
         for block in hit_list:
             if movement[Y] > 0 and rectangle.bottom > block.top():
                 rectangle.bottom = block.top()
                 collision_directions['down'] = True
-
+#                print("char collision down")
             elif movement[Y] < 0 and rectangle.top < block.bottom():
-                    rectangle.top = block.bottom()
-                    collision_directions['up'] = True
+                rectangle.top = block.bottom()
+                collision_directions['up'] = True
+                print("char collision up")
 
         return rectangle, collision_directions
 
@@ -197,23 +229,37 @@ class Person(Character):
     """ can only run left and right, and is subject to gravity """
     def __init__(self, world, name, sprite_file, size):
         super().__init__(world, name, sprite_file, size)
-        self.y_speed = 0.0
-        self.falling = True  # always falling, even if the ground stops you moving
+        self.subject_to_gravity = True
+        self.collidable = True
 
-    def update(self, surface):
-        # add the constant downward tug of gravity
-        if self.collisions['down']:
-            self.y_speed = 0
-        else:
-            self.y_speed += GRAVITY
-            self.location.y += self.y_speed
-        super().update(surface)
-
-class Dog(Character):
+class Ghostly(Character):
+    """ doesn't interact with blocks or triggers
+    This is used for decorative background sprites, like birds or leaves"""
     def __init__(self, world, name, sprite_file, size):
         super().__init__(world, name, sprite_file, size)
-        self.ground_proximity = \
-            pygame.Rect(0, 0, size[X], size[Y])
+        self.subject_to_gravity = False
+        self.collidable = False
+
+    def move(self, rectangle, movement):
+        """ Move in the x, y, without any collision detection """
+        collision_directions = {'up': False,
+                                'down': False,
+                                'left': False,
+                                'right': False,
+                                }
+        rectangle.x += movement[X]
+        rectangle.y += movement[Y]
+        return rectangle, collision_directions
+
+
+class Dog(Character):
+    """ Not affected by gravity,
+        Has a rocket animation when in the air
+        Can display speech bubbles"""
+    def __init__(self, world, name, sprite_file, size):
+        super().__init__(world, name, sprite_file, size)
+        self.collidable = True
+        self.busy = False  # used to block code execution during movement
         self.speaking = False
         self.speech = None
         self.speech_bubble_fg = (0, 0, 0)
@@ -247,6 +293,19 @@ class Dog(Character):
         for i in range(32):
             self.take_off_animation.append((0, 0))
             # self.take_off_animation.append((0, -8*i/32))
+
+    def set_position(self, grid_position):
+        super().set_position(grid_position)
+        self.destination = [grid_position[X], grid_position[Y]]
+
+    def move_right(self, distance):
+        self.destination[X] = self.gridX() + distance
+#        self.moving_right = True
+#        self.moving_left = False
+
+    def move_by_amount(self, distance):
+        self.destination[X] = self.gridX() + distance[X]
+        self.destination[Y] = self.gridY() + distance[Y]
 
     def say(self, *t):
         # show the message t in a speak-bubble above the character
@@ -353,206 +412,44 @@ class Dog(Character):
         pass
 
     def update(self, surface):
+        if self.destination[X] > self.gridX():
+            self.moving_right = True
+        elif self.destination[X] < self.gridX():
+            self.moving_left = True
+        elif self.destination[Y] > self.gridY():
+            self.moving_down = True
+        elif self.destination[Y] < self.gridY():
+            self.moving_up = True
         super().update(surface)
-#        f = int(self.frame_number) % self.frame_count
-#        self.frame_number = self.frame_number + .25
-        wobble_factor = [0.0, 0.0]
-#        movement = [0, self.momentum[Y]]
-#        if self.state == State.MOVING or self.state == State.FLYING:  # WAS self.moving:
-#            if self.momentum[X] != 0:
-#                # reduce the horizontal momentum by run_speed
-#                # so that it reaches 0 as we arrive at the correct point
-#                direction = copysign(self.run_speed, self.momentum[X])
-#                movement[X] = direction
-#                self.momentum[X] = self.momentum[X] - direction
-#
-#            if self.momentum[X] == 0:
-#                if self.state == State.MOVING:
-#                     # we don't check the Y momentum, because the character always has some due to gravity
-#                     self.state = State.STANDING
-#                 if self.state == State.FLYING and self.momentum[Y] == 0:
-#                     # flying character are exempt from gravity so we can check for hovering using Y momentum
-#                     self.state = State.HOVERING
-#                 # WAS self.moving = False
-#
-#         if self.state == State.TAKING_OFF:  # WAS self.take_off:
-#             movement[Y] = 0
-#
-#         if self.state == State.FLYING:  # WAS self.flying:
-#             if self.momentum[Y] != 0:
-#                 # use the direction of the momentum to set the movement
-#                 direction = copysign(
-#                     int(self.run_speed * self.jets[0].get_power()),
-#                     self.momentum[Y]
-#                 )
-#                 movement[Y] = direction
-#                 self.momentum[Y] = self.momentum[Y] - direction
-#
-#         # choose the correct animation frame, based on movement type
-#         # if self.state == JUMPING: # currently unused -  WAS self.jumping:
-#         #     if self.facing_right:
-#         #         frame = self.jump_right_frames[f]
-#         #     else:
-#         #         frame = self.jump_left_frames[f]
-#         #     if self.frame_number == self.ANIMATION_LENGTH:
-#         #         self.jumping = False
-#         if self.state == State.MOVING:  # WAS self.moving:
-#             if self.facing_right:
-#                 frame = self.run_right_frames[f]
-#             else:
-#                 frame = self.run_left_frames[f]
-#         else:  # standing, flying, taking off, landing or hovering
-#             if self.facing_right:
-#                 # standing still is frame 7 on the animation cycle
-#                 frame = self.run_right_frames[self.STANDING_FRAME]
-#             else:
-#                 frame = self.run_left_frames[self.STANDING_FRAME]
-#
-#         # activate any triggers we have collided with or otherwise set off
-#         self.world.blocks.trigger_test(self.collider, movement)
-#
-#         # check collisions with the world blocks - pillars etc
-#         self.collider.centerx = self.location.centerx + movement[X]
-#         # the collider extends 1 pixel below the character, so that they
-#         # stand neatly on the ground surface
-#         self.collider.bottom = self.location.bottom + movement[Y] + 1
-#         blocked = self.world.blocks.collision_test(self.collider, movement)
-#         #if blocked['up']:
-#             # the player cannot move up by themself
-#             # so being blocked upwards can only happen if a block carries them
-#             # which should result in a SQUISH
-#             # the dog can get blocked when flying though
-#             # so we'll need to check for this eventually
-#         if blocked['left']:
-#             movement[X] = blocked['left'].movement[X]
-#             self.momentum[X] = 0
-#             print("blocked left at", self.gridX())
-#         if blocked['right']:
-#             movement[X] = blocked['right'].movement[X]
-#             self.momentum[X] = 0
-#             print("blocked right at", self.gridX())
-#         if blocked['down']:
-#             movement[Y] = blocked['down'].movement[Y]
-#             self.momentum[Y] = blocked['down'].movement[Y]
-#             #self.location.bottom = blocked['down'].top()
-#             #self.position[Y] = self.location.y  # resync the float and int versions
-#
-#         if self.name == "player":
-#             self.momentum[Y] += GRAVITY  # constant downward pull
-#         else:
-#             # BIT is not subject to gravity, since he can fly
-#             # check for ground underneath so we know when he has landed
-#             self.ground_proximity.centerx = self.location.centerx + movement[X]
-#             self.ground_proximity.bottom = (self.location.bottom
-#                                             + movement[Y]
-#                                             + BLOCK_SIZE / 2)
-#
-#             blocked = self.world.blocks.collision_test(self.ground_proximity,
-#                                                        movement)
-#             # if there is a tile directly underneath and we aren't moving up
-#             # turn off the jets
-#             # if there is no tile underneath, turn on the jets
-#             #if self.gridX() == 61:
-#             #    self.flying = True
-#             #    self.jets[0].turn_on()
-#             #    self.jets[1].turn_on()
-#
-#             if blocked['down'] and self.momentum[Y] >= 0:
-#                 if self.state == State.FLYING or self.state == State.TAKING_OFF: # WAS self.flying:
-#                     print("land")
-#                     # allow movement to finish the current grid square but then stop
-# #                    self.momentum[Y] = 0
-#                     self.state = State.MOVING  # WAS self.flying = False
-#                     self.jets[0].turn_off()
-#                     self.jets[1].turn_off()
-#             elif not blocked['down'] or self.momentum[Y] < 0:
-#                 if self.state == State.STANDING or self.state == State.MOVING: # WAS not self.flying and not self.take_off:
-#                     print("take off")
-#                     self.state = State.FLYING
-#                     # self.state = TAKING_OFF  # WAS self.flying = True
-#                     self.jets[0].turn_on()
-#                     self.jets[1].turn_on()
-#
-#             # PROOF OF CONCEPT - this should be integrated with the hover wobble and landing animations
-#             if self.state == State.TAKING_OFF:  # WAS self.take_off:
-#                 wobble_factor= self.take_off_animation[self.wobble_counter]
-#                 self.wobble_counter = self.wobble_counter + 1
-#                 if self.wobble_counter >= len(self.take_off_animation):
-#                     self.wobble_counter = 0
-#                     self.state = State.FLYING
-#                     # WAS self.take_off = False
-#                     # WAS self.flying = True
-#
-#             # when hovering, add some random wobble to the position
-#             # to make the flying look more convincing
-#             # TODO move this to the other if FLYING block to set/unset the HOVERING state
-#             if self.state == State.FLYING and self.momentum == [0,0]:
-#                 wobble_factor= self.wobble[self.wobble_counter]
-#                 self.wobble_counter = (self.wobble_counter + 1) % len(self.wobble)
-#
-#         self.position[X] += movement[X]
-#         self.location.x = self.position[X]
-#         if self.location.x < 0:  # can't move past start of the world
-#             self.location.x = 0
-#
-#         # position keeps track of the decimal portion
-#         # so we don't get weird int conversion glitches
-#         self.position[Y] += movement[Y]
-#         self.location.y = self.position[Y]
-#
-#         # draw the sprite at the new location
-#         surface.blit(frame, (self.location.x
-#                              + wobble_factor[X] - self.world.scroll[X],
-#                              self.location.y
-#                              + wobble_factor[Y] - self.world.scroll[Y]))
+        if (self.moving_up or
+                self.moving_down or
+                self.moving_right or
+                self.moving_left):
+            busy = True  # blocks code execution until the move completes
+        wobble_factor = [0,0]
+        # turn on the jets if there isn't a solid block underneath
+        if self.world.blocks.get_block(
+                self.world.blocks.midground_blocks,
+                self.gridX(), self.gridY()+1) is None:
+           self.jets[0].turn_on()
+           self.jets[1].turn_on()
+        else:
+            self.jets[0].turn_off()
+            self.jets[1].turn_off()
 
-        # # check if the jets should be turned off
-        # if self.blocked['down'] and self.jets[0].is_active():
-        #     self.jets[0].turn_off()
-        #     self.jets[1].turn_off()
-        #     #self.flying = False
-
-        # update the jets if they are running
         if self.jets[0].is_active():
+            # the wobble animation for flight/hovering is turned off for now
+            # to re-enable it, I need to find a neat way to adjust the
+            # position of the sprite just before it is blitted
+            # this will probably involve moving the blit operation from
+            # Character.update() to a separate method, and then overriding it.
+            # wobble_factor= self.wobble[self.wobble_counter]
+            self.wobble_counter = (self.wobble_counter +1) % len(self.wobble)
             self.jets[0].nozzle[X] = self.location.left + wobble_factor[X] + 4
             self.jets[0].nozzle[Y] = self.location.bottom + wobble_factor[Y] + 2
             self.jets[0].update(surface, self.world.scroll)
-        if self.jets[1].is_active():
             self.jets[1].nozzle[X] = self.location.right + wobble_factor[X] - 4
             self.jets[1].nozzle[Y] = self.location.bottom + wobble_factor[Y] + 2
             self.jets[1].update(surface, self.world.scroll)
 
-        # remove text from the speech bubble if it has been there for too long
-        if self.speaking and self.speech_expires < pygame.time.get_ticks():
-            if len(self.text) > 1:
-                self.text.pop(0)
-                if len(self.text) < MAX_BUBBLE_TEXT_LINES:
-                    self.speech_expires = (pygame.time.get_ticks()
-                                            + SPEECH_EXPIRY_RATE)
-                    self.text_size[Y] -= self.speech_bubble_size[Y]
-            else:
-                self.speaking = False
 
-# TODO simplify this to use the inherited movement as a base
-    def move_up(self, distance=1):
-        super().move_up(distance)
-        if not self.jets[0].is_active():
-            self.jets[0].turn_on()
-            self.jets[1].turn_on()
-        # move a whole number of blocks upwards
-#         if self.state != FLYING and self.state != State.HOVERING:  # take off 1st
-#             print("take off 2")
-#             self.state = State.TAKING_OFF  # WAS self.take_off = True
-#             self.wobble_counter = 0
-# #            self.flying = True
-#             self.jets[0].turn_on()
-#             self.jets[1].turn_on()
-#         else:
-#             self.state = State.FLYING  # to make sure we don't leave the state on hover
-#         if abs(self.momentum[Y]) < 1:  # wait until any previous move is complete
-#             self.momentum[Y] = distance * BLOCK_SIZE
-#             # WAS self.moving = True
-
-    def move_down(self, distance=1):
-        # move a whole number of blocks downwards
-        super().move_down(distance)
