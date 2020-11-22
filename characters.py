@@ -94,7 +94,7 @@ class Character:
 
         if self.collidable:
             # activate any triggers we have collided with or otherwise set off
-            self.world.blocks.trigger_test(self.location, movement)
+            self.world.blocks.trigger_test(self, movement)
 
         # perform collision detection and update position
         self.location, self.collisions = self.move(self.location, movement)
@@ -159,11 +159,9 @@ class Character:
             if block.movement[X] < 0 and rectangle.right > block.left():
                 rectangle.right = block.left()
                 collision_directions['right'] = True
-                print("block collision right")
             elif block.movement[X] > 0 and rectangle.left < block.right():
                 rectangle.left = block.right()+1  # TODO this is a kludge to avoid weird collision on leftward moving blocks
                 collision_directions['left'] = True
-                print("block collision left")
 
         # then the Y direction
         hit_list = self.world.blocks.collision_test(rectangle, movement)
@@ -171,11 +169,9 @@ class Character:
             if block.movement[Y] < 0 and rectangle.bottom > block.top():
                 rectangle.bottom = block.top()
                 collision_directions['down'] = True
-                print("block collision down")
             elif block.movement[Y] > 0 and rectangle.top < block.bottom():
                 rectangle.top = block.bottom()
                 collision_directions['up'] = True
-                print("block collision up")
 
         # now check if the character's own movement causes a collision
         rectangle.x += movement[X]
@@ -184,11 +180,9 @@ class Character:
             if movement[X] > 0 and rectangle.right > block.left():
                 rectangle.right = block.left()
                 collision_directions['right'] = True
-                print("char collision right")
             elif movement[X] < 0 and rectangle.left < block.right():
                 rectangle.left = block.right()
                 collision_directions['left'] = True
-                print("char collision left")
 
         rectangle.y += movement[Y]
         hit_list = self.world.blocks.collision_test(rectangle, movement)
@@ -196,11 +190,9 @@ class Character:
             if movement[Y] > 0 and rectangle.bottom > block.top():
                 rectangle.bottom = block.top()
                 collision_directions['down'] = True
-#                print("char collision down")
             elif movement[Y] < 0 and rectangle.top < block.bottom():
                 rectangle.top = block.bottom()
                 collision_directions['up'] = True
-                print("char collision up")
 
         return rectangle, collision_directions
 

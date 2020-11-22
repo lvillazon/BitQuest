@@ -3,7 +3,7 @@ Global constants for BitQuest
 """
 
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
-SHOW_COLLIDERS = True  # draws outline around object colliders
+SHOW_COLLIDERS = False  # draws outline around object colliders
 X = 0  # index values into a variety of positional tuples
 Y = 1
 

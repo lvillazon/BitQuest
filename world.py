@@ -57,7 +57,7 @@ class World:
                          (103, 8),  # puzzle 4 - the choice
                          (12, 5),  # puzzle 5 - test position
                         ]
-        puzzle = 4
+        puzzle = 5
 
         # initialise the environmental dust effect
         # DEBUG disabled due to looking bad
@@ -381,7 +381,18 @@ class World:
 # previously, the grid took the colour from the editor choice
 #                                  self.editor.get_fg_color())
 
+        #TODO self.end_of_level_display()
         pygame.display.update()  # actually display
 
         self.frame_draw_time = time.time_ns() - frame_start_time
         self.clock.tick(60)  # lock the framerate to 60fps
+
+
+    def end_of_level_display(self):
+        # display end of level message
+
+        color = (255,255,0)  # yellow
+        line = self.code_font.render("level name" + " complete!",
+                                           True, color)
+        line_pos = [100, 100]
+        self.screen.blit(line, line_pos)
