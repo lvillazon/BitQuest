@@ -13,7 +13,6 @@ CURSOR_FAIL = 0
 CURSOR_OK = 1
 CURSOR_LINE_WRAP = 2
 
-
 class Editor:
     # on-screen editor for writing programs
 
@@ -40,7 +39,7 @@ class Editor:
         # calculate the number of characters that fit on a line
         self.row_width = int((self.width - self.left_margin - self.side_gutter)
                              / self.char_width)
-        self.buttons = button_tray.ButtonTray('editor icons.png', self.surface)
+        self.buttons = button_tray.ButtonTray(EDITOR_ICON_FILE, self.surface)
         self.title = "Title"
         self.reset()
         self.active = False
@@ -670,7 +669,7 @@ class CodeWindow(Editor):
     def save_program(self):
         """save source code to a default filename"""
         # TODO add save dialogue to change name/folder
-        with open('BitQuest_user_program.py', 'w') as file:
+        with open(USER_PROGRAM_FILE, 'w') as file:
             for line in self.convert_to_lines():
                 file.write(line + '\n')
 
@@ -678,7 +677,7 @@ class CodeWindow(Editor):
         """load source code from a default filename"""
         # TODO add open dialogue to change name/folder
         self.save_history()
-        with open('BitQuest_user_program.py', 'r') as file:
+        with open(USER_PROGRAM_FILE, 'r') as file:
             lines = file.readlines()
             self.text = []
             for file_line in lines:

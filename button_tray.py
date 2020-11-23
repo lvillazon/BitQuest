@@ -22,7 +22,7 @@ class Button:
 class ButtonTray:
     """ a strip of icon buttons anchored to the corner of the editor window """
 
-    def __init__(self, sprite_filename, surface):
+    def __init__(self, icon_filename, surface):
         self.button_names = (RUN, STOP, SAVE, LOAD, CHANGE_COLOR)
         self.surface = surface
         self.button_count = 5
@@ -36,7 +36,7 @@ class ButtonTray:
                          (surface.get_size()[Y] - height) - 3]
         self.tray = pygame.Rect(self.top_left, self.tray_size)
 
-        self.sprites = SpriteSheet('assets/' + sprite_filename)
+        self.sprites = SpriteSheet(icon_filename)
         # the icons don't use alpha transparency - bg color is fixed
         #self.up_buttons = self.sprites.load_strip(
         #    pygame.Rect(0, 0, self.button_size, self.button_size),

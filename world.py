@@ -39,7 +39,9 @@ class World:
         self.game_origin = [0, 0]
 
         # load puzzle blocks
-        self.blocks = blocks.BlockMap(self)
+        self.blocks = blocks.BlockMap(self,
+                                      BLOCK_TILE_DICTIONARY_FILE,
+                                      BLOCK_TILESET_FILE)
         console_msg("Map loaded", 1)
 
         # set the starting positions for each puzzle
@@ -57,7 +59,7 @@ class World:
                          (103, 8),  # puzzle 4 - the choice
                          (12, 5),  # puzzle 5 - test position
                         ]
-        puzzle = 5
+        puzzle = 0
 
         # initialise the environmental dust effect
         # DEBUG disabled due to looking bad
@@ -66,24 +68,18 @@ class World:
         # load character sprites
         self.player = characters.Person(self,
                                            'player',
-                                           'new_character.png',
+                                           CHARACTER_SPRITE_FILE,
                                            (16, 20))
         console_msg("player sprite initialised", 1)
         self.dog = characters.Dog(self,
                                   'dog',
-                                  'bit basic1.png',
+                                  DOG_SPRITE_FILE,
                                   (16, 16),
                                   )
         console_msg("BIT sprite initialised", 1)
         self.player.set_position(player_start_pos[puzzle])
         self.dog.set_position(dog_start_pos[puzzle])
 
-#        self.dog.set_position((self.player.position[X] + 1,
-#                               self.player.position[Y]))
-#        self.dog.location.x = self.player.location.x + BLOCK_SIZE
-#        self.dog.location.y = 8 * BLOCK_SIZE
-#        self.player.position = [self.player.location.x, self.player.location.y]
-#        self.dog.position = [self.dog.location.x, self.dog.location.y]
         self.dog.facing_right = False
         self.show_fps = False
         # this flag prevents certain key actions from automatically repeating
@@ -96,9 +92,9 @@ class World:
         console_msg("Font system initialised", 2)
         # we're not using the built-in SysFont any more
         # so that the TTF file can be bundled to run on other PCs
-        self.code_font = pygame.font.Font("DejaVuSansMono.ttf", 18)
+        self.code_font = pygame.font.Font(CODE_FONT_FILE, 18)
         console_msg("Deja Vu Sans Mono font loaded", 3)
-        self.grid_font = pygame.font.Font("Pixel.ttf", 8)
+        self.grid_font = pygame.font.Font(GRID_FONT_FILE, 8)
         console_msg("Pixel font loaded", 3)
 
         if pygame.scrap.get_init() is False:
@@ -163,8 +159,10 @@ class World:
         for example, which makes it much easier to write programs to solve
         the puzzles, since you don't need busy loops to check BIT's position
 
-        At the moment it is just the moving blocks that trigger the busy state
-        but there might be other things in the future"""
+        At the moment the following things trigger the busy state:
+        * dog is moving
+        * blocks are moving
+        """
         if self.dog.busy or self.blocks.busy:
             return True
         else:

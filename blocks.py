@@ -7,17 +7,16 @@ from constants import *
 import sprite_sheet
 import triggers
 
-TILE_FILE = 'block tiles.png'
 ALPHA = (255, 255, 255)
-
 
 def draw_collider(surface, colour, collider, width, scroll):
     """ debug routine to show colliders"""
-    rect = pygame.Rect(collider.x - scroll[X],
-                       collider.y - scroll[Y],
-                       collider.width,
-                       collider.height)
-    pygame.draw.rect(surface, colour, rect, width)
+    if SHOW_COLLIDERS:
+        rect = pygame.Rect(collider.x - scroll[X],
+                           collider.y - scroll[Y],
+                           collider.width,
+                           collider.height)
+        pygame.draw.rect(surface, colour, rect, width)
 
 
 class Moveable:
@@ -212,7 +211,7 @@ class Block:
 
 class BlockMap:
 
-    def __init__(self, world):
+    def __init__(self, world, tile_dictionary_file, tileset_file):
         """ The level maps are defined using text files that use
         ASCII symbols to represent each tile type.
         For example a complete pillar is
@@ -234,8 +233,7 @@ class BlockMap:
         #      The list is normally just one element long
         #      but triggers will have extra elements for animation frames
 
-        file_name = 'BitQuest_tileset.txt'
-        with open(file_name, 'r') as file:
+        with open(tile_dictionary_file, 'r') as file:
             lines = file.readlines()
             tile_dict = {}
             for file_line in lines:
@@ -265,7 +263,7 @@ class BlockMap:
                                        grid_size - GRID_LINE_WIDTH,
                                        grid_size - GRID_LINE_WIDTH)
 
-        self.tile_sheet = sprite_sheet.SpriteSheet('assets/' + TILE_FILE)
+        self.tile_sheet = sprite_sheet.SpriteSheet(tileset_file)
 
         # store blocks in a dict indexed by grid position
         # this gives way better performance than a simple list
@@ -291,7 +289,7 @@ class BlockMap:
                      BLOCK_SIZE, BLOCK_SIZE),
                     ALPHA))
             self.tile_images[definition] = images
-        self.load_grid()  # build the layer dictionaries from the level map
+        self.load_grid(1)  # build the layer dictionaries from the level map
         # set the default starting tile for the editor
         self.current_editor_tile = self.editor_palette[0]
         self.cursor_block = Block(self.tile_images,
@@ -392,7 +390,7 @@ class BlockMap:
                     max_y = b.grid_position[Y]
 
         # write this map to the file
-        file_name = 'BitQuest_level' + str(level) + '.txt'
+        file_name = LEVEL_MAP_FILE_STEM + str(level) + LEVEL_MAP_FILE_EXTENSION
         preamble = \
             "Level data is split into 4 sections, each section ends with " \
             "### on its own line:\n" \
@@ -451,7 +449,7 @@ class BlockMap:
         # midground is the same layer as the player
         # collidable blocks on this layer will stop player progress
 
-        file_name = 'BitQuest_level' + str(level) + '.txt'
+        file_name = LEVEL_MAP_FILE_STEM + str(level) + LEVEL_MAP_FILE_EXTENSION
         with open(file_name, 'r') as file:
             lines = file.readlines()
             level_data = []

@@ -9,7 +9,6 @@ import io
 from constants import *
 import sprite_sheet
 from particles import Jet
-from speech_bubble import SpeechBubble
 
 class Character:
     """Base class for player and NPC sprites
@@ -57,7 +56,7 @@ class Character:
     def load_sprites(self, sprite_file):
         # load character animation frames
         self.character_sheet = \
-            sprite_sheet.SpriteSheet('assets/' + sprite_file)
+            sprite_sheet.SpriteSheet(sprite_file)
         self.move_right_frames = self.character_sheet.load_strip(
             pygame.Rect((0, 0), self.size), 8, -1)
         self.frame_count = len(self.move_right_frames)
@@ -417,7 +416,9 @@ class Dog(Character):
                 self.moving_down or
                 self.moving_right or
                 self.moving_left):
-            busy = True  # blocks code execution until the move completes
+            self.busy = True  # blocks code execution until the move completes
+        else:
+            self.busy = False
         wobble_factor = [0,0]
         # turn on the jets if there isn't a solid block underneath
         if self.world.blocks.get_block(

@@ -7,6 +7,18 @@ SHOW_COLLIDERS = False  # draws outline around object colliders
 X = 0  # index values into a variety of positional tuples
 Y = 1
 
+# asset files
+CHARACTER_SPRITE_FILE = 'assets/new_character.png'
+DOG_SPRITE_FILE = 'assets/bit basic1.png'
+EDITOR_ICON_FILE = 'assets/editor icons.png'
+CODE_FONT_FILE = "assets/DejaVuSansMono.ttf"
+GRID_FONT_FILE = "assets/Pixel.ttf"
+BLOCK_TILE_DICTIONARY_FILE = 'assets/BitQuest_tileset.txt'
+BLOCK_TILESET_FILE = 'assets/block tiles.png'
+LEVEL_MAP_FILE_STEM = 'assets/BitQuest_level'
+LEVEL_MAP_FILE_EXTENSION = '.txt'
+USER_PROGRAM_FILE = 'assets/BitQuest_user_program.py'
+
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console
 MSG_VERBOSITY = 8  # 0-9, 0= no console messages, 9 = max

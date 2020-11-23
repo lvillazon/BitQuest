@@ -10,7 +10,6 @@ import pygame
 import world
 from console_messages import console_msg
 from constants import *
-from speech_bubble import SpeechBubble
 
 '''
 https://wiki.libsdl.org/Installation
@@ -30,38 +29,6 @@ screen = pygame.display.set_mode(WINDOW_SIZE)
 # the rendering surface for the game (heavily scaled)
 display = pygame.Surface(DISPLAY_SIZE)
 
-#######################################################
-
-# TEST - experimenting with speech bubbles
-# bubble = SpeechBubble("Hello world")
-# bubble2 = SpeechBubble("test")
-# bubble2.position = (100, 600)
-# # TEST green bg, just to check colour key
-# screen.fill((113, 201, 168))
-#
-# while True:
-#     for height in range(50, 450, 50):
-#         bubble.set_target_size((300, height))
-#         bubble2.set_target_size((300, 500-height))
-#
-#         while bubble.resizing or bubble2.resizing:
-#             bubble.draw(screen)
-#             bubble2.draw(screen)
-#             pygame.display.update()
-#         time.sleep(2)
-#
-#     for height in range(450, 50, -50):
-#         bubble.set_target_size((300, height))
-#         bubble2.set_target_size((300, 500-height))
-#
-#         while bubble.resizing or bubble2.resizing:
-#             bubble.draw(screen)
-#             bubble2.draw(screen)
-#             pygame.display.update()
-#         time.sleep(2)
-#
-# END TEST
-
 # create the world
 world = world.World(screen, display)
 console_msg("World initialisation complete", 1)
@@ -72,7 +39,11 @@ while world.game_running:
     # so we don't want to do it here as well, because it will just slow the
     # intepreter down
     if not world.program.running:
-        world.update(world.player)
+        # keep the camera focussed on BIT while he is doing something
+        if world.dog.busy:
+            world.update(world.dog)
+        else:
+            world.update(world.player)
 
 # tidy up and quit
 pygame.quit()
