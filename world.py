@@ -221,20 +221,19 @@ class World:
                 self.player.moving_left = False
                 self.player.moving_right = True
             # DEBUG give player the ability to fly!
-            elif pressed[K_w]:
-                self.player.moving_down = False;
-                self.player.moving_up = True
-            elif pressed[K_s]:
-                self.player.moving_down = True;
-                self.player.moving_up = False
-            # DEBUG this should be uncommented when vertical movement is fixed
-#            if pressed[K_w] or pressed[K_s]:
-#                if pressed[K_w]:
-#                    self.camera_pan[Y] -= 2
-#                else:
-#                    self.camera_pan[Y] += 2
-#            elif not self.blocks.show_grid:
-#                self.camera_pan[Y] = int(self.camera_pan[Y] * 0.9)
+            # elif pressed[K_w]:
+            #     self.player.moving_down = False;
+            #     self.player.moving_up = True
+            # elif pressed[K_s]:
+            #     self.player.moving_down = True;
+            #     self.player.moving_up = False
+            if pressed[K_w] or pressed[K_s]:
+                if pressed[K_w]:
+                    self.camera_pan[Y] -= 2
+                else:
+                    self.camera_pan[Y] += 2
+            elif not self.blocks.show_grid:
+                self.camera_pan[Y] = int(self.camera_pan[Y] * 0.9)
 
             if pressed[K_ESCAPE]:
                 # only show editor when it is completely hidden

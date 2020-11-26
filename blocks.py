@@ -433,12 +433,16 @@ class BlockMap:
             file.write("# triggers\n")
             for t in self.triggers:
                 file.write("'" + t.type + "', ")
-                file.write(str(t.random) + ", ")
-                file.write(str(t.block.grid_position) + ', [')
-                for a in t.actions:
-                    file.write('(' + str(a[0].id) + ', ')
-                    file.write(str(a[1]) + '), ')
-                file.write(']\n')
+                if t.type == 'flagpole':
+                    file.write("'" + t.name + "', ")
+                    file.write(str(t.block.grid_position) + '\n')
+                else:
+                    file.write(str(t.random) + ", ")
+                    file.write(str(t.block.grid_position) + ', [')
+                    for a in t.actions:
+                        file.write('(' + str(a[0].id) + ', ')
+                        file.write(str(a[1]) + '), ')
+                    file.write(']\n')
             file.write(delimiter)
 
     def load_grid(self, level=1):
