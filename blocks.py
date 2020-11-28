@@ -1,5 +1,4 @@
 """ movement and animation for all the player and npc sprites """
-import copy
 import math
 import pygame
 from console_messages import console_msg
@@ -8,6 +7,7 @@ import sprite_sheet
 import triggers
 
 ALPHA = (255, 255, 255)
+
 
 def draw_collider(surface, colour, collider, width, scroll):
     """ debug routine to show colliders"""
@@ -24,9 +24,9 @@ class Moveable:
     when a trigger activates. They are simply arbitrary collections
     of blocks that move in concert when activated."""
 
-    def __init__(self, world, id, blocks):
+    def __init__(self, world, id_num, blocks):
         self.world = world  # so we can set camera_shake
-        self.id = id  # unique number used for loading/saving
+        self.id = id_num  # unique number used for loading/saving
         self.blocks = blocks  # list of blocks
         self.home_positions = []  # initial x,y coords of all blocks (pixels)
         for b in blocks:
@@ -61,13 +61,15 @@ class Moveable:
         for b in self.blocks:
             if b:  # guard against a null block in the mover list
                 b.movement = self.movement
-            # TODO what happens without this? It seems ok, but test when we ride a platform moving downwards
-            # uncommenting it causes blocks moving up, to drift out of sync with the grid
-            #if self.target_offset[Y] <0:  # moving up
+            # TODO what happens without this?
+            #  It seems ok, but test when we ride a platform moving downwards
+            # uncommenting it causes blocks moving up, to drift out of sync
+            # with the grid
+            # if self.target_offset[Y] <0:  # moving up
             #    b.movement[Y] -= GRAVITY
 
     def reset(self):
-        # return all blocks to their orginal (pre-triggered) locations
+        # return all blocks to their original (pre-triggered) locations
         for i in range(len(self.blocks)):
             if self.blocks[i]:  # guard against a null block in the list
                 self.blocks[i].x = self.home_positions[i][X]
@@ -81,7 +83,6 @@ class Moveable:
         """ move the blocks if this group has been triggered
         if the group is moving it returns True, otherwise False """
         if self.activated and self.movement != [0.0, 0.0]:
-            map_update = False
             for b in self.blocks:
                 old_grid_pos = b.grid_position
                 b.x += self.movement[X]
@@ -99,7 +100,6 @@ class Moveable:
                 if b.grid_position != old_grid_pos:
                     # remove the block from its previous position in the map
                     del block_map[old_grid_pos]
-                    map_update = True
 
             # if we deleted blocks from the map, we must add them back in
             # at their new positions
@@ -127,21 +127,21 @@ class Moveable:
         else:
             return False
 
-    def get_bounding_box(self):
-        """ return a rectangle surrounding this group of blocks """
-        left = self.blocks[0].x - self.world.scroll[X]
-        top = self.blocks[0].y - self.world.scroll[Y]
-        # the block x,y values are for the top left corner of the block
-        # so we need to add one extra block's worth for the full width/height
-        width = self.blocks[-1].x - self.world.scroll[X] - left + BLOCK_SIZE
-        height = self.blocks[-1].y - self.world.scroll[Y] - top + BLOCK_SIZE
-        return pygame.Rect(left, top, width, height)
+    # def get_bounding_box(self):
+    #     """ return a rectangle surrounding this group of blocks """
+    #     left = self.blocks[0].x - self.world.scroll[X]
+    #     top = self.blocks[0].y - self.world.scroll[Y]
+    #     # the block x,y values are for the top left corner of the block
+    #     # so we need to add one extra block's worth for the full width/height
+    #     width = self.blocks[-1].x - self.world.scroll[X] - left + BLOCK_SIZE
+    #     height = self.blocks[-1].y - self.world.scroll[Y] - top + BLOCK_SIZE
+    #     return pygame.Rect(left, top, width, height)
 
 
 class Block:
     """ any of the block tiles that define the foreground 'puzzle' blocks """
 
-    def __init__(self, block_tiles, type, grid_position):
+    def __init__(self, block_tiles, block_type, grid_position):
         self.block_tiles = block_tiles
 
         self.x = grid_position[X] * BLOCK_SIZE
@@ -155,7 +155,7 @@ class Block:
         self.type = ''
         self.name = ''
         self.image = None
-        self.setType(type)
+        self.setType(block_type)
         self.movement = [0, 0]
 
     def top(self):
@@ -170,16 +170,14 @@ class Block:
     def right(self):
         return self.x + BLOCK_SIZE
 
-
-
-    def setType(self, type):
+    def setType(self, block_type):
         """use the ASCII character passed as type to indicate which tile"""
-        self.type = type
+        self.type = block_type
 
         # initialise the block from the tile sheet coordinates
         # given by the tile dictionary
-        if type in self.block_tiles:
-            self.frames = self.block_tiles[type]
+        if block_type in self.block_tiles:
+            self.frames = self.block_tiles[block_type]
             self.frame_count = len(self.frames)
             self.image = self.frames[0]
         else:
@@ -191,11 +189,11 @@ class Block:
     grid_position = property(get_grid_position)  # read only property
 
     def is_collidable(self):
-        ''' These blocks are not colliable,
+        """ These blocks are not collidable,
         even if they are on the midground layer
         This allows triggers to be placed behind cosmetic foliage etc
         without blocking character movement
-        '''
+        """
         if self.type not in '-{|/}=ZXCVNM':
             return True
         else:
@@ -272,13 +270,14 @@ class BlockMap:
         self.midground_blocks = {}
         self.foreground_blocks = {}
 
-        # movers are indexed by their (left, top, width height) tuple
+        # movers are indexed by their unique ID number
         self.movers = {}
         # triggers aren't a dict, because I'm not sure what to index them with
         # - we might want triggers that aren't associated with a specific block
         self.triggers = []
-        self.tile_images = {}
+        self.link_trigger = None  # set when connecting a trigger to movers
 
+        self.tile_images = {}
         # build the dictionary of tile images from the dictionary
         # previously read in from the file
         for definition in tile_dict:
@@ -296,7 +295,10 @@ class BlockMap:
                                   self.current_editor_tile,
                                   self.cursor)
         self.erasing = False
-        self.selection = []
+        # the selected_blocks list keeps track of the midground blocks that
+        # are currently highlighted, when assigning a moveable group
+        self.selected_blocks = []
+        self.selecting = False
         self.show_grid = False
         self.current_layer = self.midground_blocks
         self.busy = False  # True when blocks are moving
@@ -317,57 +319,95 @@ class BlockMap:
         else:
             self.current_layer = self.midground_blocks
 
+    def cursor_to_mouse(self, mouse_pos):
+        # select the grid square closest to the mouse cursor
+        self.cursor = [
+            int(mouse_pos[X] / BLOCK_SIZE),
+            int(mouse_pos[Y] / BLOCK_SIZE)
+        ]
+
+    def grid_to_screen_pos(self, grid_pos):
+        # convert grid coords to screen coords
+        return (0,0)  # TODO replace this with a proper calculation!
+
+    def select_block(self, mouse_pos):
+        if self.selecting:
+            self.cursor_to_mouse(mouse_pos)
+            b = self.get_block(self.midground_blocks, *self.cursor)
+            if b:
+                self.selected_blocks.append(b)
+            print(self.selected_blocks)
+
     def begin_selection(self):
-        self.selection = [(self.cursor[X], self.cursor[Y])]
+        self.selecting = True
+        print("Selecting...")
 
     def cancel_selection(self):
-        self.selection = []
+        self.selected_blocks = []
 
     def end_selection(self):
+        print("selection complete")
+        self.selecting = False
         # Create a new moving block group
-        # they are defined by their (left, top) & (right, bottom) coords
-        # in the block coordinate system
-        # plus a move direction as a string
-        # and a number of blocks to move
-        self.selection.append((self.cursor[X], self.cursor[Y]))
-        print("Blocks", self.selection[0], "to", self.selection[1], "selected")
-        response = input("Enter trigger block coords:")
-        if response != "":
-            trigger_pos = eval(response)
-            direction = \
-                input("Enter direction to move (up/down/left/right):").lower()
-            distance = int(input("Enter number of blocks to move:"))
+        mover = Moveable(self.world,
+                         self.get_next_mover_id(),
+                         self.selected_blocks)
+        self.movers[mover.id] = mover
+        # delete the selection now, because it is saved as a moveable group
+        self.selected_blocks = []
 
-            mover = Moveable(self, self.world,
-                             (self.selection[0], self.selection[1]),
-                             direction,
-                             distance)
-            self.movers[(self.selection[0], self.selection[1])] = mover
+    def set_trigger(self, mouse_pos):
+        """ create a trigger at this position
+        or add a new action to an existing trigger?
+        """
 
-            # assign a trigger to this block group
-            # the trigger needs:
-            # 1. the trigger type (currently always 'pressure plate')
-            # 2. the block object for the pressure plate tile
-            # 3. a list of all the movers associated with it
+        self.cursor_to_mouse(mouse_pos)
+        b = self.get_block(self.midground_blocks, *self.cursor)
+        if not b:
+            return  # bail immediately, since there is no block here
+
+        # check if this block is already a trigger
+        existing_trigger = None
+        for t in self.triggers:
+            if t.block == b:
+                existing_trigger = t
+        if not existing_trigger:
+            # create a new trigger. The trigger needs:
+            # 1. a link to the world object
+            # 2. the trigger type (currently always 'pressure plate')
+            # 3. the random flag (True if the trigger picks actions at random)
+            # 4. the block object for the pressure plate tile
+            # this just creates a trigger with no actions
+            # use the Trigger.add_action() method for this
             t = triggers.Trigger(self.world,
-                        'pressure plate',
-                        self.get_block(self.midground_blocks, *trigger_pos)
-                        )
-            # associate this mover with this trigger
-            # TODO allow new movers to be associated with an existing trigger
-            t.addMover(mover)
+                                 'pressure plate',
+                                 False,
+                                 b
+                                 )
+            # # TODO allow new movers to be associated with an existing trigger
+            # t.addMover(mover)
             # add the complete trigger to the list maintained by the map
             self.triggers.append(t)
-
-
-    def selecting(self):
-        # true if we are in the middle of selecting a group of blocks
-        # which we detect by checking if there is a start coordinate in
-        # the selection list, but no end coordinate
-        if len(self.selection) == 1:
-            return True
         else:
-            return False
+            # if the trigger already exists, enter linking mode
+            self.link_trigger = existing_trigger
+            print("exisiting trigger,", t)
+
+    # response = input("Enter trigger block coords:")
+    # if response != "":
+    #     trigger_pos = eval(response)
+    #     direction = \
+    #         input("Enter direction to move (up/down/left/right):").lower()
+    #     distance = int(input("Enter number of blocks to move:"))
+    #
+
+    def get_next_mover_id(self):
+        """ returns the next integer in the sequence to make sure that
+        every mover has a unique id number.
+        We store this number as a class variable and use it as the dict key,
+        rather than using a simple list index, so that the id doesn't change
+        if movers are later deleted"""
+        return len(self.movers)
 
     def save_grid(self, level=1):
         """save current grid map to the level file
@@ -507,12 +547,12 @@ class BlockMap:
         # and a list of blocks, specified using the block coordinate system
         i += 1  # skip over the ### section delimiter
         while i < len(level_data) and level_data[i] != '###':
-            if level_data[i][0] != "#": # comment lines are ignored
+            if level_data[i][0] != "#":  # comment lines are ignored
                 values = eval(level_data[i])
                 # create a list of block objects from the list of grid coords
                 mover_blocks = [self.get_block(
-                                self.midground_blocks, grid[X], grid[Y])
-                                for grid in values[1]]
+                    self.midground_blocks, grid[X], grid[Y])
+                    for grid in values[1]]
                 mover = Moveable(self.world,
                                  values[0],  # id
                                  mover_blocks
@@ -529,7 +569,7 @@ class BlockMap:
         i += 1  # skip over the ### section delimiter
         console_msg("Block triggers:", 8)
         while i < len(level_data) and level_data[i] != '###':
-            if level_data[i][0] != "#": # comment lines are ignored
+            if level_data[i][0] != "#":  # comment lines are ignored
                 values = eval(level_data[i])
                 console_msg(values, 8)
                 if values[0] == 'flagpole':
@@ -541,28 +581,30 @@ class BlockMap:
                         self.get_block(self.midground_blocks,
                                        trigger_pos[X], trigger_pos[Y]),
                         self.get_block(self.midground_blocks,
-                                       trigger_pos[X]+1, trigger_pos[Y]),
+                                       trigger_pos[X] + 1, trigger_pos[Y]),
                         self.get_block(self.midground_blocks,
-                                       trigger_pos[X], trigger_pos[Y]-1),
+                                       trigger_pos[X], trigger_pos[Y] - 1),
                         self.get_block(self.midground_blocks,
-                                       trigger_pos[X]+1, trigger_pos[Y]-1),
+                                       trigger_pos[X] + 1, trigger_pos[Y] - 1),
                         self.get_block(self.midground_blocks,
                                        trigger_pos[X], trigger_pos[Y] - 2),
                         self.get_block(self.midground_blocks,
                                        trigger_pos[X] + 1, trigger_pos[Y] - 2),
                     ]
                     t = triggers.Flagpole(self.world,
-                            # name of the corresponding level
-                            values[1],
-                            # all the blocks for the flagpole
-                            flagpole_blocks)
+                                          # name of the corresponding level
+                                          values[1],
+                                          # all the blocks for the flagpole
+                                          flagpole_blocks)
                 else:
                     t = triggers.Trigger(self.world,
-                            values[0],  # type
-                            values[1],  # random flag
-                            # block object representing the trigger location
-                            self.get_block(self.midground_blocks,
-                                           values[2][X], values[2][Y]))
+                                         values[0],  # type
+                                         values[1],  # random flag
+                                         # block object representing the
+                                         # trigger location
+                                         self.get_block(self.midground_blocks,
+                                                        values[2][X],
+                                                        values[2][Y]))
                     # add all the actions associated with this trigger
                     for action in values[3]:
                         t.addAction(self.movers[action[0]], action[1])
@@ -586,7 +628,7 @@ class BlockMap:
         min_visible_block_x = self.world.scroll[X] // BLOCK_SIZE
         max_visible_block_x = (min_visible_block_x
                                + DISPLAY_SIZE[X] // BLOCK_SIZE
-                               +1)
+                               + 1)
 
         # draw each tile in its current location
         for coord in self.midground_blocks:
@@ -595,6 +637,23 @@ class BlockMap:
                 surface.blit(b.image,
                              (b.x - self.world.scroll[X],
                               b.y - self.world.scroll[Y]))
+
+                if self.show_grid and MAP_EDITOR_ENABLED:
+                    # highlight the block if it is currently selected
+                    if b in self.selected_blocks:
+                        self.highlight_block(surface, b, COLOUR_SELECTED_BLOCK)
+                    else:
+                        # highlight triggers
+                        for t in self.triggers:
+                            if b == t.block:
+                                self.highlight_block(surface, b,
+                                                     COLOUR_TRIGGER_BLOCK)
+                        # highlight moving block groups
+                        for m in self.movers:
+                            if b in self.movers[m].blocks:
+                                self.highlight_block(surface, b,
+                                                     COLOUR_MOVING_BLOCK)
+
         for coord in self.foreground_blocks:
             if min_visible_block_x <= coord[X] <= max_visible_block_x:
                 b = self.foreground_blocks[coord]
@@ -610,11 +669,29 @@ class BlockMap:
             if self.movers[m].update(self.midground_blocks):
                 self.busy = True
 
-        if MAP_EDITOR_ENABLED and self.show_grid:
-            # draw boxes around each trigger and mover
-            # with lines connecting them
-            for t in self.triggers:
-                t.draw_bounding_box(surface)
+        # if we are in trigger linking mode, run a line from the
+        # cursor to the trigger block
+        if self.link_trigger:
+            print("linking...",
+                  self.grid_to_screen_pos(self.cursor),
+                  ",",
+                  self.grid_to_screen_pos(
+                      self.link_trigger.block.grid_position)
+                  )
+            pygame.draw.line(surface, COLOUR_TRIGGER_BLOCK,
+                             self.grid_to_screen_pos(self.cursor),
+                             self.grid_to_screen_pos(self.link_trigger.block.grid_position)
+                             , 1)
+
+    def highlight_block(self, surface, block, colour):
+        left = block.x - self.world.scroll[X]
+        top = block.y - self.world.scroll[Y]
+        # the block x,y values are for the top left corner of the block
+        # so we need to add one extra block's worth for the full
+        # width/height
+        b_rect = pygame.Rect(left, top, BLOCK_SIZE, BLOCK_SIZE)
+        # add some grey to lighten the selected block image
+        surface.fill(colour, b_rect, pygame.BLEND_RGB_ADD)
 
     def draw_grid(self, surface, origin, grid_colour):
         """ overlays a grid to show the block spacing """
@@ -631,7 +708,8 @@ class BlockMap:
                              (x, limit[Y] + origin[Y]),
                              GRID_LINE_WIDTH)
             axis_label = "{0:2d} ".format(int(x / grid_size +
-                                          self.world.scroll[X] / BLOCK_SIZE))
+                                              self.world.scroll[
+                                                  X] / BLOCK_SIZE))
             self.display_text(axis_label,
                               (x + label_offset[X], 20), grid_colour)
 
@@ -643,7 +721,8 @@ class BlockMap:
                              GRID_LINE_WIDTH)
             if y + label_offset[Y] < limit[Y]:
                 axis_label = "{0:2d} ".format(int(y / grid_size +
-                                            self.world.scroll[Y] / BLOCK_SIZE))
+                                                  self.world.scroll[
+                                                      Y] / BLOCK_SIZE))
                 self.display_text(axis_label,
                                   (GRID_LINE_WIDTH * 2,
                                    y + origin[Y] + label_offset[Y]),
@@ -788,7 +867,7 @@ class BlockMap:
                         # so it's ok (albeit a bit scruffy)
                         break
 
-    def collision_test(self, character_rect, movement):
+    def collision_test(self, character_rect):
         """ check if this character is colliding with any of the blocks
         blocks are categorised as:
         collidable - collision physics applies to characters
@@ -831,7 +910,6 @@ class BlockMap:
 
         return collisions
 
-
     def old_collision_test(self, character_rect, movement):
         """ check if this character is colliding with any of the blocks
         blocks are categorised as:
@@ -852,9 +930,6 @@ class BlockMap:
                       'down left': None,
                       'down right': None}
 
-        # create a list of the blocks immediately surrounding the character
-        adjacent_blocks = []
-
         # find the first colliding block in each direction
         for coord in self.midground_blocks:
             # only check blocks within 1 grid of the character, horizontally
@@ -871,8 +946,10 @@ class BlockMap:
                                       collider, 1, self.world.scroll)
 
                     if character_rect.colliderect(collider):
-                        # just because the rectangles overlap, doesn't necessarily
-                        # mean we want to call it a collision. We only count collisions
+                        # just because the rectangles overlap, doesn't
+                        # necessarily
+                        # mean we want to call it a collision. We only count
+                        # collisions
                         # where the character is moving towards the block
                         # or vice versa. This prevents characters from getting
                         # stuck in blocks
@@ -891,7 +968,7 @@ class BlockMap:
                             collisions['left'] = b
 
                         if (movement[Y] - b.movement[Y] >= 0 and
-                            character_rect.bottom >= collider.top):
+                                character_rect.bottom >= collider.top):
 
                             # where more than one block collides
                             # upwards-moving > stationary > downward-moving
@@ -901,8 +978,8 @@ class BlockMap:
                                 collisions['down'] = b
 
                         if (movement[Y] - b.movement[Y] <= 0 and
-                            collisions['up'] is None):
-                                collisions['up'] = b
+                                collisions['up'] is None):
+                            collisions['up'] = b
 
                         # DEBUG draw active colliders in red
                         if SHOW_COLLIDERS:
@@ -912,7 +989,7 @@ class BlockMap:
 
         return collisions
 
-    def trigger_test(self, character_rect, movement):
+    def trigger_test(self, character_rect):
         """ check each trigger on the map to see if it should go off """
         for t in self.triggers:
             if t.enabled:  # saves checking triggers that have already gone off

@@ -4,14 +4,18 @@
       <w>abcdefghijklmnopqrstuvwxyz</w>
       <w>autorepeat</w>
       <w>blits</w>
+      <w>collidable</w>
       <w>colorkey</w>
       <w>consolas</w>
       <w>coords</w>
       <w>framerate</w>
       <w>intialise</w>
+      <w>midground</w>
+      <w>moveable</w>
       <w>pygame</w>
       <w>rects</w>
       <w>spritesheet</w>
+      <w>tileset</w>
       <w>unclick</w>
     </words>
   </dictionary>

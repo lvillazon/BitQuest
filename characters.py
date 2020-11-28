@@ -93,7 +93,7 @@ class Character:
 
         if self.collidable:
             # activate any triggers we have collided with or otherwise set off
-            self.world.blocks.trigger_test(self, movement)
+            self.world.blocks.trigger_test(self)
 
         # perform collision detection and update position
         self.location, self.collisions = self.move(self.location, movement)
@@ -153,7 +153,7 @@ class Character:
 
         # check if moving blocks will hit the character
         # first in the X direction
-        hit_list = self.world.blocks.collision_test(rectangle, movement)
+        hit_list = self.world.blocks.collision_test(rectangle)
         for block in hit_list:
             if block.movement[X] < 0 and rectangle.right > block.left():
                 rectangle.right = block.left()
@@ -163,7 +163,7 @@ class Character:
                 collision_directions['left'] = True
 
         # then the Y direction
-        hit_list = self.world.blocks.collision_test(rectangle, movement)
+        hit_list = self.world.blocks.collision_test(rectangle)
         for block in hit_list:
             if block.movement[Y] < 0 and rectangle.bottom > block.top():
                 rectangle.bottom = block.top()
@@ -174,7 +174,7 @@ class Character:
 
         # now check if the character's own movement causes a collision
         rectangle.x += movement[X]
-        hit_list = self.world.blocks.collision_test(rectangle, movement)
+        hit_list = self.world.blocks.collision_test(rectangle)
         for block in hit_list:
             if movement[X] > 0 and rectangle.right > block.left():
                 rectangle.right = block.left()
@@ -184,7 +184,7 @@ class Character:
                 collision_directions['left'] = True
 
         rectangle.y += movement[Y]
-        hit_list = self.world.blocks.collision_test(rectangle, movement)
+        hit_list = self.world.blocks.collision_test(rectangle)
         for block in hit_list:
             if movement[Y] > 0 and rectangle.bottom > block.top():
                 rectangle.bottom = block.top()

@@ -29,7 +29,7 @@ class World:
         self.display = display
 
         # load scenery layers
-#        self.scenery = scenery.Scenery('Day', 'Desert')
+        #        self.scenery = scenery.Scenery('Day', 'Desert')
         self.scenery = scenery.Scenery(self, 'Day', 'Field')
 
         self.true_scroll = [0.0, 0.0]
@@ -45,20 +45,20 @@ class World:
         console_msg("Map loaded", 1)
 
         # set the starting positions for each puzzle
-        player_start_pos = [(4, 6),    # puzzle 0 - the pillar
-                            (58, 6),   # puzzle 1- the pit
-                            (80, 6),   # puzzle 2 - the lift
-                            (91, 6),   # puzzle 3 - the staircase
+        player_start_pos = [(4, 6),  # puzzle 0 - the pillar
+                            (58, 6),  # puzzle 1- the pit
+                            (80, 6),  # puzzle 2 - the lift
+                            (91, 6),  # puzzle 3 - the staircase
                             (105, 6),  # puzzle 4 - the choice
-                            (8, 6),   # puzzle 5 - test position
-                           ]
-        dog_start_pos = [(6, 8),    # puzzle 0 - the pillar
-                         (57, 8),   # puzzle 1- the pit
-                         (78, 8),   # puzzle 2 - the lift
-                         (90, 8),   # puzzle 3 - the staircase
+                            (8, 6),  # puzzle 5 - test position
+                            ]
+        dog_start_pos = [(6, 8),  # puzzle 0 - the pillar
+                         (57, 8),  # puzzle 1- the pit
+                         (78, 8),  # puzzle 2 - the lift
+                         (90, 8),  # puzzle 3 - the staircase
                          (103, 8),  # puzzle 4 - the choice
                          (12, 5),  # puzzle 5 - test position
-                        ]
+                         ]
         puzzle = 0
 
         # initialise the environmental dust effect
@@ -67,9 +67,9 @@ class World:
 
         # load character sprites
         self.player = characters.Person(self,
-                                           'player',
-                                           CHARACTER_SPRITE_FILE,
-                                           (16, 20))
+                                        'player',
+                                        CHARACTER_SPRITE_FILE,
+                                        (16, 20))
         console_msg("player sprite initialised", 1)
         self.dog = characters.Dog(self,
                                   'dog',
@@ -107,12 +107,12 @@ class World:
         self.editor = editor.CodeWindow(screen, 300,
                                         self.code_font,
                                         self.program)
-        input_height = self.code_font.get_linesize()*3
+        input_height = self.code_font.get_linesize() * 3
         self.input = editor.InputDialog(screen, input_height, self.code_font)
         console_msg("Editors initialised", 2)
 
         self.camera_shake = False
-        self.camera_pan = [0,0]
+        self.camera_pan = [0, 0]
         self.game_running = True
         self.frame_draw_time = 1
         self.frame_counter = 0
@@ -186,7 +186,7 @@ class World:
         self.true_scroll[Y] += (focus.location.y -
                                 self.true_scroll[Y] - CAMERA_Y_OFFSET) / 16
         self.scroll = [int(self.true_scroll[X]) + self.camera_pan[X],
-                  int(self.true_scroll[Y]) + self.camera_pan[Y]]
+                       int(self.true_scroll[Y]) + self.camera_pan[Y]]
         if self.camera_shake:
             self.scroll[X] += random.randint(-1, 1)
             self.scroll[Y] += random.randint(-1, 1)
@@ -202,7 +202,7 @@ class World:
 
         # draw the foreground scenery on top of the characters
         self.blocks.update(display)
-        #self.scenery.draw_foreground(display)
+        # self.scenery.draw_foreground(display)
 
         # update the input window and editor, if necessary
         # the input window takes precedence if both are open
@@ -242,16 +242,17 @@ class World:
                     self.editor.show()
 
             if MAP_EDITOR_ENABLED and self.blocks.show_grid:
+                ctrl = pygame.key.get_mods() & KMOD_CTRL
+                shift = pygame.key.get_mods() & KMOD_SHIFT
+
+                if shift and not self.blocks.selecting:
+                    self.blocks.begin_selection()
+                elif not shift and self.blocks.selecting:
+                    self.blocks.end_selection()
+
                 # these actions do not auto repeat when held down
                 if not self.repeat_lock:
                     self.repeat_lock = True
-                    ctrl = pygame.key.get_mods() & KMOD_CTRL
-                    shift = pygame.key.get_mods() & KMOD_SHIFT
-
-                    if pressed[K_LSHIFT] and not self.blocks.selecting():
-                        self.blocks.begin_selection()
-                    if not pressed[K_LSHIFT] and self.blocks.selecting():
-                        self.blocks.end_selection()
 
                     if pressed[K_F9]:
                         console_msg("Saving map...", 1, line_end='')
@@ -271,7 +272,7 @@ class World:
                             self.camera_pan[Y] += BLOCK_SIZE
                         else:
                             self.blocks.cursor_down()
-                    elif pressed[K_LEFTBRACKET]: # [
+                    elif pressed[K_LEFTBRACKET]:  # [
                         self.blocks.previous_editor_tile()
                     elif pressed[K_RIGHTBRACKET]:  # ]
                         self.blocks.next_editor_tile()
@@ -282,7 +283,8 @@ class World:
                         else:
                             self.blocks.blank_editor_tile()
                     elif pressed[K_RETURN]:
-                        # change/add a block to at the current grid cursor location
+                        # change/add a block
+                        # at the current grid cursor location
                         self.blocks.change_block()
                     elif pressed[K_TAB]:
                         # switch between midground and foreground block layers
@@ -295,6 +297,28 @@ class World:
                         self.blocks.home_cursor()
                     else:
                         self.repeat_lock = False  # reset, since no key pressed
+
+                        for event in pygame.event.get():
+                            if event.type == pygame.MOUSEBUTTONDOWN and \
+                                    event.button == 1:  # left button
+                                mouse_pos = (pygame.mouse.get_pos()[X]
+                                             / SCALING_FACTOR
+                                             + self.scroll[X],
+                                             pygame.mouse.get_pos()[Y]
+                                             / SCALING_FACTOR
+                                             + self.scroll[Y]
+                                             )
+                                if shift:
+                                    self.blocks.select_block(mouse_pos)
+                                elif ctrl:
+                                    self.blocks.set_trigger(mouse_pos)
+                                else:
+                                    # just move the cursor, without selecting
+                                    self.blocks.cursor_to_mouse(mouse_pos)
+                            # 2: middle button
+                            # 3: right button
+                            # 4: scroll up
+                            # 5: scroll down
 
             # DEBUG stats
             if pressed[K_f]:
@@ -375,21 +399,20 @@ class World:
         # draw the grid overlay last so it is on top of everything
         if self.blocks.show_grid:
             self.blocks.draw_grid(self.screen, self.game_origin, (0, 0, 0))
-# previously, the grid took the colour from the editor choice
-#                                  self.editor.get_fg_color())
+        # previously, the grid took the colour from the editor choice
+        #                                  self.editor.get_fg_color())
 
-        #TODO self.end_of_level_display()
+        # TODO self.end_of_level_display()
         pygame.display.update()  # actually display
 
         self.frame_draw_time = time.time_ns() - frame_start_time
         self.clock.tick(60)  # lock the framerate to 60fps
 
-
     def end_of_level_display(self):
         # display end of level message
 
-        color = (255,255,0)  # yellow
+        color = (255, 255, 0)  # yellow
         line = self.code_font.render("level name" + " complete!",
-                                           True, color)
+                                     True, color)
         line_pos = [100, 100]
         self.screen.blit(line, line_pos)

@@ -62,3 +62,8 @@ SPEECH_EXPIRY_RATE = 1000 # ms between each line of text disappearing
 
 # Block map constants
 GRID_LINE_WIDTH = 2
+
+# Colour constants
+COLOUR_SELECTED_BLOCK = (128, 128, 128)  # grey
+COLOUR_MOVING_BLOCK = (128, 0, 0)  # red
+COLOUR_TRIGGER_BLOCK = (0, 0, 128)  # red
