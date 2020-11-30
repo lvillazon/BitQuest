@@ -7,17 +7,22 @@ SHOW_COLLIDERS = False  # draws outline around object colliders
 X = 0  # index values into a variety of positional tuples
 Y = 1
 
+# fonts
+CODE_FONT_FILE = "assets/DejaVuSansMono.ttf"
+GRID_FONT_FILE = "assets/Pixel.ttf"
+MENU_FONT_FILE = "assets/Vanilla.ttf"
+
 # asset files
 CHARACTER_SPRITE_FILE = 'assets/new_character.png'
 DOG_SPRITE_FILE = 'assets/bit basic1.png'
 EDITOR_ICON_FILE = 'assets/editor icons.png'
-CODE_FONT_FILE = "assets/DejaVuSansMono.ttf"
-GRID_FONT_FILE = "assets/Pixel.ttf"
 BLOCK_TILE_DICTIONARY_FILE = 'assets/BitQuest_tileset.txt'
 BLOCK_TILESET_FILE = 'assets/block tiles.png'
 LEVEL_MAP_FILE_STEM = 'assets/BitQuest_level'
 LEVEL_MAP_FILE_EXTENSION = '.txt'
 USER_PROGRAM_FILE = 'assets/BitQuest_user_program.py'
+SAVE_FILES_FOLDER = 'logs/'
+SAVE_FILE_EXTENSION = '.log'
 
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console
@@ -66,4 +71,10 @@ GRID_LINE_WIDTH = 2
 # Colour constants
 COLOUR_SELECTED_BLOCK = (128, 128, 128)  # grey
 COLOUR_MOVING_BLOCK = (128, 0, 0)  # red
-COLOUR_TRIGGER_BLOCK = (0, 0, 128)  # red
+COLOUR_TRIGGER_BLOCK = (0, 0, 128)  # blue
+COLOUR_NEW_LINK = (0, 0, 255)  # bright blue
+COLOUR_NORMAL_LINK = (255, 0, 0)  # bright red
+COLOUR_RANDOM_LINK = (255, 255, 0)  # yellow
+COLOUR_MENU_BG= (0x5D, 0x8A, 0xA8)  # airforce blue
+COLOUR_MENU_TITLE = (0xFF, 0xBF, 0x00)  # amber
+COLOUR_MENU_TEXT = (0xFF, 0xBF, 0x00)  # amber

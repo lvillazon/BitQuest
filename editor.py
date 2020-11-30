@@ -41,6 +41,7 @@ class Editor:
                              / self.char_width)
         self.buttons = button_tray.ButtonTray(EDITOR_ICON_FILE, self.surface)
         self.title = "Title"
+        self.centre_title = False  # set to true for the menu input dialog
         self.reset()
         self.active = False
 
@@ -566,13 +567,27 @@ class Editor:
         border = pygame.Rect(border_pos, border_size)
         pygame.draw.rect(self.surface, self.get_fg_color(), border, 2)
 
-        # display the title in the top left,
+        # display the title in the top left or centre,
         # overlapping the top border line
         width = (len(self.title) + 2) * self.char_width
-        title_box = pygame.Rect(self.left_margin, 4, width, self.line_height)
-        pygame.draw.rect(self.surface, self.get_bg_color(), title_box)
-        pygame.draw.rect(self.surface, self.get_fg_color(), title_box, 2)
-        self.print(self.title, (1, -1))
+        if self.centre_title:
+            # centre justify the box
+            title_box = pygame.Rect((self.width - width) / 2, 4,
+                                    width, self.line_height)
+            pygame.draw.rect(self.surface, self.get_bg_color(), title_box)
+            pygame.draw.rect(self.surface, self.get_fg_color(), title_box, 2)
+            # now we need to calculate the correct position of the title text
+            # which is complicated by the fact that the print() function
+            # takes the position in terms of characters, not pixels
+            text_centre = int(title_box.left / self.char_width)
+            self.print(self.title, (text_centre, -1))
+        else:
+            # left justify
+            title_box = pygame.Rect(self.left_margin, 4,
+                                    width, self.line_height)
+            pygame.draw.rect(self.surface, self.get_bg_color(), title_box)
+            pygame.draw.rect(self.surface, self.get_fg_color(), title_box, 2)
+            self.print(self.title, (1, -1))
 
         # render each line of text from the current v_scroll position
         # to the bottom of the window
@@ -610,12 +625,13 @@ class Editor:
 
 
 class CodeWindow(Editor):
-    def __init__(self, screen, height, code_font, program):
+    def __init__(self, screen, height, code_font, p, session):
         super().__init__(screen, height, code_font)
         # increase the margin to allow for the line numbers
         self.left_margin += self.char_width * 3
         self.title = "Code"
-        self.program = program
+        self.python_interpreter = p
+        self.session = session
         # define the permitted actions for special keys
         self.key_action = {pygame.K_ESCAPE: self.hide,
                            pygame.K_RETURN: self.carriage_return,
@@ -654,7 +670,7 @@ class CodeWindow(Editor):
                     self.run_program()
                 elif button_result == button_tray.STOP:
                     console_msg("Execution halted.", 1)
-                    self.program.halt()
+                    self.python_interpreter.halt()
                 elif button_result == button_tray.LOAD:
                     self.load_program()
                 elif button_result == button_tray.SAVE:
@@ -688,8 +704,11 @@ class CodeWindow(Editor):
 
     def run_program(self):
         """ pass the text in the editor to the interpreter"""
-        p = self.program
+        # save this attempt first, regardless of whether it has errors or not
+        p = self.python_interpreter
         p.load(self.convert_to_lines())
+        # false because level is not complete yet
+        self.session.save_progress(False, self.convert_to_lines())
         result = p.compile()
         if result is False:  # check for syntax errors
             # TODO display these using in-game dialogs
@@ -730,4 +749,4 @@ class InputDialog(Editor):
 
     def return_input(self):
         self.active = False
-        print(self.convert_to_lines())
+        # print(self.convert_to_lines())

@@ -1,0 +1,36 @@
+<DATE/TIME=30-11-2020 10:36:52>
+<USER_ID=flen, 7w1>
+<LEVEL=the lift
+<LEVEL COMPLETE=False>
+<USER PROGRAM>
+print("foo")
+for i in range(3):
+    print(i)
+</USER PROGRAM>
+###
+<DATE/TIME=30-11-2020 10:37:55>
+<USER_ID=flen, 7w1>
+<LEVEL=the lift
+<LEVEL COMPLETE=False>
+<USER PROGRAM>
+bitX=89
+</USER PROGRAM>
+###
+<DATE/TIME=30-11-2020 10:38:41>
+<USER_ID=flen, 7w1>
+<LEVEL=the lift
+<LEVEL COMPLETE=False>
+<USER PROGRAM>
+bitY=2
+bitX=100
+print("done")
+
+</USER PROGRAM>
+###
+<DATE/TIME=30-11-2020 10:38:53>
+<USER_ID=flen, 7w1>
+<LEVEL=the lift
+<LEVEL COMPLETE=True>
+<TIME TAKEN=0>
+<BONUS_ITEMS=0>
+###

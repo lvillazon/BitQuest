@@ -4,6 +4,8 @@
 """
 import random
 import time
+from datetime import datetime
+
 import pygame
 from pygame.locals import *
 
@@ -23,10 +25,11 @@ https://github.com/pygame/pygame/issues/1722
 
 
 class World:
-    def __init__(self, screen, display):
-        console_msg('Started.', 0)
+    def __init__(self, screen, display, session):
+        console_msg('Initialising world.', 0)
         self.screen = screen
         self.display = display
+        self.session = session
 
         # load scenery layers
         #        self.scenery = scenery.Scenery('Day', 'Desert')
@@ -44,22 +47,19 @@ class World:
                                       BLOCK_TILESET_FILE)
         console_msg("Map loaded", 1)
 
-        # set the starting positions for each puzzle
-        player_start_pos = [(4, 6),  # puzzle 0 - the pillar
-                            (58, 6),  # puzzle 1- the pit
-                            (80, 6),  # puzzle 2 - the lift
-                            (91, 6),  # puzzle 3 - the staircase
-                            (105, 6),  # puzzle 4 - the choice
-                            (8, 6),  # puzzle 5 - test position
-                            ]
-        dog_start_pos = [(6, 8),  # puzzle 0 - the pillar
-                         (57, 8),  # puzzle 1- the pit
-                         (78, 8),  # puzzle 2 - the lift
-                         (90, 8),  # puzzle 3 - the staircase
-                         (103, 8),  # puzzle 4 - the choice
-                         (12, 5),  # puzzle 5 - test position
-                         ]
-        puzzle = 0
+        # set the names and player/dog start positions for all the puzzles
+        # TODO this should be part of the level map file
+        PUZZLE_NAME = 0
+        PLAYER_START = 1
+        DOG_START = 2
+        puzzle_info = {0: ("the pillar", (4, 6), (6, 8)),
+                       1: ("the pit", (58, 6), (57, 8)),
+                       2: ("the lift", (80, 6), (78, 8)),
+                       3: ("the staircase", (91,6), (90, 8)),
+                       4: ("the choice", (105, 6), (103, 8)),
+                       }
+        puzzle = 2
+        self.session.begin_level(puzzle_info[puzzle][PUZZLE_NAME])
 
         # initialise the environmental dust effect
         # DEBUG disabled due to looking bad
@@ -77,8 +77,8 @@ class World:
                                   (16, 16),
                                   )
         console_msg("BIT sprite initialised", 1)
-        self.player.set_position(player_start_pos[puzzle])
-        self.dog.set_position(dog_start_pos[puzzle])
+        self.player.set_position(puzzle_info[puzzle][PLAYER_START])
+        self.dog.set_position(puzzle_info[puzzle][DOG_START])
 
         self.dog.facing_right = False
         self.show_fps = False
@@ -89,7 +89,7 @@ class World:
         # intialise the python interpreter and editor
         if pygame.font.get_init() is False:
             pygame.font.init()
-        console_msg("Font system initialised", 2)
+            console_msg("Font system initialised", 2)
         # we're not using the built-in SysFont any more
         # so that the TTF file can be bundled to run on other PCs
         self.code_font = pygame.font.Font(CODE_FONT_FILE, 18)
@@ -101,19 +101,20 @@ class World:
             pygame.scrap.init()
         console_msg("Clipboard initialised", 2)
 
-        self.program = interpreter.VirtualMachine(self)
+        self.python_interpreter = interpreter.VirtualMachine(self)
         console_msg("Interpreter initialised", 2)
 
         self.editor = editor.CodeWindow(screen, 300,
                                         self.code_font,
-                                        self.program)
+                                        self.python_interpreter,
+                                        self.session)
         input_height = self.code_font.get_linesize() * 3
         self.input = editor.InputDialog(screen, input_height, self.code_font)
         console_msg("Editors initialised", 2)
 
         self.camera_shake = False
         self.camera_pan = [0, 0]
-        self.game_running = True
+        self.running = True  # true when we are playing a level (not a menu)
         self.frame_draw_time = 1
         self.frame_counter = 0
         self.clock = pygame.time.Clock()
@@ -299,22 +300,25 @@ class World:
                         self.repeat_lock = False  # reset, since no key pressed
 
                         for event in pygame.event.get():
-                            if event.type == pygame.MOUSEBUTTONDOWN and \
-                                    event.button == 1:  # left button
-                                mouse_pos = (pygame.mouse.get_pos()[X]
-                                             / SCALING_FACTOR
-                                             + self.scroll[X],
-                                             pygame.mouse.get_pos()[Y]
-                                             / SCALING_FACTOR
-                                             + self.scroll[Y]
-                                             )
-                                if shift:
-                                    self.blocks.select_block(mouse_pos)
-                                elif ctrl:
-                                    self.blocks.set_trigger(mouse_pos)
-                                else:
-                                    # just move the cursor, without selecting
-                                    self.blocks.cursor_to_mouse(mouse_pos)
+                            if event.type == pygame.MOUSEBUTTONDOWN:
+                                if event.button == 1:  # left click
+                                    mouse_pos = (pygame.mouse.get_pos()[X]
+                                                 / SCALING_FACTOR
+                                                 + self.scroll[X],
+                                                 pygame.mouse.get_pos()[Y]
+                                                 / SCALING_FACTOR
+                                                 + self.scroll[Y]
+                                                 )
+                                    if shift:
+                                        self.blocks.select_block(mouse_pos)
+                                    elif ctrl:
+                                        self.blocks.set_trigger(mouse_pos)
+                                    else:
+                                        # just move the cursor,
+                                        # without selecting
+                                        self.blocks.cursor_to_mouse(mouse_pos)
+                                elif event.button == 3:  # right click
+                                    pass
                             # 2: middle button
                             # 3: right button
                             # 4: scroll up
@@ -339,7 +343,7 @@ class World:
                 if event.type == KEYUP:
                     self.repeat_lock = False  # release the lock
                 if event.type == QUIT:
-                    self.game_running = False
+                    self.running = False
 
         if self.show_fps:
             self.frame_counter += 1
@@ -416,3 +420,6 @@ class World:
                                      True, color)
         line_pos = [100, 100]
         self.screen.blit(line, line_pos)
+
+
+

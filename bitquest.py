@@ -4,9 +4,11 @@
 """
 import random
 import time
+import uuid
 
 import pygame
 
+import menu
 import world
 from console_messages import console_msg
 from constants import *
@@ -15,6 +17,7 @@ from constants import *
 https://wiki.libsdl.org/Installation
 https://github.com/pygame/pygame/issues/1722
 '''
+console_msg('Started.', 0)
 
 # set environment variables to request the window manager to position the top left of the game window
 import os
@@ -29,21 +32,28 @@ screen = pygame.display.set_mode(WINDOW_SIZE)
 # the rendering surface for the game (heavily scaled)
 display = pygame.Surface(DISPLAY_SIZE)
 
-# create the world
-world = world.World(screen, display)
-console_msg("World initialisation complete", 1)
+game_world = None
+game_menu = menu.Menu(screen)
+game_menu.display()
 
-# set it in motion
-while world.game_running:
-    # when programs are running, the world is updated from the interpreter
-    # so we don't want to do it here as well, because it will just slow the
-    # intepreter down
-    if not world.program.running:
-        # keep the camera focussed on BIT while he is doing something
-        if world.dog.busy:
-            world.update(world.dog)
+if not game_menu.quit():
+    # create the world
+    game_world = world.World(screen, display, game_menu.session)
+    console_msg("World initialisation complete", 1)
+
+    # set it in motion
+    while not game_menu.quit():
+        # when programs are running, the world is updated from the interpreter
+        # so we don't want to do it here as well, because it will just slow the
+        # intepreter down
+        if game_world.running:
+            # keep the camera focussed on BIT while he is doing something
+            if game_world.dog.busy:
+                game_world.update(game_world.dog)
+            else:
+                game_world.update(game_world.player)
         else:
-            world.update(world.player)
+            game_menu.display()
 
 # tidy up and quit
 pygame.quit()

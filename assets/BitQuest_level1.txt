@@ -12,10 +12,10 @@ Level data is split into 4 sections, each section ends with ### on its own line:
                                                                                        1            1          2222223            
                          Pp                                                            1           =1          2    =3            
                          []                      ZX                      ZX            1          =11   ZX     22 =134            
-                         []                      CV                      CV            1         =111   CV     1111111            
-   =                    =Bb                      NM              =       NM          =   =      =1111   NM    =                   
-9Ppw90qw90qw9999912341234123412341111111111111111111111111111a  u111111111111111111199931333311111  232222222112222222 =2222222222
-1[]4123456785678567856781111111111111111111111111111111111111    11111111111111     111                      11       22          
+        ua               []                      CV                      CV            1         =111   CV     1111111            
+   = =  is              =Bb                      NM              =       NM          =   =      =1111   NM    =                   
+9Ppw90qw9  w9999912341234123412341111111111111111111111111111a  u111111111111111111199931333311111  232222222112222222 =2222222222
+1[]412345  85678567856781111111111111111111111111111111111111    11111111111111     111                      11       22          
  []                                                          8ua8                   111                      11                   
                                                               is                                             11                   
                                                                                                                                   
@@ -55,6 +55,8 @@ Level data is split into 4 sections, each section ends with ### on its own line:
 12, [(112, 4), (113, 4), (114, 4), ]
 13, [(108, 9), (111, 9), (112, 9), (113, 9), (114, 9), (115, 9), (116, 9), (117, 9), ]
 14, [(118, 10), (119, 9), (119, 10), ]
+16, [(8, 7), (9, 7), (9, 8), (8, 8), ]
+17, [(12, 9), ]
 ###
 # triggers
 'pressure plate', False, (24, 8), [(0, (0, 4)), ]
@@ -73,7 +75,8 @@ Level data is split into 4 sections, each section ends with ### on its own line:
 'pressure plate', False, (114, 6), [(13, (0, 1)), ]
 'pressure plate', True, (110, 8), [(10, (0, -3)), (11, (0, -5)), ]
 'pressure plate', True, (119, 9), [(14, (0, -1)), ]
-'flagpole', 'Level 1', (49, 8)
-'flagpole', 'Level 2', (73, 8)
-'flagpole', 'Level 3', (104, 8)
+'flagpole', 'the pillar', (49, 8)
+'flagpole', 'the pit', (73, 8)
+'flagpole', 'the lift', (104, 8)
+'pressure plate', False, (5, 8), [(16, (1, 2)), (17, (0, -3)), ]
 ###

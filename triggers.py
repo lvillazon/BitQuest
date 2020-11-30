@@ -39,7 +39,7 @@ class Trigger:
         if self.random:
             self.pick_an_action()
 
-    def addAction(self, mover, movement):
+    def add_action(self, mover, movement):
         """ create an action - a mover + an (x,y) movement
         This is expressed as a call to the activate method of the mover
         When the trigger fires, this method is called to set off the mover
@@ -128,6 +128,8 @@ class Flagpole(Trigger):
                 character.location.colliderect(trigger_rect)):
             # unfurl the flag
             console_msg(self.name + " complete!", 1)
+            # pass the level name to the save function
+            self.world.session.complete_level(self.name)
             self.activated = True
         elif self.activated:
             # update the animation frame for the waving effect

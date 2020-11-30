@@ -68,16 +68,24 @@ class Moveable:
             # if self.target_offset[Y] <0:  # moving up
             #    b.movement[Y] -= GRAVITY
 
-    def reset(self):
+    def reset(self, block_map):
         # return all blocks to their original (pre-triggered) locations
         for i in range(len(self.blocks)):
             if self.blocks[i]:  # guard against a null block in the list
+                # remove the block from its current position in the block map
+                del block_map[self.blocks[i].grid_position]
+
+                # reset its position
                 self.blocks[i].x = self.home_positions[i][X]
                 self.blocks[i].y = self.home_positions[i][Y]
                 self.activated = False
                 self.target_offset = [0.0, 0.0]
                 self.current_offset = [0.0, 0.0]
                 self.movement = [0.0, 0.0]
+
+                # add it back into the map at the reset position
+                # see update() below, for details of why this is done this way
+                block_map[self.blocks[i].grid_position] = self.blocks[i]
 
     def update(self, block_map):
         """ move the blocks if this group has been triggered
@@ -88,7 +96,7 @@ class Moveable:
                 b.x += self.movement[X]
                 b.y += self.movement[Y]
 
-                # The block map is keyed by the grip positions of the blocks.
+                # The block map is keyed by the grid positions of the blocks.
                 # So if the block has moved enough to change its grid position,
                 # we must update the block map - otherwise collisions won't
                 # work properly.
@@ -307,7 +315,7 @@ class BlockMap:
         # reset the whole map to its initial state
         # TODO reset checkpoint flags and other stuff that has changed
         for m in self.movers:
-            self.movers[m].reset()
+            self.movers[m].reset(self.midground_blocks)
         for t in self.triggers:
             t.reset()
 
@@ -325,10 +333,32 @@ class BlockMap:
             int(mouse_pos[X] / BLOCK_SIZE),
             int(mouse_pos[Y] / BLOCK_SIZE)
         ]
+        # if we are in linking mode, check if this completes a link
+        # this happens when we connect a trigger block to a mover group
+        if self.link_trigger:
+            b = self.get_block(self.midground_blocks, *self.cursor)
+            for m in self.movers:
+                if b in self.movers[m].blocks:
+                    print("connecting to mover id:", self.movers[m].id)
+                    # a mover containing this block exists,
+                    # so we can complete the link
+                    # but first we must obtain the offset coords
+                    # that the mover will be shifted by, when the trigger fires
+                    # TODO replace the input with something in-game
+                    response = input("Enter block offset (x,y):")
+                    if response != "":
+                        offset = eval(response)
+                        self.link_trigger.add_action(self.movers[m], offset)
+                    self.link_trigger = None  # exit link mode
 
     def grid_to_screen_pos(self, grid_pos):
         # convert grid coords to screen coords
-        return (0,0)  # TODO replace this with a proper calculation!
+        return (grid_pos[X] * BLOCK_SIZE
+                - self.world.scroll[X]
+                + BLOCK_SIZE / 2,
+                grid_pos[Y] * BLOCK_SIZE
+                - self.world.scroll[Y]
+                + BLOCK_SIZE / 2)
 
     def select_block(self, mouse_pos):
         if self.selecting:
@@ -393,21 +423,17 @@ class BlockMap:
             self.link_trigger = existing_trigger
             print("exisiting trigger,", t)
 
-    # response = input("Enter trigger block coords:")
-    # if response != "":
-    #     trigger_pos = eval(response)
-    #     direction = \
-    #         input("Enter direction to move (up/down/left/right):").lower()
-    #     distance = int(input("Enter number of blocks to move:"))
-    #
-
     def get_next_mover_id(self):
         """ returns the next integer in the sequence to make sure that
         every mover has a unique id number.
         We store this number as a class variable and use it as the dict key,
         rather than using a simple list index, so that the id doesn't change
         if movers are later deleted"""
-        return len(self.movers)
+        highest_id = 0
+        for m in self.movers:
+            if m > highest_id:
+                highest_id = m
+        return m + 1
 
     def save_grid(self, level=1):
         """save current grid map to the level file
@@ -454,16 +480,16 @@ class BlockMap:
                         b = self.get_block(blocks, x, y)
                         if b:
                             file.write(b.type)
-                        else:  # b == None if not found
+                        else:  # b is None if not found
                             file.write(' ')
                     file.write('\n')  # new line
                 file.write(delimiter)
 
             # section 4
             file.write("# movers\n")
-            for i in range(len(self.movers)):
-                file.write(str(i) + ", [")  # unique id number
+            for i in self.movers:
                 m = self.movers[i]
+                file.write(str(m.id) + ", [")  # unique id number
                 for b in m.blocks:
                     file.write(str(b.grid_position) + ', ')
                 file.write(']\n')
@@ -607,7 +633,7 @@ class BlockMap:
                                                         values[2][Y]))
                     # add all the actions associated with this trigger
                     for action in values[3]:
-                        t.addAction(self.movers[action[0]], action[1])
+                        t.add_action(self.movers[action[0]], action[1])
                 # add the complete trigger to the list maintained by the map
                 self.triggers.append(t)
             i += 1
@@ -669,19 +695,29 @@ class BlockMap:
             if self.movers[m].update(self.midground_blocks):
                 self.busy = True
 
-        # if we are in trigger linking mode, run a line from the
-        # cursor to the trigger block
-        if self.link_trigger:
-            print("linking...",
-                  self.grid_to_screen_pos(self.cursor),
-                  ",",
-                  self.grid_to_screen_pos(
-                      self.link_trigger.block.grid_position)
-                  )
-            pygame.draw.line(surface, COLOUR_TRIGGER_BLOCK,
-                             self.grid_to_screen_pos(self.cursor),
-                             self.grid_to_screen_pos(self.link_trigger.block.grid_position)
-                             , 1)
+        if self.show_grid and MAP_EDITOR_ENABLED:
+            # if we are in trigger linking mode, run a line from the
+            # cursor to the trigger block
+            if self.link_trigger:
+                pygame.draw.line(surface, COLOUR_NEW_LINK,
+                                 (pygame.mouse.get_pos()[X] / SCALING_FACTOR,
+                                  pygame.mouse.get_pos()[Y] / SCALING_FACTOR),
+                                 self.grid_to_screen_pos(
+                                     self.link_trigger.block.grid_position)
+                                 , 1)
+            # draw lines from each trigger to its movers
+            for t in self.triggers:
+                trigger_pos = self.grid_to_screen_pos(t.block.grid_position)
+                for a in t.actions:
+                    mover_pos = self.grid_to_screen_pos(
+                        a[0].blocks[0].grid_position
+                    )
+                    if t.random:
+                        pygame.draw.line(surface, COLOUR_RANDOM_LINK,
+                                         trigger_pos, mover_pos)
+                    else:
+                        pygame.draw.line(surface, COLOUR_NORMAL_LINK,
+                                         trigger_pos, mover_pos)
 
     def highlight_block(self, surface, block, colour):
         left = block.x - self.world.scroll[X]
@@ -690,7 +726,7 @@ class BlockMap:
         # so we need to add one extra block's worth for the full
         # width/height
         b_rect = pygame.Rect(left, top, BLOCK_SIZE, BLOCK_SIZE)
-        # add some grey to lighten the selected block image
+        # blend the highlight colour with the selected block image
         surface.fill(colour, b_rect, pygame.BLEND_RGB_ADD)
 
     def draw_grid(self, surface, origin, grid_colour):
