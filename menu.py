@@ -7,7 +7,10 @@ from session import Session
 
 
 class Menu:
-    def __init__(self, screen):
+    def __init__(self, screen, bypass = False):
+        """ displays the main menu and ensures that the user is logged in
+        before proceeding. If bypass==True the menu creates a dummy
+        session, used for testing."""
         console_msg('Main menu', 0)
         self.screen = screen
         # this flag prevents certain key actions from automatically repeating
@@ -24,23 +27,25 @@ class Menu:
         self.items = ["Play", "Options", "Quit:"]
         self.selected_item = -1  # start off with nothing selected
         self.session = None
-        #self.username = ""
-        #self.class_name = ""
 
-        # load the fonts
-        if pygame.font.get_init() is False:
-            pygame.font.init()
-            console_msg("Font system initialised", 2)
-        # we explicitly load all required fonts
-        # so that the TTF files can be bundled to run on other PCs
-        self.menu_title_font = pygame.font.Font(MENU_FONT_FILE, 48)
-        self.menu_title_bg_font = pygame.font.Font(MENU_FONT_FILE, 50)
-        self.menu_font = pygame.font.Font(MENU_FONT_FILE, 32)
-        self.menu_input_font = pygame.font.Font(CODE_FONT_FILE, 32)
-        console_msg("Menu font loaded", 3)
-        self.input_dialog = MenuInputDialog(self.screen,
-                            "Input",
-                            self.menu_input_font)
+        if bypass:
+            self.session = Session("dummy_user", "dummy_class")
+            self._return_to_game = True
+        else:
+            # load the fonts
+            if pygame.font.get_init() is False:
+                pygame.font.init()
+                console_msg("Font system initialised", 2)
+            # we explicitly load all required fonts
+            # so that the TTF files can be bundled to run on other PCs
+            self.menu_title_font = pygame.font.Font(MENU_FONT_FILE, 48)
+            self.menu_title_bg_font = pygame.font.Font(MENU_FONT_FILE, 50)
+            self.menu_font = pygame.font.Font(MENU_FONT_FILE, 32)
+            self.menu_input_font = pygame.font.Font(CODE_FONT_FILE, 32)
+            console_msg("Menu font loaded", 3)
+            self.input_dialog = MenuInputDialog(self.screen,
+                                "Input",
+                                self.menu_input_font)
 
     def quit(self):
         return self._quit

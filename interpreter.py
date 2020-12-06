@@ -103,6 +103,7 @@ class VirtualMachineError(Exception):
 class VirtualMachine:
     def __init__(self, world):
         self.world = world  # link back to the state of the game world
+        self.run_enabled = True
         self.BIT = world.dog  # shortcut to the game state of the dog character
         self.source = []
         self.frames = []  # the call stack of frames
@@ -182,7 +183,6 @@ class VirtualMachine:
                     if current_value == target_value:
                         done = True
                     else:
-                        # DEBUG print("target:", target_value, "current:",current_value)
                         # check if movement is blocked
                         if current_value == previous_value:
                             timeout_counter += 1
@@ -193,25 +193,44 @@ class VirtualMachine:
                             # correct the program variable to match the world
                             frame.global_names[v] = current_value
                             done = True
-                # DEBUG print("SET is done. Target was", target_value, "actual is", self.world.dog.location[0] / 16)
 
     def run(self, global_names=None, local_names=None):
         """ creates an entry point for code execution on the vm"""
-
-        if self.byte_code:
-            console_msg('Executing...', 5)
-            self.running = True
-            frame = self.make_frame(self.byte_code, global_names=global_names,
-                                    local_names=local_names)
-            result = self.run_frame(frame)
-            if result in ('exception', 'quit'):
-                self.running = False
-                return False
+        # clear the enable flag, so that the puzzle must be reset before
+        # running again.
+        if self.run_enabled:
+            self.run_enabled = False
+            if self.byte_code:
+                console_msg('Executing...', 5)
+                self.running = True
+                frame = self.make_frame(self.byte_code, global_names=global_names,
+                                        local_names=local_names)
+                result = self.run_frame(frame)
+                if result in ('exception', 'quit'):
+                    self.running = False
+                    print("COMPILE ERRORS=" + str(self.compile_time_error))
+                    print("RUN ERRORS=" + str(self.run_time_error))
+                    errors = []
+                    if self.compile_time_error:
+                        msg = str(self.compile_time_error)
+                        errors.append(msg)
+                        self.BIT.error(msg, type="Syntax error:")
+                    if self.run_time_error:
+                        msg = str(self.run_time_error)
+                        errors.append(msg)
+                        self.BIT.error(msg, type="Run-time error:")
+                    if self.last_exception:
+                        msg = str(self.last_exception[1])
+                        errors.append(msg)
+                        self.BIT.error(msg, type="Run-time error:")
+                    return False, errors
+                else:
+                    self.running = False
+                    return True, result  # no errors
             else:
-                self.running = False
-                return True
+                self.running = False  # no bytecode to execute
         else:
-            self.running = False  # no bytecode to execute
+            self.running = False  # execution is disabled
 
     def make_frame(self, code, callargs=None,
                    global_names=None, local_names=None):
@@ -426,10 +445,11 @@ class VirtualMachine:
         self.pop_frame()
 
         if stack_unwind_reason == 'exception':
-            exc, val, tb = self.last_exception
-            e = exc(val)
-            e.__traceback__ = tb
-            raise e  # TODO replace this with in-game error message
+            # exc, val, tb = self.last_exception
+            # e = exc(val)
+            # e.__traceback__ = tb
+            # raise e  # TODO replace this with in-game error message
+            return 'exception'
         elif stack_unwind_reason == 'quit':
             # this option allows us to quit gracefully
             # with a console error that doesn't crash the game
@@ -457,6 +477,7 @@ class VirtualMachine:
         print("Lexing...")
         success = True
         token_list = []
+        unrecognised = []
         try:
             code_object = compile(self.get_code(), '', 'exec')
             token_list = dis.get_instructions(code_object)
@@ -476,7 +497,6 @@ class VirtualMachine:
             # also https://stackoverflow.com/questions/18176602/printhow-to-get-name-of-exception-that-was-caught-in-python
 
         if success:
-            unrecognised = []
             for instruction in token_list:
                 if CONSOLE_VERBOSE:
                     # list bytecode
@@ -500,9 +520,8 @@ class VirtualMachine:
                 if not defined:
                     unrecognised.append(instruction.opname)
         if unrecognised:
-            print("UNDEFINED BYTECODE INSTRUCTIONS:")
             for i in unrecognised:
-                print("\t%s" % i)
+                print("UNDEFINED BYTECODE: %s" % i)
             success = False
 
         if success:
@@ -512,6 +531,7 @@ class VirtualMachine:
             for c in code_object.co_code:
                 print(c, ', ', sep='', end='')
             print()
+            msg = "compilation successful"
         else:
             if self.compile_time_error:
                 error_msg = self.compile_time_error['error']
@@ -523,7 +543,7 @@ class VirtualMachine:
                 msg = "Undefined compilation error"
             self.BIT.error(msg, type="Compiler error:")
 
-        return success
+        return success, msg
 
     ##############################################
     # the functions for the instruction set
@@ -685,7 +705,9 @@ class VirtualMachine:
             val = self.frame.local_names[name]
             self.push(val)
         else:
-            print("NAME ERROR:", name, "referenced before assignment.")
+            self.run_time_error = "NAME ERROR: '" + name \
+                                  + "' referenced before assignment."
+            print(self.run_time_error)
 
     def byte_LOAD_GLOBAL(self, name):
         frame = self.frame
@@ -698,7 +720,9 @@ class VirtualMachine:
         elif name in frame.builtin_names:
             val = frame.builtin_names[name]
         else:
-            print("NAME ERROR: global '", name, "' is not defined.", sep='')
+            self.run_time_error = "global '" + name \
+                                  + "' is not defined."
+            print("NAME ERROR: " + self.run_time_error)
             found = False
         if found:
             self.push(val)
@@ -712,7 +736,8 @@ class VirtualMachine:
             self.push(method)
         else:
             # push NULL and the object returned by the attribute lookup
-            print("ERROR: '{0}' is unrecognised.".format(name))
+            self.run_time_error = "'{0}' is unrecognised.".format(name)
+            print("ERROR: " + self.run_time_error)
             self.push(None)
             self.push(method)
 
@@ -732,7 +757,8 @@ class VirtualMachine:
         elif name in frame.builtin_names:
             val = frame.builtin_names[name]
         else:
-            print("NAME ERROR: '", name, "' is not defined.", sep='')
+            self.run_time_error = "'" + name + "' is not defined."
+            print("NAME ERROR: " + self.run_time_error)
             found = False
         if found:
             self.push(val)

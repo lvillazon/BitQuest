@@ -23,6 +23,11 @@ LEVEL_MAP_FILE_EXTENSION = '.txt'
 USER_PROGRAM_FILE = 'assets/BitQuest_user_program.py'
 SAVE_FILES_FOLDER = 'logs/'
 SAVE_FILE_EXTENSION = '.log'
+REWIND_ICON_FILE = 'assets/rewind.png'
+REWIND_HOVER_ICON_FILE = 'assets/rewind_hover.png'
+PLAY_ICON_FILE = 'assets/play.png'
+PLAY_HOVER_ICON_FILE = 'assets/play_hover.png'
+PLAY_DISABLED_ICON_FILE = 'assets/play_disabled.png'
 
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console
@@ -47,6 +52,13 @@ COLLIDE_THRESHOLD_Y = 1  # how many pixels overlap are required for a collision
 BLOCK_OVERLAP = 9 # half of BLOCK_SIZE +1  - used to for collision tests
 COLLIDER_WIDTH = 16
 COLLIDER_HEIGHT = 16
+REWIND_ICON_POS = (WINDOW_SIZE[X] - 72, 8)
+PLAY_ICON_POS = (REWIND_ICON_POS[X] - 70, REWIND_ICON_POS[Y])
+
+# puzzle definition constants
+PUZZLE_NAME = 0
+PLAYER_START = 1
+DOG_START = 2
 
 # character animation constants
 STANDING_FRAME = 7
@@ -67,6 +79,9 @@ SPEECH_EXPIRY_RATE = 1000 # ms between each line of text disappearing
 
 # Block map constants
 GRID_LINE_WIDTH = 2
+
+# parsing constants
+NEW_LINE = '\n'
 
 # Colour constants
 COLOUR_SELECTED_BLOCK = (128, 128, 128)  # grey

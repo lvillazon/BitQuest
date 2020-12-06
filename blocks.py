@@ -1,5 +1,7 @@
 """ movement and animation for all the player and npc sprites """
 import math
+import os
+
 import pygame
 from console_messages import console_msg
 from constants import *
@@ -226,6 +228,7 @@ class BlockMap:
            |Bb/
         """
         self.world = world  # link back to the world game state
+        self.level = 0  # placeholder; load_grid sets this
 
         # The tile dictionary is used to convert the ASCII tile symbols
         # used in the map file to the images for the tiles themselves.
@@ -519,6 +522,7 @@ class BlockMap:
         # midground is the same layer as the player
         # collidable blocks on this layer will stop player progress
 
+        self.level = level
         file_name = LEVEL_MAP_FILE_STEM + str(level) + LEVEL_MAP_FILE_EXTENSION
         with open(file_name, 'r') as file:
             lines = file.readlines()
@@ -571,6 +575,7 @@ class BlockMap:
         # in response to a trigger
         # they are have a unique id number
         # and a list of blocks, specified using the block coordinate system
+        self.movers = {}
         i += 1  # skip over the ### section delimiter
         while i < len(level_data) and level_data[i] != '###':
             if level_data[i][0] != "#":  # comment lines are ignored
@@ -592,6 +597,7 @@ class BlockMap:
         # then a list of actions as (id, (x, y)) tuples
         # representing the mover id and the number of blocks to move
         # when activated
+        self.triggers = []
         i += 1  # skip over the ### section delimiter
         console_msg("Block triggers:", 8)
         while i < len(level_data) and level_data[i] != '###':
@@ -902,6 +908,100 @@ class BlockMap:
                         # but we can quit the loop immediately anyway,
                         # so it's ok (albeit a bit scruffy)
                         break
+
+    def insert_column(self):
+        """ add a new column of blocks at the current cursor """
+        # it is actually easier to do this by editing the map file itself
+        # and then reloading it, than trying to update all the map dictionaries
+
+        level_file_name = LEVEL_MAP_FILE_STEM + str(
+            self.level) + LEVEL_MAP_FILE_EXTENSION
+        temp_file_name = LEVEL_MAP_FILE_STEM + 'temp.txt'
+        level_data = []
+        with open(level_file_name, 'r') as old_file:
+            lines = old_file.readlines()
+            for file_line in lines:
+                level_data.append(file_line[:-1])
+
+        with open(temp_file_name, 'w') as new_file:
+            # copy preamble
+            i = 0
+            while i <= level_data.index('###'):
+                new_file.write(level_data[i] + NEW_LINE)
+                i += 1
+
+            # repeat this for the midground and foreground maps
+            for j in range(2):
+                while i < len(level_data) and level_data[i] != '###':
+                    new_file.write(
+                        level_data[i][: self.cursor[X]]
+                        + " "  # insert a space for the new column
+                        + level_data[i][self.cursor[X]:]  # rest of the line
+                        + NEW_LINE
+                    )
+                    i += 1
+
+                # write the section delimiter
+                new_file.write('###' + NEW_LINE)
+                i += 1
+
+            # now the movers
+            new_file.write('# movers' + NEW_LINE)
+            i += 1
+            while i < len(level_data) and level_data[i] != '###':
+                values = eval(level_data[i])
+                # increment x-coords of all blocks >= cursor
+                new_mover_list = []
+                for coord in values[1]:
+                    if coord[X] >= self.cursor[X]:
+                        new_mover_list.append((coord[X]+1, coord[Y]))
+                    else:
+                        new_mover_list.append(coord)
+                # prepend the mover id and write the new list out
+                new_file.write(str(values[0]) + ', '
+                               + str(new_mover_list)
+                               + NEW_LINE)
+                i += 1
+
+            # write the section delimiter
+            new_file.write('###' + NEW_LINE)
+            i += 1
+
+            # next the triggers
+            new_file.write('# triggers' + NEW_LINE)
+            i += 1
+            while i < len(level_data) and level_data[i] != '###':
+                values = eval(level_data[i])
+                new_file.write("'" + values[0] + "', ")  # name
+                if values[0] == "pressure plate":
+                    new_file.write(str(values[1]) + ", ")  # random
+                elif values[0] == "flagpole":
+                    new_file.write("'" + str(values[1]) + "', ")  # name
+
+                ## trigger block coords (shifted right by one block if req)
+                if values[2][X] >= self.cursor[X]:
+                    new_file.write(str((values[2][X] + 1, values[2][Y])))
+                else:
+                    new_file.write(str(values[2]))
+
+                if values[0] == "pressure plate":
+                    # the action list
+                    new_file.write(", " + str(values[3]))
+                new_file.write(NEW_LINE)
+                i += 1
+
+            # write the section delimiter
+            new_file.write('###' + NEW_LINE)
+
+        # finally delete the level file and rename the temp one
+        os.remove(level_file_name)
+        os.rename(temp_file_name, level_file_name)
+        # reload the map from the ammended file
+        self.load_grid()
+
+    def delete_column(self):
+        """ remove the column at the current cursor """
+        pass
 
     def collision_test(self, character_rect):
         """ check if this character is colliding with any of the blocks

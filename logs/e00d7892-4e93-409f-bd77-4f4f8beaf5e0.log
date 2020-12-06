@@ -1,0 +1,29 @@
+<SECTION=HEADER>
+<FILE_VERSION=0.1>
+<DATE/TIME=06-12-2020 14:06:58>
+<USER_NAME=dummy_user>
+<CLASS_NAME=dummy_class>
+</SECTION>
+
+<SECTION=ATTEMPT>
+<DATE/TIME=06-12-2020 14:07:02>
+LEVEL=the lift
+<USER_PROGRAM>
+print("test"
+</USER_PROGRAM>
+<ERROR>
+unexpected EOF while parsing on line 1
+</ERROR>
+</SECTION>
+
+<SECTION=ATTEMPT>
+<DATE/TIME=06-12-2020 14:07:40>
+LEVEL=the lift
+<USER_PROGRAM>
+print "test"
+</USER_PROGRAM>
+<ERROR>
+invalid syntax on line 1
+</ERROR>
+</SECTION>
+

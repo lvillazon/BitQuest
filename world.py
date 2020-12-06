@@ -17,6 +17,7 @@ import scenery
 from console_messages import console_msg
 from constants import *
 from particles import DustStorm
+from sprite_sheet import SpriteSheet
 
 '''
 https://wiki.libsdl.org/Installation
@@ -30,6 +31,29 @@ class World:
         self.screen = screen
         self.display = display
         self.session = session
+
+        # load play/rewind icon images
+        self.rewinding = False
+        self.rewind_rotation = 0
+        self.rewind_icon = pygame.image.load(REWIND_ICON_FILE).convert()
+        self.rewind_icon.set_colorkey((255, 255, 255), RLEACCEL)
+        self.rewind_hover_icon = pygame.image.load(
+            REWIND_HOVER_ICON_FILE).convert()
+        self.rewind_hover_icon.set_colorkey((255, 255, 255), RLEACCEL)
+
+        self.play_icon = pygame.image.load(PLAY_ICON_FILE).convert()
+        self.play_icon.set_colorkey((255, 255, 255), RLEACCEL)
+        self.play_hover_icon = pygame.image.load(
+            PLAY_HOVER_ICON_FILE).convert()
+        self.play_hover_icon.set_colorkey((255, 255, 255), RLEACCEL)
+        self.play_disabled_icon = pygame.image.load(
+            PLAY_DISABLED_ICON_FILE).convert()
+        self.rewind_button_rect = pygame.Rect(REWIND_ICON_POS, (64, 64))
+        self.play_button_rect = pygame.Rect(PLAY_ICON_POS, (64, 64))
+        # when True the play button is displayed and programs can be run
+        # once a program runs, this is set to false and the rewind button
+        # is shown instead.
+        self.run_enabled = True
 
         # load scenery layers
         #        self.scenery = scenery.Scenery('Day', 'Desert')
@@ -49,17 +73,17 @@ class World:
 
         # set the names and player/dog start positions for all the puzzles
         # TODO this should be part of the level map file
-        PUZZLE_NAME = 0
-        PLAYER_START = 1
-        DOG_START = 2
-        puzzle_info = {0: ("the pillar", (4, 6), (6, 8)),
-                       1: ("the pit", (58, 6), (57, 8)),
-                       2: ("the lift", (80, 6), (78, 8)),
-                       3: ("the staircase", (91,6), (90, 8)),
-                       4: ("the choice", (105, 6), (103, 8)),
-                       }
-        puzzle = 2
-        self.session.begin_level(puzzle_info[puzzle][PUZZLE_NAME])
+        self.puzzle_info = {0: ("the pillar", (4, 6), (6, 8)),
+                            1: ("the pit", (58, 6), (57, 8)),
+                            2: ("the lift", (80, 6), (78, 8)),
+                            3: ("the staircase", (91, 6), (90, 8)),
+                            4: ("the choice", (105, 6), (103, 8)),
+                            }
+        self.puzzle = 2
+        self.session.set_current_level(
+            self.puzzle_info[self.puzzle][PUZZLE_NAME]
+        )
+        self.session.save_header()
 
         # initialise the environmental dust effect
         # DEBUG disabled due to looking bad
@@ -77,8 +101,8 @@ class World:
                                   (16, 16),
                                   )
         console_msg("BIT sprite initialised", 1)
-        self.player.set_position(puzzle_info[puzzle][PLAYER_START])
-        self.dog.set_position(puzzle_info[puzzle][DOG_START])
+        self.player.set_position(self.puzzle_info[self.puzzle][PLAYER_START])
+        self.dog.set_position(self.puzzle_info[self.puzzle][DOG_START])
 
         self.dog.facing_right = False
         self.show_fps = False
@@ -211,6 +235,8 @@ class World:
             self.input.update()
         elif self.editor.is_active():
             self.editor.update()
+            # still need to check if buttons outside the editor were clicked
+            self.check_buttons()
         else:
             # only handle keystrokes for game control
             # if the code editor isn't open
@@ -296,6 +322,12 @@ class World:
                     elif pressed[K_h]:
                         # home the cursor to the centre of the screen
                         self.blocks.home_cursor()
+                    elif pressed[K_INSERT]:
+                        # insert a new column of blocks at the cursor
+                        self.blocks.insert_column()
+                    elif pressed[K_DELETE]:
+                        # remove a column at the cursor
+                        self.blocks.delete_column()
                     else:
                         self.repeat_lock = False  # reset, since no key pressed
 
@@ -337,6 +369,10 @@ class World:
                     # toggle the block grid overlay
                     self.blocks.show_grid = not self.blocks.show_grid
                     self.repeat_lock = True
+
+            # check the mouse to see if any buttons were clicked
+            # currently just the rewind button
+            self.check_buttons()
 
             # process all other events to clear the queue
             for event in pygame.event.get():
@@ -400,17 +436,80 @@ class World:
         # draw the swirling dust - DEBUG disabled due to looking bad
         # self.dust_storm.update(self.screen, self.game_origin[Y], scroll)
 
-        # draw the grid overlay last so it is on top of everything
+        # draw the grid overlay next so it is on top of all blocks
         if self.blocks.show_grid:
             self.blocks.draw_grid(self.screen, self.game_origin, (0, 0, 0))
         # previously, the grid took the colour from the editor choice
         #                                  self.editor.get_fg_color())
 
-        # TODO self.end_of_level_display()
+        # draw the rewind button in the top right corner
+        if self.rewinding:
+            # update the rotation animation
+            self.rewind_rotation = (self.rewind_rotation + 10)
+            if self.rewind_rotation >= 360:
+                self.rewind_rotation = 0
+                self.rewinding = False
+            rewind_animation_icon = pygame.transform.rotate(
+                self.rewind_hover_icon,
+                self.rewind_rotation
+            )
+            icon_size = rewind_animation_icon.get_size()
+            self.screen.blit(rewind_animation_icon,
+                             (REWIND_ICON_POS[X] + 32 - icon_size[X] / 2,
+                              REWIND_ICON_POS[Y] + 32 - icon_size[Y] / 2)
+                             )
+        else:
+            if self.rewind_button_rect.collidepoint(pygame.mouse.get_pos()):
+                self.screen.blit(self.rewind_hover_icon, REWIND_ICON_POS)
+            else:
+                self.screen.blit(self.rewind_icon, REWIND_ICON_POS,
+                                 special_flags=BLEND_RGB_MULT
+                                 )
+        # play button
+        if self.python_interpreter.run_enabled:
+            if self.play_button_rect.collidepoint(pygame.mouse.get_pos()):
+                self.screen.blit(self.play_hover_icon, PLAY_ICON_POS)
+            else:
+                self.screen.blit(self.play_icon, PLAY_ICON_POS,
+                                 special_flags=BLEND_RGB_MULT
+                                 )
+        else:
+            self.screen.blit(self.play_disabled_icon, PLAY_ICON_POS,
+                             special_flags=BLEND_RGB_MULT
+                             )
+
+            # TODO self.end_of_level_display()
         pygame.display.update()  # actually display
 
         self.frame_draw_time = time.time_ns() - frame_start_time
         self.clock.tick(60)  # lock the framerate to 60fps
+
+    def check_buttons(self):
+        """ react to any button clicks """
+        # currently just checking the rewind & play button
+        if self.rewind_button_rect.collidepoint(*pygame.mouse.get_pos()):
+            # button 0 is left click
+            if not self.rewinding and pygame.mouse.get_pressed()[0]:
+                # Rewind everything to the start of the level
+                print("rewinding...")
+                self.rewind_level()
+                self.python_interpreter.run_enabled = True
+        elif self.play_button_rect.collidepoint(*pygame.mouse.get_pos()):
+            if (self.python_interpreter.run_enabled and
+                    pygame.mouse.get_pressed()[0]):
+                # run user program
+                print("running...")
+                self.editor.run_program()
+
+    def rewind_level(self):
+        console_msg("Rewinding!", 7)
+        self.rewinding = True
+        self.blocks.reset()
+        self.player.set_position(
+            self.puzzle_info[self.puzzle][PLAYER_START])
+        self.dog.set_position(
+            self.puzzle_info[self.puzzle][DOG_START])
+        self.dog.clear_speech_bubble()
 
     def end_of_level_display(self):
         # display end of level message
@@ -420,6 +519,3 @@ class World:
                                      True, color)
         line_pos = [100, 100]
         self.screen.blit(line, line_pos)
-
-
-

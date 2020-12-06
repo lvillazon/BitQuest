@@ -1,0 +1,81 @@
+Level data is split into 4 sections, each section ends with ### on its own line:
+   1. This section is for comments only and is ignored.
+   2. The midground section shows the arrangements of collidable blocks and triggers.
+   3. Foreground layer is drawn on top of the player and doesn't collide.
+   4. The next section defines the blocks that move when triggered.
+   5. This section defines the trigger locations, as x, y and block group number, each on their own line.
+###
+                                                                                                                4444444            
+                                                                                                                444 =44            
+                                                                                        1            =          333 334            
+                                                                                        1       111111          2    =3            
+                                                                                        1            1          2222223            
+                         Pp                                                             1           =1          2    =3            
+                         []                      ZX                      ZX             1          =11   ZX     22 =134            
+        ua               []                      CV                      CV             1         =111   CV     1111111            
+   = =  is              =Bb                      NM              =       NM           =   =      =1111   NM    =                   
+9Ppw90qw9  w9999912341234123412341111111111111111111111111111a  u111111111111111 111199931333311111  232222222112222222 =2222222222
+1[]412345  85678567856781111111111111111111111111111111111111    11111111111111      111                      11       22          
+ []                                                          8ua8                    111                      11                   
+                                                              is                                              11                   
+                                                                                                                                   
+                                                                                                                                   
+                                                                                                              11                   
+###
+                                                                                                                                   
+                                                                                                                                   
+                                                                                                                                   
+                                                                                                                !                  
+                                                                                                                                   
+                                                                                                                !                  
+                                                                                                                                   
+-                                       -            -                -                                                            
+{|/}                                    {|/}         {|/}             {|                                                           
+ 0q                      11                           0qw90qw    90qw                                                              
+ 23                      11                            =23234s  i1234                                                              
+                                                       1856785   78787                                                             
+                                                       34123456785678                                                              
+                                                                                                                                   
+                                                                                                                                   
+                                                                                                                                   
+###
+# movers
+0, [(25, 5), (26, 5), (25, 6), (26, 6), (25, 7), (26, 7), (25, 8), (26, 8)]
+1, [(1, 9), (2, 9), (1, 10), (2, 10), (1, 11), (2, 11)]
+2, [(62, 11), (63, 11), (62, 12), (63, 12)]
+3, [(86, 8), (85, 9), (86, 9), (87, 9), (85, 10), (86, 10), (87, 10), (85, 11), (86, 11), (87, 11)]
+4, [(88, 2), (88, 3), (88, 4)]
+5, [(98, 7), (98, 8)]
+6, [(99, 6), (99, 7), (99, 8)]
+7, [(100, 5), (100, 6), (100, 7), (100, 8)]
+8, [(91, 9), (92, 9), (93, 9), (94, 9), (95, 9)]
+9, [(101, 4), (101, 5), (101, 6), (101, 7), (101, 8)]
+10, [(112, 5), (110, 9), (111, 8), (111, 9), (110, 10), (111, 10), (110, 11), (111, 11), (110, 12), (111, 12), (110, 15), (111, 15)]
+11, [(112, 3), (110, 9), (111, 8), (111, 9), (110, 10), (111, 10), (110, 11), (111, 11), (110, 12), (111, 12), (110, 15), (111, 15)]
+12, [(113, 4), (114, 4), (115, 4)]
+13, [(109, 9), (112, 9), (113, 9), (114, 9), (115, 9), (116, 9), (117, 9), (118, 9)]
+14, [(119, 10), (120, 9), (120, 10)]
+16, [(8, 7), (9, 7), (9, 8), (8, 8)]
+17, [(12, 9)]
+###
+# triggers
+'pressure plate', False, (24, 8), [(0, (0, 4))]
+'pressure plate', False, (3, 8), [(1, (0, -3))]
+'pressure plate', False, (65, 8), [(2, (0, -2))]
+'pressure plate', False, (86, 8), [(3, (0, -4))]
+'pressure plate', False, (90, 8), [(4, (0, -4))]
+'pressure plate', False, (97, 8), [(5, (0, 1))]
+'pressure plate', False, (98, 7), [(6, (0, 2))]
+'pressure plate', False, (99, 6), [(7, (0, 3))]
+'pressure plate', False, (100, 5), [(8, (0, -6))]
+'pressure plate', False, (101, 2), [(9, (0, 5))]
+'pressure plate', False, (117, 3), [(12, (0, -1))]
+'pressure plate', False, (117, 5), [(12, (0, 1))]
+'pressure plate', False, (116, 1), [(13, (0, 1))]
+'pressure plate', False, (115, 6), [(13, (0, 1))]
+'pressure plate', True, (111, 8), [(10, (0, -3)), (11, (0, -5))]
+'pressure plate', True, (120, 9), [(14, (0, -1))]
+'flagpole', the pillar, (49, 8)
+'flagpole', the pit, (73, 8)
+'flagpole', the lift, (105, 8)
+'pressure plate', False, (5, 8), [(16, (1, 2)), (17, (0, -3))]

@@ -129,7 +129,7 @@ class Flagpole(Trigger):
             # unfurl the flag
             console_msg(self.name + " complete!", 1)
             # pass the level name to the save function
-            self.world.session.complete_level(self.name)
+            self.world.session.save_checkpoint_reached(self.name)
             self.activated = True
         elif self.activated:
             # update the animation frame for the waving effect

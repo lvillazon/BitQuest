@@ -13,6 +13,7 @@ CURSOR_FAIL = 0
 CURSOR_OK = 1
 CURSOR_LINE_WRAP = 2
 
+
 class Editor:
     # on-screen editor for writing programs
 
@@ -28,7 +29,7 @@ class Editor:
                             2: (BLACK, GREEN)}
         self.palette = 0
         self.line_height = self.code_font.get_linesize()
-        self.top_margin = self.line_height +4
+        self.top_margin = self.line_height + 4
         # maximum number of lines that will fit in the editor window
         self.max_lines = int(self.height / self.line_height)
         # width of a single character
@@ -44,6 +45,7 @@ class Editor:
         self.centre_title = False  # set to true for the menu input dialog
         self.reset()
         self.active = False
+        self.run_enabled = False
 
         console_msg("Editor row width =" + str(self.row_width), 8)
 
@@ -477,14 +479,16 @@ class Editor:
                 if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT):
                     self.stop_selecting()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_button = {1: self.left_click,
-                                # 2: middle button
-                                # 3: right button
-                                4: self.cursor_up,  # scroll up
-                                5: self.cursor_down,  # scroll down
-                                }
-                if event.button in mouse_button:
-                    mouse_button[event.button]()
+                # check if the click happened within the editor area
+                if pygame.mouse.get_pos()[Y] > self.height:
+                    mouse_button = {1: self.left_click,
+                                    # 2: middle button
+                                    # 3: right button
+                                    4: self.cursor_up,  # scroll up
+                                    5: self.cursor_down,  # scroll down
+                                    }
+                    if event.button in mouse_button:
+                        mouse_button[event.button]()
             elif event.type == pygame.MOUSEBUTTONUP:
                 self.mouse_up()
 
@@ -704,22 +708,25 @@ class CodeWindow(Editor):
 
     def run_program(self):
         """ pass the text in the editor to the interpreter"""
-        # save this attempt first, regardless of whether it has errors or not
-        p = self.python_interpreter
-        p.load(self.convert_to_lines())
-        # false because level is not complete yet
-        self.session.save_progress(False, self.convert_to_lines())
-        result = p.compile()
-        if result is False:  # check for syntax errors
-            # TODO display these using in-game dialogs
-            if p.compile_time_error:
-                error_msg = p.compile_time_error['error']
-                error_line = p.compile_time_error['line']
-                console_msg('BIT found a SYNTAX ERROR:', 5)
-                msg = error_msg + " on line " + str(error_line)
-                console_msg(msg, 5)
-        else:
-            p.run()  # set the program going
+        # run_enabled is set false on each run
+        # and cleared using the reset button
+        if self.python_interpreter.run_enabled:
+            p = self.python_interpreter
+            p.load(self.convert_to_lines())
+            # false because level is not complete yet
+            result, errors = p.compile()
+            if result is False:  # check for syntax errors
+                # TODO display these using in-game dialogs
+                if p.compile_time_error:
+                    error_msg = p.compile_time_error['error']
+                    error_line = p.compile_time_error['line']
+                    console_msg('BIT found a SYNTAX ERROR:', 5)
+                    msg = error_msg + " on line " + str(error_line)
+                    console_msg(msg, 5)
+            else:
+                result, errors = p.run()  # set the program going
+            # save this attempt, regardless of whether it has errors or not
+            self.session.save_run(self.convert_to_lines(), errors)
 
 class InputDialog(Editor):
     def __init__(self, screen, height, code_font):

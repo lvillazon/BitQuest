@@ -198,7 +198,8 @@ class Character:
     def set_position(self, grid_position):
         # place the character at the grid coords
         self.location.x = grid_position[X] * BLOCK_SIZE
-        self.location.y = (grid_position[Y] + 1) * BLOCK_SIZE - self.collider.height
+        self.location.y = ((grid_position[Y] + 1) * BLOCK_SIZE
+                           - self.collider.height)
         self.position = [float(self.location.x),
                          float(self.location.y)]
 
@@ -322,6 +323,11 @@ class Dog(Character):
         result = self.world.input.convert_to_lines()[0]
         print("input:", result)
         return result
+
+    def clear_speech_bubble(self):
+        self.text = []
+        self.text_size = [0,0]
+        self.speaking = False
 
     def create_speech_bubble(self, text, fg_col, bg_col):
         # show a speak-bubble above the character with the text in it

@@ -33,7 +33,7 @@ screen = pygame.display.set_mode(WINDOW_SIZE)
 display = pygame.Surface(DISPLAY_SIZE)
 
 game_world = None
-game_menu = menu.Menu(screen)
+game_menu = menu.Menu(screen, bypass=True)
 game_menu.display()
 
 if not game_menu.quit():
