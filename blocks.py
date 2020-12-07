@@ -196,7 +196,12 @@ class Block:
     def get_grid_position(self):
         return int(self.x / BLOCK_SIZE), int(self.y / BLOCK_SIZE)
 
-    grid_position = property(get_grid_position)  # read only property
+    def set_grid_position(self, pos):
+        self.x = pos[X] * BLOCK_SIZE
+        self.y = pos[Y] * BLOCK_SIZE
+
+    # read only property
+    grid_position = property(get_grid_position)
 
     def is_collidable(self):
         """ These blocks are not collidable,
@@ -911,97 +916,77 @@ class BlockMap:
 
     def insert_column(self):
         """ add a new column of blocks at the current cursor """
-        # it is actually easier to do this by editing the map file itself
-        # and then reloading it, than trying to update all the map dictionaries
+        insert_col = self.cursor[X]  # for brevity
+        self.reset()  # make sure we start from the neutral map position
+        # update the block positions themselves
+        # only need to do this for blocks at or beyond the inserting column
+        # but we must do this for both the block maps
+        all_maps = [self.foreground_blocks, self.midground_blocks]
+        for this_map in all_maps:
+            # find the highest x value in the map
+            max_col = 0
+            for coord in this_map:
+                if coord[X] > max_col:
+                    max_col = coord[X]
+            # iterate over the map, starting at the right and working leftwards
+            for col in range(max_col, insert_col-1, -1):
+                # check each block in the map for a matching x coord
+                for coord in this_map.copy():
+                    if coord[X] == col:
+                        b = this_map[coord]
+                        del this_map[coord]   # remove at old key
+                        b.set_grid_position((coord[X] + 1,  # move block
+                                             coord[Y]))
+                        this_map[b.grid_position] = b  # add at new key
 
-        level_file_name = LEVEL_MAP_FILE_STEM + str(
-            self.level) + LEVEL_MAP_FILE_EXTENSION
-        temp_file_name = LEVEL_MAP_FILE_STEM + 'temp.txt'
-        level_data = []
-        with open(level_file_name, 'r') as old_file:
-            lines = old_file.readlines()
-            for file_line in lines:
-                level_data.append(file_line[:-1])
+        # Movers shouldn't need to be changed much, since their blocks
+        # are held in a list, not a dictionary
+        # but we need to update the home (pixel) coords of each block
+        # so the reset() method works correctly
+        for mover_id in self.movers:
+            self.movers[mover_id].home_positions = []
+            for b in self.movers[mover_id].blocks:
+                self.movers[mover_id].home_positions.append((b.x, b.y))
 
-        with open(temp_file_name, 'w') as new_file:
-            # copy preamble
-            i = 0
-            while i <= level_data.index('###'):
-                new_file.write(level_data[i] + NEW_LINE)
-                i += 1
-
-            # repeat this for the midground and foreground maps
-            for j in range(2):
-                while i < len(level_data) and level_data[i] != '###':
-                    new_file.write(
-                        level_data[i][: self.cursor[X]]
-                        + " "  # insert a space for the new column
-                        + level_data[i][self.cursor[X]:]  # rest of the line
-                        + NEW_LINE
-                    )
-                    i += 1
-
-                # write the section delimiter
-                new_file.write('###' + NEW_LINE)
-                i += 1
-
-            # now the movers
-            new_file.write('# movers' + NEW_LINE)
-            i += 1
-            while i < len(level_data) and level_data[i] != '###':
-                values = eval(level_data[i])
-                # increment x-coords of all blocks >= cursor
-                new_mover_list = []
-                for coord in values[1]:
-                    if coord[X] >= self.cursor[X]:
-                        new_mover_list.append((coord[X]+1, coord[Y]))
-                    else:
-                        new_mover_list.append(coord)
-                # prepend the mover id and write the new list out
-                new_file.write(str(values[0]) + ', '
-                               + str(new_mover_list)
-                               + NEW_LINE)
-                i += 1
-
-            # write the section delimiter
-            new_file.write('###' + NEW_LINE)
-            i += 1
-
-            # next the triggers
-            new_file.write('# triggers' + NEW_LINE)
-            i += 1
-            while i < len(level_data) and level_data[i] != '###':
-                values = eval(level_data[i])
-                new_file.write("'" + values[0] + "', ")  # name
-                if values[0] == "pressure plate":
-                    new_file.write(str(values[1]) + ", ")  # random
-                elif values[0] == "flagpole":
-                    new_file.write("'" + str(values[1]) + "', ")  # name
-
-                ## trigger block coords (shifted right by one block if req)
-                if values[2][X] >= self.cursor[X]:
-                    new_file.write(str((values[2][X] + 1, values[2][Y])))
-                else:
-                    new_file.write(str(values[2]))
-
-                if values[0] == "pressure plate":
-                    # the action list
-                    new_file.write(", " + str(values[3]))
-                new_file.write(NEW_LINE)
-                i += 1
-
-            # write the section delimiter
-            new_file.write('###' + NEW_LINE)
-
-        # finally delete the level file and rename the temp one
-        os.remove(level_file_name)
-        os.rename(temp_file_name, level_file_name)
-        # reload the map from the ammended file
-        self.load_grid()
+        # Triggers shouldn't need updating, since they are held in a list
+        # and their block coord should already have been updated
 
     def delete_column(self):
         """ remove the column at the current cursor """
-        pass
+        delete_col = self.cursor[X]  # for brevity
+        self.reset()  # make sure we start from the neutral map position
+        # update the block positions themselves
+        # only need to do this for blocks at or beyond the inserting column
+        # but we must do this for both the block maps
+        all_maps = [self.foreground_blocks, self.midground_blocks]
+        for this_map in all_maps:
+            # find the highest x value in the map
+            max_col = 0
+            for coord in this_map:
+                if coord[X] > max_col:
+                    max_col = coord[X]
+            # iterate over the map, starting from the deletion point
+            for col in range(delete_col, max_col+1):
+                # check each block in the map for a matching x coord
+                for coord in this_map.copy():
+                    if coord[X] == col:
+                        b = this_map[coord]
+                        del this_map[coord]  # remove at old key
+                        b.set_grid_position((coord[X] - 1,  # move block
+                                             coord[Y]))
+                        this_map[b.grid_position] = b  # add at new key
+
+        # Movers shouldn't need to be changed much, since their blocks
+        # are held in a list, not a dictionary
+        # but we need to update the home (pixel) coords of each block
+        # so the reset() method works correctly
+        for mover_id in self.movers:
+            self.movers[mover_id].home_positions = []
+            for b in self.movers[mover_id].blocks:
+                self.movers[mover_id].home_positions.append((b.x, b.y))
+
+        # Triggers shouldn't need updating, since they are held in a list
+        # and their block coord should already have been updated
 
     def collision_test(self, character_rect):
         """ check if this character is colliding with any of the blocks
@@ -1046,84 +1031,85 @@ class BlockMap:
 
         return collisions
 
-    def old_collision_test(self, character_rect, movement):
-        """ check if this character is colliding with any of the blocks
-        blocks are categorised as:
-        collidable - collision physics applies to characters
-        trigger - characters can overlap the block, activating the trigger
-        cosmetic - no collision physics or trigger (but may animate)
-        """
-        if SHOW_COLLIDERS:
-            # DEBUG draw character collider in green
-            draw_collider(self.world.display,
-                          (0, 255, 0), character_rect, 1, self.world.scroll)
-
-        # check for collisions with solid objects
-        collisions = {'left': None,
-                      'right': None,
-                      'up': None,
-                      'down': None,
-                      'down left': None,
-                      'down right': None}
-
-        # find the first colliding block in each direction
-        for coord in self.midground_blocks:
-            # only check blocks within 1 grid of the character, horizontally
-            if abs(coord[X] - (character_rect.centerx // BLOCK_SIZE)) < 2:
-                b = self.midground_blocks[coord]
-                if b.is_collidable():
-                    collider = pygame.Rect(b.x,
-                                           b.y,
-                                           BLOCK_SIZE, BLOCK_SIZE)
-                    if SHOW_COLLIDERS:
-                        # DEBUG draw block colliders in yellow
-                        draw_collider(self.world.display,
-                                      (255, 255, 0),
-                                      collider, 1, self.world.scroll)
-
-                    if character_rect.colliderect(collider):
-                        # just because the rectangles overlap, doesn't
-                        # necessarily
-                        # mean we want to call it a collision. We only count
-                        # collisions
-                        # where the character is moving towards the block
-                        # or vice versa. This prevents characters from getting
-                        # stuck in blocks
-                        if (movement[X] - b.movement[X] > 0 and
-                                character_rect.right >= collider.left and
-                                (character_rect.bottom > collider.top
-                                 + COLLIDE_THRESHOLD_Y) and
-                                collisions['right'] is None):
-                            collisions['right'] = b  # collider
-
-                        if (movement[X] - b.movement[X] < 0 and
-                                character_rect.left <= collider.right and
-                                (character_rect.bottom > collider.top
-                                 + COLLIDE_THRESHOLD_Y) and
-                                collisions['left'] is None):
-                            collisions['left'] = b
-
-                        if (movement[Y] - b.movement[Y] >= 0 and
-                                character_rect.bottom >= collider.top):
-
-                            # where more than one block collides
-                            # upwards-moving > stationary > downward-moving
-                            if b.movement[Y] != 0:
-                                collisions['down'] = b
-                            else:
-                                collisions['down'] = b
-
-                        if (movement[Y] - b.movement[Y] <= 0 and
-                                collisions['up'] is None):
-                            collisions['up'] = b
-
-                        # DEBUG draw active colliders in red
-                        if SHOW_COLLIDERS:
-                            draw_collider(self.world.display,
-                                          (255, 0, 0),
-                                          collider, 0, self.world.scroll)
-
-        return collisions
+    # def old_collision_test(self, character_rect, movement):
+    #     """ check if this character is colliding with any of the blocks
+    #     blocks are categorised as:
+    #     collidable - collision physics applies to characters
+    #     trigger - characters can overlap the block, activating the trigger
+    #     cosmetic - no collision physics or trigger (but may animate)
+    #     """
+    #     if SHOW_COLLIDERS:
+    #         # DEBUG draw character collider in green
+    #         draw_collider(self.world.display,
+    #                       (0, 255, 0), character_rect, 1, self.world.scroll)
+    #
+    #     # check for collisions with solid objects
+    #     collisions = {'left': None,
+    #                   'right': None,
+    #                   'up': None,
+    #                   'down': None,
+    #                   'down left': None,
+    #                   'down right': None}
+    #
+    #     # find the first colliding block in each direction
+    #     for coord in self.midground_blocks:
+    #         # only check blocks within 1 grid of the character, horizontally
+    #         if abs(coord[X] - (character_rect.centerx // BLOCK_SIZE)) < 2:
+    #             b = self.midground_blocks[coord]
+    #             if b.is_collidable():
+    #                 collider = pygame.Rect(b.x,
+    #                                        b.y,
+    #                                        BLOCK_SIZE, BLOCK_SIZE)
+    #                 if SHOW_COLLIDERS:
+    #                     # DEBUG draw block colliders in yellow
+    #                     draw_collider(self.world.display,
+    #                                   (255, 255, 0),
+    #                                   collider, 1, self.world.scroll)
+    #
+    #                 if character_rect.colliderect(collider):
+    #                     # just because the rectangles overlap, doesn't
+    #                     # necessarily
+    #                     # mean we want to call it a collision. We only count
+    #                     # collisions
+    #                     # where the character is moving towards the block
+    #                     # or vice versa. This prevents characters from
+    #                     getting
+    #                     # stuck in blocks
+    #                     if (movement[X] - b.movement[X] > 0 and
+    #                             character_rect.right >= collider.left and
+    #                             (character_rect.bottom > collider.top
+    #                              + COLLIDE_THRESHOLD_Y) and
+    #                             collisions['right'] is None):
+    #                         collisions['right'] = b  # collider
+    #
+    #                     if (movement[X] - b.movement[X] < 0 and
+    #                             character_rect.left <= collider.right and
+    #                             (character_rect.bottom > collider.top
+    #                              + COLLIDE_THRESHOLD_Y) and
+    #                             collisions['left'] is None):
+    #                         collisions['left'] = b
+    #
+    #                     if (movement[Y] - b.movement[Y] >= 0 and
+    #                             character_rect.bottom >= collider.top):
+    #
+    #                         # where more than one block collides
+    #                         # upwards-moving > stationary > downward-moving
+    #                         if b.movement[Y] != 0:
+    #                             collisions['down'] = b
+    #                         else:
+    #                             collisions['down'] = b
+    #
+    #                     if (movement[Y] - b.movement[Y] <= 0 and
+    #                             collisions['up'] is None):
+    #                         collisions['up'] = b
+    #
+    #                     # DEBUG draw active colliders in red
+    #                     if SHOW_COLLIDERS:
+    #                         draw_collider(self.world.display,
+    #                                       (255, 0, 0),
+    #                                       collider, 0, self.world.scroll)
+    #
+    #     return collisions
 
     def trigger_test(self, character_rect):
         """ check each trigger on the map to see if it should go off """

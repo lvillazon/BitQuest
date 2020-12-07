@@ -1,7 +1,7 @@
 import uuid
 import datetime
 
-from constants import SAVE_FILES_FOLDER, SAVE_FILE_EXTENSION
+from constants import SAVE_FILES_FOLDER, SAVE_FILE_EXTENSION, NEW_LINE
 
 
 class Session:
