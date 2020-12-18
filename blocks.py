@@ -292,6 +292,7 @@ class BlockMap:
         # - we might want triggers that aren't associated with a specific block
         self.triggers = []
         self.link_trigger = None  # set when connecting a trigger to movers
+        self.pending_link = None  # set when defining a trigger action
 
         self.tile_images = {}
         # build the dictionary of tile images from the dictionary
@@ -353,11 +354,24 @@ class BlockMap:
                     # but first we must obtain the offset coords
                     # that the mover will be shifted by, when the trigger fires
                     # TODO replace the input with something in-game
-                    response = input("Enter block offset (x,y):")
-                    if response != "":
-                        offset = eval(response)
-                        self.link_trigger.add_action(self.movers[m], offset)
+                    # we do this by saving the link and the mover as a tuple
+                    # ready for the next mouse click to define the offset
+                    self.pending_link = (self.link_trigger, self.movers[m])
+#                    response = input("Enter block offset (x,y):")
+#                    if response != "":
+#                        offset = eval(response)
+#                        self.link_trigger.add_action(self.movers[m], offset)
                     self.link_trigger = None  # exit link mode
+        elif self.pending_link:
+            # add an action to the pending trigger, that moves the mover
+            # to the position of the cursor
+            mover = self.pending_link[1]
+            mover_anchor = mover.blocks[0]
+            trigger = self.pending_link[0]
+            offset = (self.cursor[X] - mover_anchor.grid_position[X],
+                      self.cursor[Y] - mover_anchor.grid_position[Y])
+            trigger.add_action(mover, offset)
+            self.pending_link = None  # exit this mode
 
     def grid_to_screen_pos(self, grid_pos):
         # convert grid coords to screen coords
@@ -368,24 +382,38 @@ class BlockMap:
                 - self.world.scroll[Y]
                 + BLOCK_SIZE / 2)
 
-    def select_block(self, mouse_pos):
-        if self.selecting:
-            self.cursor_to_mouse(mouse_pos)
-            b = self.get_block(self.midground_blocks, *self.cursor)
-            if b:
+    def select_block(self, mouse_pos, mode='set'):
+        """ if mode is 'add', the current block is added to the selection
+        otherwise just this block is selected, clearing any previous selection
+        """
+        self.cursor_to_mouse(mouse_pos)
+        b = self.get_block(self.midground_blocks, *self.cursor)
+        if b:
+            if mode == 'add':
                 self.selected_blocks.append(b)
-            print(self.selected_blocks)
+            else:
+                self.selected_blocks = [b]
+        print(self.selected_blocks)
 
-    def begin_selection(self):
-        self.selecting = True
-        print("Selecting...")
-
+    # def begin_selection(self):
+    #     self.selecting = True
+    #     print("Selecting...")
+    #
     def cancel_selection(self):
         self.selected_blocks = []
+    #
+    # def end_selection(self):
+    #     print("selection complete")
+    #     self.selecting = False
+    #     # Create a new moving block group
+    #     mover = Moveable(self.world,
+    #                      self.get_next_mover_id(),
+    #                      self.selected_blocks)
+    #     self.movers[mover.id] = mover
+    #     # delete the selection now, because it is saved as a moveable group
+    #     self.selected_blocks = []
 
-    def end_selection(self):
-        print("selection complete")
-        self.selecting = False
+    def create_mover(self):
         # Create a new moving block group
         mover = Moveable(self.world,
                          self.get_next_mover_id(),
@@ -394,12 +422,11 @@ class BlockMap:
         # delete the selection now, because it is saved as a moveable group
         self.selected_blocks = []
 
-    def set_trigger(self, mouse_pos):
+    def set_trigger(self): #, mouse_pos):
         """ create a trigger at this position
         or add a new action to an existing trigger?
         """
-
-        self.cursor_to_mouse(mouse_pos)
+        self.cancel_selection()
         b = self.get_block(self.midground_blocks, *self.cursor)
         if not b:
             return  # bail immediately, since there is no block here
@@ -716,6 +743,23 @@ class BlockMap:
                                  self.grid_to_screen_pos(
                                      self.link_trigger.block.grid_position)
                                  , 1)
+            # if we are in pending link mode, draw an arrow from the
+            # anchor block in a mover to the cursor, so that we can specify
+            # where the mover should move to
+            elif self.pending_link:
+                mover_pos = self.pending_link[1].blocks[0].grid_position
+                mouse_pos = (pygame.mouse.get_pos()[X] / SCALING_FACTOR,
+                             pygame.mouse.get_pos()[Y] / SCALING_FACTOR)
+
+                # draw the arrow
+                arrow(surface,
+                      COLOUR_MOVER_OFFSET,
+                      COLOUR_MOVER_OFFSET,
+                      self.grid_to_screen_pos(mover_pos),
+                      mouse_pos,
+                      8,
+                      )
+
             # draw lines from each trigger to its movers
             for t in self.triggers:
                 trigger_pos = self.grid_to_screen_pos(t.block.grid_position)
@@ -1031,86 +1075,6 @@ class BlockMap:
 
         return collisions
 
-    # def old_collision_test(self, character_rect, movement):
-    #     """ check if this character is colliding with any of the blocks
-    #     blocks are categorised as:
-    #     collidable - collision physics applies to characters
-    #     trigger - characters can overlap the block, activating the trigger
-    #     cosmetic - no collision physics or trigger (but may animate)
-    #     """
-    #     if SHOW_COLLIDERS:
-    #         # DEBUG draw character collider in green
-    #         draw_collider(self.world.display,
-    #                       (0, 255, 0), character_rect, 1, self.world.scroll)
-    #
-    #     # check for collisions with solid objects
-    #     collisions = {'left': None,
-    #                   'right': None,
-    #                   'up': None,
-    #                   'down': None,
-    #                   'down left': None,
-    #                   'down right': None}
-    #
-    #     # find the first colliding block in each direction
-    #     for coord in self.midground_blocks:
-    #         # only check blocks within 1 grid of the character, horizontally
-    #         if abs(coord[X] - (character_rect.centerx // BLOCK_SIZE)) < 2:
-    #             b = self.midground_blocks[coord]
-    #             if b.is_collidable():
-    #                 collider = pygame.Rect(b.x,
-    #                                        b.y,
-    #                                        BLOCK_SIZE, BLOCK_SIZE)
-    #                 if SHOW_COLLIDERS:
-    #                     # DEBUG draw block colliders in yellow
-    #                     draw_collider(self.world.display,
-    #                                   (255, 255, 0),
-    #                                   collider, 1, self.world.scroll)
-    #
-    #                 if character_rect.colliderect(collider):
-    #                     # just because the rectangles overlap, doesn't
-    #                     # necessarily
-    #                     # mean we want to call it a collision. We only count
-    #                     # collisions
-    #                     # where the character is moving towards the block
-    #                     # or vice versa. This prevents characters from
-    #                     getting
-    #                     # stuck in blocks
-    #                     if (movement[X] - b.movement[X] > 0 and
-    #                             character_rect.right >= collider.left and
-    #                             (character_rect.bottom > collider.top
-    #                              + COLLIDE_THRESHOLD_Y) and
-    #                             collisions['right'] is None):
-    #                         collisions['right'] = b  # collider
-    #
-    #                     if (movement[X] - b.movement[X] < 0 and
-    #                             character_rect.left <= collider.right and
-    #                             (character_rect.bottom > collider.top
-    #                              + COLLIDE_THRESHOLD_Y) and
-    #                             collisions['left'] is None):
-    #                         collisions['left'] = b
-    #
-    #                     if (movement[Y] - b.movement[Y] >= 0 and
-    #                             character_rect.bottom >= collider.top):
-    #
-    #                         # where more than one block collides
-    #                         # upwards-moving > stationary > downward-moving
-    #                         if b.movement[Y] != 0:
-    #                             collisions['down'] = b
-    #                         else:
-    #                             collisions['down'] = b
-    #
-    #                     if (movement[Y] - b.movement[Y] <= 0 and
-    #                             collisions['up'] is None):
-    #                         collisions['up'] = b
-    #
-    #                     # DEBUG draw active colliders in red
-    #                     if SHOW_COLLIDERS:
-    #                         draw_collider(self.world.display,
-    #                                       (255, 0, 0),
-    #                                       collider, 0, self.world.scroll)
-    #
-    #     return collisions
-
     def trigger_test(self, character_rect):
         """ check each trigger on the map to see if it should go off """
         for t in self.triggers:
@@ -1126,3 +1090,26 @@ class BlockMap:
             return True
         else:
             return False
+
+def arrow(screen, lcolor, tricolor, start, end, trirad):
+    # draws a line with a triangular arrow head
+    # lcolor = line colour
+    # tricolor = arrow head colour
+    # trirad = radius of arrow head
+    # pinched from https://stackoverflow.com/questions/43527894/drawing-arrowheads-which-follow-the-direction-of-the-line-in-pygame
+    pygame.draw.line(screen, lcolor, start, end, 1)
+    rotation = math.degrees(math.atan2(start[1]-end[1], end[0]-start[0]))+90
+    pygame.draw.polygon(screen, tricolor,
+                    ((end[0],
+                     end[1]),
+                     (end[0]+trirad*math.sin(math.radians(rotation-160)),
+                      end[1]+trirad*math.cos(math.radians(rotation-160))),
+                     (end[0]+trirad*math.sin(math.radians(rotation+160)),
+                      end[1]+trirad*math.cos(math.radians(rotation+160)))))
+    # pygame.draw.polygon(screen, tricolor,
+    #                 ((end[0]+trirad*math.sin(math.radians(rotation)),
+    #                   end[1]+trirad*math.cos(math.radians(rotation))),
+    #                  (end[0]+trirad*math.sin(math.radians(rotation-120)),
+    #                   end[1]+trirad*math.cos(math.radians(rotation-120))),
+    #                  (end[0]+trirad*math.sin(math.radians(rotation+120)),
+    #                   end[1]+trirad*math.cos(math.radians(rotation+120)))))

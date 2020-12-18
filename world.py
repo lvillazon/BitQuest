@@ -79,7 +79,7 @@ class World:
                             3: ("the staircase", (91, 6), (90, 8)),
                             4: ("the choice", (105, 6), (103, 8)),
                             }
-        self.puzzle = 2
+        self.puzzle = 0
         self.session.set_current_level(
             self.puzzle_info[self.puzzle][PUZZLE_NAME]
         )
@@ -272,11 +272,6 @@ class World:
                 ctrl = pygame.key.get_mods() & KMOD_CTRL
                 shift = pygame.key.get_mods() & KMOD_SHIFT
 
-                if shift and not self.blocks.selecting:
-                    self.blocks.begin_selection()
-                elif not shift and self.blocks.selecting:
-                    self.blocks.end_selection()
-
                 # these actions do not auto repeat when held down
                 if not self.repeat_lock:
                     self.repeat_lock = True
@@ -317,11 +312,18 @@ class World:
                         # switch between midground and foreground block layers
                         self.blocks.switch_layer()
                     elif pressed[K_r]:
-                        # reset all block triggers
+                        # reset all block triggers and movers
                         self.blocks.reset()
                     elif pressed[K_h]:
                         # home the cursor to the centre of the screen
                         self.blocks.home_cursor()
+                    elif pressed[K_m]:
+                        # turn the selection into a movable group
+                        self.blocks.create_mover()
+                    elif pressed[K_t]:
+                        # turn the block at the cursor into a trigger
+                        # or link an existing trigger to a mover
+                        self.blocks.set_trigger()
                     elif pressed[K_INSERT]:
                         # insert a new column of blocks at the cursor
                         self.blocks.insert_column()
@@ -342,13 +344,12 @@ class World:
                                                  + self.scroll[Y]
                                                  )
                                     if shift:
-                                        self.blocks.select_block(mouse_pos)
-                                    elif ctrl:
-                                        self.blocks.set_trigger(mouse_pos)
+                                        self.blocks.select_block(mouse_pos,
+                                                                 'add')
                                     else:
-                                        # just move the cursor,
-                                        # without selecting
-                                        self.blocks.cursor_to_mouse(mouse_pos)
+                                        # just select a single block
+                                        self.blocks.select_block(mouse_pos,
+                                                                 'set')
                                 elif event.button == 3:  # right click
                                     pass
                             # 2: middle button
@@ -519,3 +520,8 @@ class World:
                                      True, color)
         line_pos = [100, 100]
         self.screen.blit(line, line_pos)
+
+    def complete_level(self, name):
+        self.session.save_checkpoint_reached(name)
+        self.puzzle += 1
+        self.python_interpreter.run_enabled = True

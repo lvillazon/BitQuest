@@ -122,14 +122,14 @@ class VirtualMachine:
         }
         # getters and setters for all the programmable world variables
         self.world_variables = {
-            'bitX': (self.world.get_bit_x, self.world.set_bit_x),
-            'bitY': (self.world.get_bit_y, self.world.set_bit_y),
-            'playerX': (self.world.get_player_x, self.world.set_player_x),
-            'playerY': (self.world.get_player_y, self.world.set_player_y),
+            'bit_x': (self.world.get_bit_x, self.world.set_bit_x),
+            'bit_y': (self.world.get_bit_y, self.world.set_bit_y),
+            'me_x': (self.world.get_player_x, self.world.set_player_x),
+            'me_y': (self.world.get_player_y, self.world.set_player_y),
         }
         # read/write variables need special treatment,
         # so we track them separately
-        self.writable_names = ['bitX', 'bitY']
+        self.writable_names = ['bit_x', 'bit_y']
 
     def load(self, source):
         # set the source code to interpret
@@ -247,10 +247,10 @@ class VirtualMachine:
                 '__name__': '__main__',
                 '__doc__': None,
                 '__package__': None,
-                'bitX': self.world.bit_x,  # predefine globals to link to world
-                'bitY': self.world.bit_y,
-                'playerX': self.world.player_x,
-                'playerY': self.world.player_y,
+                'bit_x': self.world.bit_x,  # predefine globals to link to world
+                'bit_y': self.world.bit_y,
+                'me_x': self.world.player_x,
+                'me_y': self.world.player_y,
             }
         local_names.update(callargs)
         frame = Frame(code, global_names, local_names, self.frame)

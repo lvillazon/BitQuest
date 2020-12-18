@@ -75,7 +75,9 @@ class Session:
         with open(self.save_file, 'a') as file:  # add to the file if it exists
             file.write(self.open_tag + "SECTION=ATTEMPT" + self.close_tag)
             self.write_time_stamp(file)
-            file.write("LEVEL=" + self._current_level + NEW_LINE)
+            file.write(self.open_tag
+                       + "LEVEL=" + self._current_level
+                       + self.close_tag)
             if code_lines:
                 file.write(self.open_tag + "USER_PROGRAM" + self.close_tag)
                 for line in code_lines:
@@ -93,6 +95,8 @@ class Session:
         with open(self.save_file, 'a') as file:  # append to existing file
             file.write(self.open_tag + "SECTION=CHECKPOINT" + self.close_tag)
             self.write_time_stamp(file)
-            file.write("LEVEL=" + checkpoint_name + self.close_tag)
+            file.write(self.open_tag
+                       + "LEVEL=" + checkpoint_name
+                       + self.close_tag)
             # TODO add info about bonus goals achieved eg coins collected
             file.write(self.section_delimiter)

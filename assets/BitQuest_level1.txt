@@ -12,10 +12,10 @@ Level data is split into 4 sections, each section ends with ### on its own line:
                                                                                            1            1          2222223            
                          Pp                                                                1           =1          2    =3            
                          []                      ZX                      ZX                1          =11   ZX     22 =134            
-        ua               []                      CV                      CV                1         =111   CV     1111111            
-   = =  is              =Bb                      NM              =       NM              =   =      =1111   NM    =                   
-9Ppw90qw9  w9999912341234123412341111111111111111111111111111a  u1111111111111111111111199931333311111  232222222112222222 =2222222222
-1[]412345  85678567856781111111111111111111111111111111111111    11111111111111         111                      11       22          
+                         []                      CV                      CV                1         =111   CV     1111111            
+   = =                  =Bb                      NM              =       NM              =   =      =1111   NM    =                   
+9Ppw90qw90qw90qw90qw90qw9  90qw90qw90qw90qw90qw909090qw90dddda  u90qw90qw1190qw90qw90qw90qw31333311111  232222222112222222 =2222222222
+1[]4123456785678567856781  4567812345678123456781234567891234    12345678123456         111                      11       22          
  []                                                          8ua8                       111                      11                   
                                                               is                                                 11                   
                                                                                                                                       
@@ -32,7 +32,7 @@ Level data is split into 4 sections, each section ends with ### on its own line:
 -                                       -            -                 -                                                              
 {|/}                                    {|/}         {|/}              {|                                                             
  0q                      11                           0qw90qw    90qw                                                                 
- 23                      11                            =23234s  i1234                                                                 
+ 23                      11                             23234s  i1234                                                                 
                                                        1856785   7878 7                                                               
                                                        34123456785678                                                                 
                                                                                                                                       
@@ -55,8 +55,7 @@ Level data is split into 4 sections, each section ends with ### on its own line:
 12, [(116, 4), (117, 4), (118, 4), ]
 13, [(112, 9), (115, 9), (116, 9), (117, 9), (118, 9), (119, 9), (120, 9), (121, 9), ]
 14, [(122, 10), (123, 9), (123, 10), ]
-16, [(8, 7), (9, 7), (9, 8), (8, 8), ]
-17, [(12, 9), ]
+15, [(10, 9), (9, 9), (9, 10), ]
 ###
 # triggers
 'pressure plate', False, (24, 8), [(0, (0, 4)), ]
@@ -78,5 +77,5 @@ Level data is split into 4 sections, each section ends with ### on its own line:
 'flagpole', 'the pillar', (49, 8)
 'flagpole', 'the pit', (73, 8)
 'flagpole', 'the lift', (108, 8)
-'pressure plate', False, (5, 8), [(16, (1, 2)), (17, (0, -3)), ]
+'pressure plate', False, (5, 8), [(15, (1, -2)), (15, (-4, -5)), ]
 ###

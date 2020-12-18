@@ -90,6 +90,7 @@ COLOUR_TRIGGER_BLOCK = (0, 0, 128)  # blue
 COLOUR_NEW_LINK = (0, 0, 255)  # bright blue
 COLOUR_NORMAL_LINK = (255, 0, 0)  # bright red
 COLOUR_RANDOM_LINK = (255, 255, 0)  # yellow
+COLOUR_MOVER_OFFSET = (0, 255, 0)  # bright green
 COLOUR_MENU_BG= (0x5D, 0x8A, 0xA8)  # airforce blue
 COLOUR_MENU_TITLE = (0xFF, 0xBF, 0x00)  # amber
 COLOUR_MENU_TEXT = (0xFF, 0xBF, 0x00)  # amber
