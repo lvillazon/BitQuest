@@ -321,7 +321,7 @@ class Dog(Character):
         while self.world.input.is_active():
             self.world.update()
         result = self.world.input.convert_to_lines()[0]
-        print("input:", result)
+        console_msg("input:" + str(result), 8)
         return result
 
     def clear_speech_bubble(self):

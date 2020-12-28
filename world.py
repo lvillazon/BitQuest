@@ -299,8 +299,8 @@ class World:
                     elif pressed[K_RIGHTBRACKET]:  # ]
                         self.blocks.next_editor_tile()
                     elif pressed[K_BACKSPACE]:
-                        if shift:
-                            self.blocks.cancel_selection()
+                        if self.blocks.mover_is_selected():
+                            console_msg("deleting mover", 8)
                             self.blocks.remove_moveable_group()
                         else:
                             self.blocks.blank_editor_tile()
@@ -324,6 +324,10 @@ class World:
                         # turn the block at the cursor into a trigger
                         # or link an existing trigger to a mover
                         self.blocks.set_trigger()
+                    elif pressed[K_l]:
+                        # toggle random mode for the trigger actions
+                        # if the cursor is currently on a trigger
+                        self.blocks.toggle_trigger_randomness()
                     elif pressed[K_INSERT]:
                         # insert a new column of blocks at the cursor
                         self.blocks.insert_column()
@@ -492,18 +496,16 @@ class World:
             # button 0 is left click
             if not self.rewinding and pygame.mouse.get_pressed()[0]:
                 # Rewind everything to the start of the level
-                print("rewinding...")
                 self.rewind_level()
                 self.python_interpreter.run_enabled = True
         elif self.play_button_rect.collidepoint(*pygame.mouse.get_pos()):
             if (self.python_interpreter.run_enabled and
                     pygame.mouse.get_pressed()[0]):
                 # run user program
-                print("running...")
                 self.editor.run_program()
 
     def rewind_level(self):
-        console_msg("Rewinding!", 7)
+        console_msg("Rewinding!", 8)
         self.rewinding = True
         self.blocks.reset()
         self.player.set_position(

@@ -208,8 +208,9 @@ class VirtualMachine:
                 result = self.run_frame(frame)
                 if result in ('exception', 'quit'):
                     self.running = False
-                    print("COMPILE ERRORS=" + str(self.compile_time_error))
-                    print("RUN ERRORS=" + str(self.run_time_error))
+                    console_msg("COMPILE ERRORS="
+                                + str(self.compile_time_error), 4)
+                    console_msg("RUN ERRORS=" + str(self.run_time_error), 4)
                     errors = []
                     if self.compile_time_error:
                         msg = str(self.compile_time_error)
@@ -474,7 +475,7 @@ class VirtualMachine:
         # build bytecode from the source using compile
         # and display the dissassembled instructions using dis
 
-        print("Lexing...")
+        console_msg("Lexing...", 6)
         success = True
         token_list = []
         unrecognised = []
@@ -498,9 +499,9 @@ class VirtualMachine:
 
         if success:
             for instruction in token_list:
-                if CONSOLE_VERBOSE:
-                    # list bytecode
-                    print("\t", instruction.opname, str(instruction.argval))
+                # list bytecode
+                console_msg("\t" + instruction.opname
+                            + str(instruction.argval), 4)
                 # check that the instructions are all defined
                 defined = False
                 bytecode_fn = getattr(self,
@@ -521,7 +522,7 @@ class VirtualMachine:
                     unrecognised.append(instruction.opname)
         if unrecognised:
             for i in unrecognised:
-                print("UNDEFINED BYTECODE: %s" % i)
+                console_msg("UNDEFINED BYTECODE: " + str(i), 2)
             success = False
 
         if success:

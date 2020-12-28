@@ -13,7 +13,7 @@ Level data is split into 4 sections, each section ends with ### on its own line:
                          Pp                                                                1           =1          2    =3            
                          []                      ZX                      ZX                1          =11   ZX     22 =134            
                          []                      CV                      CV                1         =111   CV     1111111            
-   = =                  =Bb                      NM              =       NM              =   =      =1111   NM    =                   
+   =                    =Bb                      NM              =       NM              =   =      =1111   NM    =                   
 9Ppw90qw90qw90qw90qw90qw9  90qw90qw90qw90qw90qw909090qw90dddda  u90qw90qw1190qw90qw90qw90qw31333311111  232222222112222222 =2222222222
 1[]4123456785678567856781  4567812345678123456781234567891234    12345678123456         111                      11       22          
  []                                                          8ua8                       111                      11                   
@@ -55,11 +55,11 @@ Level data is split into 4 sections, each section ends with ### on its own line:
 12, [(116, 4), (117, 4), (118, 4), ]
 13, [(112, 9), (115, 9), (116, 9), (117, 9), (118, 9), (119, 9), (120, 9), (121, 9), ]
 14, [(122, 10), (123, 9), (123, 10), ]
-15, [(10, 9), (9, 9), (9, 10), ]
+15, [(8, 9), (10, 9), (9, 9), ]
 ###
 # triggers
 'pressure plate', False, (24, 8), [(0, (0, 4)), ]
-'pressure plate', False, (3, 8), [(1, (0, -3)), ]
+'pressure plate', False, (3, 8), [(1, (0, -3)), (15, (0, -3)), (15, (5, -2)), ]
 'pressure plate', False, (65, 8), [(2, (0, -2)), ]
 'pressure plate', False, (89, 8), [(3, (0, -4)), ]
 'pressure plate', False, (93, 8), [(4, (0, -4)), ]
@@ -74,8 +74,4 @@ Level data is split into 4 sections, each section ends with ### on its own line:
 'pressure plate', False, (118, 6), [(13, (0, 1)), ]
 'pressure plate', True, (114, 8), [(10, (0, -3)), (11, (0, -5)), ]
 'pressure plate', True, (123, 9), [(14, (0, -1)), ]
-'flagpole', 'the pillar', (49, 8)
-'flagpole', 'the pit', (73, 8)
-'flagpole', 'the lift', (108, 8)
-'pressure plate', False, (5, 8), [(15, (1, -2)), (15, (-4, -5)), ]
 ###

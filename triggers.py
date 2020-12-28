@@ -39,6 +39,18 @@ class Trigger:
         if self.random:
             self.pick_an_action()
 
+    def toggle_random(self):
+        self.random = not self.random
+        if self.random:
+            self.pick_an_action()
+
+    def is_linked_to(self, mover):
+        """ returns true if the trigger contains an action for this mover"""
+        if mover in [a[0] for a in self.actions]:
+            return True
+        else:
+            return False
+
     def add_action(self, mover, movement):
         """ create an action - a mover + an (x,y) movement
         This is expressed as a call to the activate method of the mover
@@ -50,6 +62,15 @@ class Trigger:
         # recent set of available actions
         if self.random:
             self.pick_an_action()
+
+    def remove_mover_actions(self, mover):
+        """ delete any actions that reference this mover """
+        amended_actions = [a for a in self.actions if a[0] != mover]
+        self.actions = amended_actions
+
+    def actions_count(self):
+        """ number of actions attached to this trigger"""
+        return len(self.actions)
 
     def check(self, character):
         """ check if the trigger has activated

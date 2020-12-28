@@ -348,7 +348,8 @@ class BlockMap:
             b = self.get_block(self.midground_blocks, *self.cursor)
             for m in self.movers:
                 if b in self.movers[m].blocks:
-                    print("connecting to mover id:", self.movers[m].id)
+                    console_msg("connecting to mover id:"
+                                + str(self.movers[m].id), 7)
                     # a mover containing this block exists,
                     # so we can complete the link
                     # but first we must obtain the offset coords
@@ -357,10 +358,10 @@ class BlockMap:
                     # we do this by saving the link and the mover as a tuple
                     # ready for the next mouse click to define the offset
                     self.pending_link = (self.link_trigger, self.movers[m])
-#                    response = input("Enter block offset (x,y):")
-#                    if response != "":
-#                        offset = eval(response)
-#                        self.link_trigger.add_action(self.movers[m], offset)
+                    #                    response = input("Enter block offset (x,y):")
+                    #                    if response != "":
+                    #                        offset = eval(response)
+                    #                        self.link_trigger.add_action(self.movers[m], offset)
                     self.link_trigger = None  # exit link mode
         elif self.pending_link:
             # add an action to the pending trigger, that moves the mover
@@ -393,25 +394,9 @@ class BlockMap:
                 self.selected_blocks.append(b)
             else:
                 self.selected_blocks = [b]
-        print(self.selected_blocks)
 
-    # def begin_selection(self):
-    #     self.selecting = True
-    #     print("Selecting...")
-    #
     def cancel_selection(self):
         self.selected_blocks = []
-    #
-    # def end_selection(self):
-    #     print("selection complete")
-    #     self.selecting = False
-    #     # Create a new moving block group
-    #     mover = Moveable(self.world,
-    #                      self.get_next_mover_id(),
-    #                      self.selected_blocks)
-    #     self.movers[mover.id] = mover
-    #     # delete the selection now, because it is saved as a moveable group
-    #     self.selected_blocks = []
 
     def create_mover(self):
         # Create a new moving block group
@@ -422,9 +407,38 @@ class BlockMap:
         # delete the selection now, because it is saved as a moveable group
         self.selected_blocks = []
 
-    def set_trigger(self): #, mouse_pos):
+    def is_trigger(self):
+        """ returns true if the cursor is over a trigger block"""
+        b = self.get_block(self.midground_blocks, *self.cursor)
+        if not b:
+            return  False # bail immediately, since there is no block here
+        else:
+            # check if this block is a trigger
+            return b in [t.block for t in self.triggers]
+
+    def trigger_at_cursor(self):
+        """ returns the trigger object linked to the block at the cursor
+        or None if there is no trigger there"""
+        b = self.get_block(self.midground_blocks, *self.cursor)
+        if not b:
+            return  None # bail immediately, since there is no block here
+        else:
+            # check if this block is a trigger
+            for t in self.triggers:
+                if b == t.block:
+                    return t
+            return None  # the block is not a trigger
+
+    def toggle_trigger_randomness(self):
+        """ if the cursor is on a trigger, toggle the random flag"""
+        self.cancel_selection()
+        selected_trigger = self.trigger_at_cursor()
+        if selected_trigger != None:
+            selected_trigger.toggle_random()
+
+    def set_trigger(self):  # , mouse_pos):
         """ create a trigger at this position
-        or add a new action to an existing trigger?
+        or add a new action to an existing trigger
         """
         self.cancel_selection()
         b = self.get_block(self.midground_blocks, *self.cursor)
@@ -456,7 +470,6 @@ class BlockMap:
         else:
             # if the trigger already exists, enter linking mode
             self.link_trigger = existing_trigger
-            print("exisiting trigger,", t)
 
     def get_next_mover_id(self):
         """ returns the next integer in the sequence to make sure that
@@ -683,6 +696,15 @@ class BlockMap:
         else:
             console_msg("No block found at " + str(x) + "," + str(y), 8)
             return None
+
+    def mover_is_selected(self):
+        """ returns true if the cursor is currently on a block that
+        is part of a movable group"""
+        for m in self.movers:
+            if self.get_block(self.current_layer, *self.cursor) in \
+                    self.movers[m].blocks:
+                return True
+        return False
 
     def update(self, surface):
         """ draw any blocks that are on-screen """
@@ -943,20 +965,22 @@ class BlockMap:
         The blocks themselves are not affected - they just don't count
         as a movable group anymore.
         """
-        existing_block = self.get_block(self.current_layer,
-                                        self.cursor[X],
-                                        self.cursor[Y])
+        existing_block = self.get_block(self.current_layer, *self.cursor)
         if existing_block:
-            for m in self.movers:
-                if existing_block in m.blocks:
-                    # confirmation dialog
-                    if input("Delete this movable group? (y/n)") == 'y':
-                        self.movers.remove(m)
-                        # deleting an element inside the for loop
-                        # could cause the  loop to skip an element
-                        # but we can quit the loop immediately anyway,
-                        # so it's ok (albeit a bit scruffy)
-                        break
+            for m in self.movers.copy():
+                if existing_block in self.movers[m].blocks:
+                    # delete connections to any triggers
+                    for t in self.triggers:
+                        if t.is_linked_to(self.movers[m]):
+                            t.remove_mover_actions(self.movers[m])
+                    # only keep triggers that still have links
+                    amended_trigger_list = [t for t in self.triggers
+                                            if t.actions_count() > 0]
+                    self.triggers = amended_trigger_list
+
+                    # delete the mover itself
+                    del (self.movers[m])
+                    break
 
     def insert_column(self):
         """ add a new column of blocks at the current cursor """
@@ -973,12 +997,12 @@ class BlockMap:
                 if coord[X] > max_col:
                     max_col = coord[X]
             # iterate over the map, starting at the right and working leftwards
-            for col in range(max_col, insert_col-1, -1):
+            for col in range(max_col, insert_col - 1, -1):
                 # check each block in the map for a matching x coord
                 for coord in this_map.copy():
                     if coord[X] == col:
                         b = this_map[coord]
-                        del this_map[coord]   # remove at old key
+                        del this_map[coord]  # remove at old key
                         b.set_grid_position((coord[X] + 1,  # move block
                                              coord[Y]))
                         this_map[b.grid_position] = b  # add at new key
@@ -1010,7 +1034,7 @@ class BlockMap:
                 if coord[X] > max_col:
                     max_col = coord[X]
             # iterate over the map, starting from the deletion point
-            for col in range(delete_col, max_col+1):
+            for col in range(delete_col, max_col + 1):
                 # check each block in the map for a matching x coord
                 for coord in this_map.copy():
                     if coord[X] == col:
@@ -1091,6 +1115,7 @@ class BlockMap:
         else:
             return False
 
+
 def arrow(screen, lcolor, tricolor, start, end, trirad):
     # draws a line with a triangular arrow head
     # lcolor = line colour
@@ -1098,14 +1123,19 @@ def arrow(screen, lcolor, tricolor, start, end, trirad):
     # trirad = radius of arrow head
     # pinched from https://stackoverflow.com/questions/43527894/drawing-arrowheads-which-follow-the-direction-of-the-line-in-pygame
     pygame.draw.line(screen, lcolor, start, end, 1)
-    rotation = math.degrees(math.atan2(start[1]-end[1], end[0]-start[0]))+90
+    rotation = math.degrees(
+        math.atan2(start[1] - end[1], end[0] - start[0])) + 90
     pygame.draw.polygon(screen, tricolor,
-                    ((end[0],
-                     end[1]),
-                     (end[0]+trirad*math.sin(math.radians(rotation-160)),
-                      end[1]+trirad*math.cos(math.radians(rotation-160))),
-                     (end[0]+trirad*math.sin(math.radians(rotation+160)),
-                      end[1]+trirad*math.cos(math.radians(rotation+160)))))
+                        ((end[0],
+                          end[1]),
+                         (end[0] + trirad * math.sin(
+                             math.radians(rotation - 160)),
+                          end[1] + trirad * math.cos(
+                              math.radians(rotation - 160))),
+                         (end[0] + trirad * math.sin(
+                             math.radians(rotation + 160)),
+                          end[1] + trirad * math.cos(
+                              math.radians(rotation + 160)))))
     # pygame.draw.polygon(screen, tricolor,
     #                 ((end[0]+trirad*math.sin(math.radians(rotation)),
     #                   end[1]+trirad*math.cos(math.radians(rotation))),
