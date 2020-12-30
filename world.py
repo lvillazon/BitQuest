@@ -268,7 +268,7 @@ class World:
                 if self.game_origin[Y] == 0:
                     self.editor.show()
 
-            if MAP_EDITOR_ENABLED and self.blocks.show_grid:
+            if self.blocks.map_edit_mode:
                 ctrl = pygame.key.get_mods() & KMOD_CTRL
                 shift = pygame.key.get_mods() & KMOD_SHIFT
 
@@ -302,6 +302,9 @@ class World:
                         if self.blocks.mover_is_selected():
                             console_msg("deleting mover", 8)
                             self.blocks.remove_moveable_group()
+                        elif self.blocks.trigger_is_selected():
+                            console_msg("deleting trigger", 8)
+                            self.blocks.remove_trigger()
                         else:
                             self.blocks.blank_editor_tile()
                     elif pressed[K_RETURN]:
@@ -370,11 +373,20 @@ class World:
                         self.frame_counter = 0
 
             if pressed[K_g]:
+                ctrl = pygame.key.get_mods() & KMOD_CTRL
+                shift = pygame.key.get_mods() & KMOD_SHIFT
+
                 if not self.repeat_lock:
                     # toggle the block grid overlay
                     self.blocks.show_grid = not self.blocks.show_grid
+                    # hold Ctrl + Shift down to select/deselect editor mode
+                    if ALLOW_MAP_EDITOR and ctrl and shift \
+                            and not self.blocks.map_edit_mode:
+                        # toggle edit mode on and off in sync with the grid
+                        self.blocks.map_edit_mode = True
+                    else:
+                        self.blocks.map_edit_mode = False
                     self.repeat_lock = True
-
             # check the mouse to see if any buttons were clicked
             # currently just the rewind button
             self.check_buttons()
@@ -446,6 +458,11 @@ class World:
             self.blocks.draw_grid(self.screen, self.game_origin, (0, 0, 0))
         # previously, the grid took the colour from the editor choice
         #                                  self.editor.get_fg_color())
+
+        # draw the map editor info panel and block palette
+        if self.blocks.map_edit_mode:
+            self.blocks.draw_edit_info_box(self.screen)
+            # self.blocks.draw_block_palette(self.screen, self.game_origin)
 
         # draw the rewind button in the top right corner
         if self.rewinding:

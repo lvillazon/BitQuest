@@ -32,7 +32,7 @@ PLAY_DISABLED_ICON_FILE = 'assets/play_disabled.png'
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console
 MSG_VERBOSITY = 8  # 0-9, 0= no console messages, 9 = max
-MAP_EDITOR_ENABLED = True  # when true allows the game map to be edited in-game
+ALLOW_MAP_EDITOR = True  # allows the game map to be edited with Ctrl-Shift-G
 SKY_BLUE = (0, 155, 255)
 LIGHT_GREY = (230, 230, 230)
 BLACK = (0, 0, 0)
@@ -94,3 +94,4 @@ COLOUR_MOVER_OFFSET = (0, 255, 0)  # bright green
 COLOUR_MENU_BG= (0x5D, 0x8A, 0xA8)  # airforce blue
 COLOUR_MENU_TITLE = (0xFF, 0xBF, 0x00)  # amber
 COLOUR_MENU_TEXT = (0xFF, 0xBF, 0x00)  # amber
+COLOUR_MAP_EDITOR_BOXES = (0xc2, 0xc2, 0xa3)

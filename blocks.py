@@ -317,6 +317,7 @@ class BlockMap:
         self.selected_blocks = []
         self.selecting = False
         self.show_grid = False
+        self.map_edit_mode = False
         self.current_layer = self.midground_blocks
         self.busy = False  # True when blocks are moving
 
@@ -706,6 +707,15 @@ class BlockMap:
                 return True
         return False
 
+    def trigger_is_selected(self):
+        """ returns true if the cursor is currently on a trigger block"""
+        if self.get_block(self.current_layer, *self.cursor) in [
+            t.block for t in self.triggers
+        ]:
+            return True
+        else:
+            return False
+
     def update(self, surface):
         """ draw any blocks that are on-screen """
 
@@ -724,7 +734,7 @@ class BlockMap:
                              (b.x - self.world.scroll[X],
                               b.y - self.world.scroll[Y]))
 
-                if self.show_grid and MAP_EDITOR_ENABLED:
+                if self.map_edit_mode:
                     # highlight the block if it is currently selected
                     if b in self.selected_blocks:
                         self.highlight_block(surface, b, COLOUR_SELECTED_BLOCK)
@@ -755,7 +765,7 @@ class BlockMap:
             if self.movers[m].update(self.midground_blocks):
                 self.busy = True
 
-        if self.show_grid and MAP_EDITOR_ENABLED:
+        if self.map_edit_mode:
             # if we are in trigger linking mode, run a line from the
             # cursor to the trigger block
             if self.link_trigger:
@@ -806,6 +816,12 @@ class BlockMap:
         # blend the highlight colour with the selected block image
         surface.fill(colour, b_rect, pygame.BLEND_RGB_ADD)
 
+    def draw_edit_info_box(self, surface):
+        """ overlays the panel showing the currently selected layer
+        and block tile"""
+        info_box = pygame.Rect(0, 0, 200, 100)
+        surface.fill(COLOUR_MAP_EDITOR_BOXES, info_box)#pygame.BLEND_RGB_ADD)
+
     def draw_grid(self, surface, origin, grid_colour):
         """ overlays a grid to show the block spacing """
         grid_size = BLOCK_SIZE * SCALING_FACTOR
@@ -842,7 +858,7 @@ class BlockMap:
                                   grid_colour
                                   )
 
-        if MAP_EDITOR_ENABLED:
+        if self.map_edit_mode:
             self.cursor_rect.x = (self.cursor[X] * grid_size
                                   - self.world.scroll[X] * SCALING_FACTOR
                                   + GRID_LINE_WIDTH)
@@ -850,16 +866,16 @@ class BlockMap:
                                   - self.world.scroll[Y] * SCALING_FACTOR
                                   + origin[Y] + GRID_LINE_WIDTH)
 
-            if not self.erasing:
+            #if not self.erasing:
                 # draw the currently selected tile type at the cursor pos
                 # this has to be separately scaled, because we are drawing
                 # on the unscaled surface (so the grid axes text looks nice)
-                surface.blit(
-                    pygame.transform.scale(
-                        self.cursor_block.image,
-                        (grid_size, grid_size)),
-                    (self.cursor_rect[X], self.cursor_rect[Y])
-                )
+            #    surface.blit(
+            #        pygame.transform.scale(
+            #            self.cursor_block.image,
+            #            (grid_size, grid_size)),
+            #        (self.cursor_rect[X], self.cursor_rect[Y])
+            #    )
 
             # highlight cursor
             pygame.draw.rect(surface, (255, 255, 255),
@@ -981,6 +997,19 @@ class BlockMap:
                     # delete the mover itself
                     del (self.movers[m])
                     break
+
+    def remove_trigger(self):
+        """ Remove any and all triggers that are attached to this block
+        The block itself is not affected - it just doesn't count
+        as a trigger anymore.
+        """
+        existing_block = self.get_block(self.current_layer, *self.cursor)
+        if existing_block in [t.block for t in self.triggers]:
+            amended_trigger_list = [
+                # keep all triggers except the one to delete
+                t for t in self.triggers if t.block != existing_block
+            ]
+            self.triggers = amended_trigger_list
 
     def insert_column(self):
         """ add a new column of blocks at the current cursor """
@@ -1114,7 +1143,6 @@ class BlockMap:
             return True
         else:
             return False
-
 
 def arrow(screen, lcolor, tricolor, start, end, trirad):
     # draws a line with a triangular arrow head
