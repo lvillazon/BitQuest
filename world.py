@@ -375,17 +375,11 @@ class World:
             if pressed[K_g]:
                 ctrl = pygame.key.get_mods() & KMOD_CTRL
                 shift = pygame.key.get_mods() & KMOD_SHIFT
-
                 if not self.repeat_lock:
-                    # toggle the block grid overlay
-                    self.blocks.show_grid = not self.blocks.show_grid
-                    # hold Ctrl + Shift down to select/deselect editor mode
-                    if ALLOW_MAP_EDITOR and ctrl and shift \
-                            and not self.blocks.map_edit_mode:
-                        # toggle edit mode on and off in sync with the grid
-                        self.blocks.map_edit_mode = True
+                    if ALLOW_MAP_EDITOR and ctrl and shift:
+                        self.blocks.toggle_map_editor()
                     else:
-                        self.blocks.map_edit_mode = False
+                        self.blocks.toggle_grid()
                     self.repeat_lock = True
             # check the mouse to see if any buttons were clicked
             # currently just the rewind button

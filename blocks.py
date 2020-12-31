@@ -716,6 +716,17 @@ class BlockMap:
         else:
             return False
 
+    def toggle_grid(self):
+        self.show_grid = not self.show_grid
+        if not self.show_grid:
+            # make ssure the edit mode turns off with the grid
+            self.map_edit_mode = False
+
+    def toggle_map_editor(self):
+        self.map_edit_mode = not self.map_edit_mode
+        # make sure grid turns on/off with the editor
+        self.show_grid = self.map_edit_mode
+
     def update(self, surface):
         """ draw any blocks that are on-screen """
 
@@ -820,7 +831,19 @@ class BlockMap:
         """ overlays the panel showing the currently selected layer
         and block tile"""
         info_box = pygame.Rect(0, 0, 200, 100)
+        text_colour = (255, 255, 255)
         surface.fill(COLOUR_MAP_EDITOR_BOXES, info_box)#pygame.BLEND_RGB_ADD)
+        # add a label to say which block layer is currently selected
+        if self.current_layer == self.midground_blocks:
+            self.display_text("midground layer", (4, 0), text_colour)
+        else:
+            self.display_text("foreground layer", (4, 0), text_colour)
+        # display currently selected tile
+        #surface.blit(self.cursor_block.image, (30, 30))
+        surface.blit(pygame.transform.scale(self.cursor_block.image,
+                                            (BLOCK_SIZE * SCALING_FACTOR,
+                                             BLOCK_SIZE * SCALING_FACTOR)),
+                     (10,28))
 
     def draw_grid(self, surface, origin, grid_colour):
         """ overlays a grid to show the block spacing """
@@ -886,11 +909,6 @@ class BlockMap:
             self.display_text(cursor_label,
                               (self.cursor_rect[X], self.cursor_rect[Y] - 25),
                               grid_colour)
-            # add a label to say which block layer is currently selected
-            if self.current_layer == self.midground_blocks:
-                self.display_text("midground layer", (4, -2), grid_colour)
-            else:
-                self.display_text("foreground layer", (4, -2), grid_colour)
 
     def display_text(self, text, position, colour):
         """ render text at the native resolution to make it look nicer"""
@@ -948,9 +966,7 @@ class BlockMap:
     def change_block(self):
         """ changes the block at the cursor location to the current
         cursor block. If erasing is True, remove the block entirely."""
-        existing_block = self.get_block(self.current_layer,
-                                        self.cursor[X],
-                                        self.cursor[Y])
+        existing_block = self.get_block(self.current_layer, *self.cursor)
         if self.erasing:
             if existing_block:
                 # if the block is a trigger, remove from the trigger list
