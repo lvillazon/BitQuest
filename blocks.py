@@ -961,34 +961,29 @@ class BlockMap:
 
     def blank_editor_tile(self):
         self.erasing = True
-        self.change_block()
+        self.change_block(erasing = True)
+        self.erasing = False
 
-    def change_block(self):
+    def change_block(self, erasing=False):
         """ changes the block at the cursor location to the current
         cursor block. If erasing is True, remove the block entirely."""
         existing_block = self.get_block(self.current_layer, *self.cursor)
-        if self.erasing:
+        if erasing:
             if existing_block:
-                # if the block is a trigger, remove from the trigger list
-                # to do this we need to build a tuple with the same coords
-                # as the cursor pos, and see if this is listed in the
-                # triggers dictionary
-                block_coords = (self.cursor[X], self.cursor[Y])
-                if block_coords in self.triggers:
-                    self.triggers.pop(block_coords)
-                # now remove the block itself
+                # remove the block
                 # need to turn the cursor list object into a tuple
                 # so that it can be used to access the dict
                 self.current_layer.pop((self.cursor[X], self.cursor[Y]))
-        elif existing_block:
-            existing_block.setType(self.current_editor_tile)
         else:
-            # create new block
-            b = Block(self.tile_images, self.current_editor_tile, self.cursor)
-            # create a tuple from the cursor list object
-            # so that it can be used as a dict index
-            # then assign current block tile to this index
-            self.current_layer[(self.cursor[X], self.cursor[Y])] = b
+            if existing_block:
+                existing_block.setType(self.current_editor_tile)
+            else:
+                # create new block
+                b = Block(self.tile_images, self.current_editor_tile, self.cursor)
+                # create a tuple from the cursor list object
+                # so that it can be used as a dict index
+                # then assign current block tile to this index
+                self.current_layer[(self.cursor[X], self.cursor[Y])] = b
 
     def remove_moveable_group(self):
         """ Remove the moveable block group from the map
