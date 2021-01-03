@@ -168,6 +168,12 @@ class Block:
         self.setType(block_type)
         self.movement = [0, 0]
 
+    def clone(self, source_block, grid_position):
+        """ creates a new copy of source_block at grid_position"""
+        return Block(source_block.block_tiles,
+                     source_block.type,
+                     grid_position)
+
     def top(self):
         return self.y
 
@@ -192,6 +198,11 @@ class Block:
             self.image = self.frames[0]
         else:
             console_msg("UNRECOGNISED BLOCK CODE:" + type, 3)
+
+    def copyTile(self, other_block):
+        """ Makes this block use the same tile(s) as other_block
+        without changing its position """
+        self.setType(other_block.type)
 
     def get_grid_position(self):
         return int(self.x / BLOCK_SIZE), int(self.y / BLOCK_SIZE)
@@ -266,8 +277,6 @@ class BlockMap:
                     'name': tile_info[1],
                     'tiles': tile_coords
                 }
-        # load all the tile types into the editor palette
-        self.editor_palette = [t for t in tile_dict]
 
         # editing cursor (used when editing the map)
         self.cursor = [5, 5]
@@ -297,19 +306,46 @@ class BlockMap:
         self.tile_images = {}
         # build the dictionary of tile images from the dictionary
         # previously read in from the file
-        for definition in tile_dict:
+        for id in tile_dict:
             images = []
-            for coords in tile_dict[definition]['tiles']:
+            for coords in tile_dict[id]['tiles']:
                 images.append(self.tile_sheet.image_at(
                     (BLOCK_SIZE * coords[X], BLOCK_SIZE * coords[Y],
                      BLOCK_SIZE, BLOCK_SIZE),
                     ALPHA))
-            self.tile_images[definition] = images
-        self.load_grid(1)  # build the layer dictionaries from the level map
+            self.tile_images[id] = images
+
+        # use the tile images to build the editor palette
+        # this comprises a list of blocks, one for each tile
+        # and a surface with all the tiles arranged in a grid
+        self.palette_blocks = []
+        for id in tile_dict:
+            b = Block(self.tile_images, id, (0, 0))
+            self.palette_blocks.append(b)
+
+        self.editor_palette = pygame.Surface(PALETTE_SIZE)
+        self.editor_palette.fill(COLOUR_MAP_EDITOR_BOXES)
+        row, col = 0, 0
+        for b in self.palette_blocks:
+            position = (col * (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP),
+                        row * (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP)
+                        + PALETTE_GAP)
+            scaled_image = pygame.transform.scale(b.image,
+                                                  (BLOCK_SIZE * PALETTE_SCALE,
+                                                   BLOCK_SIZE * PALETTE_SCALE)
+                                                  )
+            self.editor_palette.blit(scaled_image, position)
+            col += 1
+            if col >= EDITOR_PALETTE_WIDTH:
+                col = 0
+                row += 1
+
+        # build the layer dictionaries from the level map
+        self.load_grid(level=1)
         # set the default starting tile for the editor
-        self.current_editor_tile = self.editor_palette[0]
+        # self.current_editor_tile = self.editor_palette[0]
         self.cursor_block = Block(self.tile_images,
-                                  self.current_editor_tile,
+                                  DEFAULT_BLOCK_TYPE,
                                   self.cursor)
         self.erasing = False
         # the selected_blocks list keeps track of the midground blocks that
@@ -389,12 +425,52 @@ class BlockMap:
         otherwise just this block is selected, clearing any previous selection
         """
         self.cursor_to_mouse(mouse_pos)
-        b = self.get_block(self.midground_blocks, *self.cursor)
+        b = self.get_block(self.current_layer, *self.cursor)
         if b:
             if mode == 'add':
                 self.selected_blocks.append(b)
-            else:
+            elif mode == 'set':
                 self.selected_blocks = [b]
+        elif mode == 'pick':
+            # acts like an eye-drop tool, copying the block tile at
+            # the cursor and setting this as the current block that will be
+            # used for subsequent block placement
+            # if the cursor is over the map, use the current block
+            if pygame.mouse.get_pos()[Y] >= PALETTE_SIZE[Y]:
+                if b:
+                    self.cursor_block.copyTile(b)
+            else:
+                # use the block from the block palette under the cursor
+                b = self.get_palette_block(pygame.mouse.get_pos())
+                if b:
+                    self.cursor_block.copyTile(b)
+
+    def get_palette_block(self, mouse_pos):
+        """ return a block object corresponding to the tile on the palette
+        at the mouse position"""
+        row = int((mouse_pos[Y] - PALETTE_GAP)/
+                  (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
+        col = int((mouse_pos[X] - PALETTE_POSITION[X]) /
+                  (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
+        i = col + row * EDITOR_PALETTE_WIDTH
+        print(col, row, i)
+        if i < len(self.palette_blocks):
+            return self.palette_blocks[i]
+        else:
+            return None
+
+    PALETTE_SCALE = 2  # the palette is scaled less than the normal level
+    GRID_LINE_WIDTH = 2
+    EDIT_INFO_BOX_POSITION = (0, 0)  # pixel coords
+    EDIT_INFO_BOX_SIZE = (182, 100)
+    PALETTE_POSITION = (182, 0)
+    DEFAULT_BLOCK_TYPE = '1'  # map editor defaults to basic dirt block
+    EDITOR_PALETTE_WIDTH = 16  # how many blocks wide for the block palette
+    PALETTE_GAP = 2  # pixels between tiles on the editor palette
+    _width = (EDITOR_PALETTE_WIDTH *
+              (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
+    _height = 3 * (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP) + PALETTE_GAP
+    PALETTE_SIZE = (_width, _height)
 
     def cancel_selection(self):
         self.selected_blocks = []
@@ -412,7 +488,7 @@ class BlockMap:
         """ returns true if the cursor is over a trigger block"""
         b = self.get_block(self.midground_blocks, *self.cursor)
         if not b:
-            return  False # bail immediately, since there is no block here
+            return False  # bail immediately, since there is no block here
         else:
             # check if this block is a trigger
             return b in [t.block for t in self.triggers]
@@ -422,7 +498,7 @@ class BlockMap:
         or None if there is no trigger there"""
         b = self.get_block(self.midground_blocks, *self.cursor)
         if not b:
-            return  None # bail immediately, since there is no block here
+            return None  # bail immediately, since there is no block here
         else:
             # check if this block is a trigger
             for t in self.triggers:
@@ -741,6 +817,12 @@ class BlockMap:
         for coord in self.midground_blocks:
             if min_visible_block_x <= coord[X] <= max_visible_block_x:
                 b = self.midground_blocks[coord]
+                # fade out the midground blocks when editing the foreground
+                if (self.map_edit_mode and \
+                        self.current_layer != self.midground_blocks):
+                    b.image.set_alpha(100)
+                else:
+                    b.image.set_alpha(255)
                 surface.blit(b.image,
                              (b.x - self.world.scroll[X],
                               b.y - self.world.scroll[Y]))
@@ -764,6 +846,12 @@ class BlockMap:
         for coord in self.foreground_blocks:
             if min_visible_block_x <= coord[X] <= max_visible_block_x:
                 b = self.foreground_blocks[coord]
+                # fade out the foreground blocks when editing the midground
+                if (self.map_edit_mode and \
+                        self.current_layer != self.foreground_blocks):
+                    b.image.set_alpha(100)
+                else:
+                    b.image.set_alpha(255)
                 surface.blit(b.image,
                              (b.x - self.world.scroll[X],
                               b.y - self.world.scroll[Y]))
@@ -830,24 +918,40 @@ class BlockMap:
     def draw_edit_info_box(self, surface):
         """ overlays the panel showing the currently selected layer
         and block tile"""
-        info_box = pygame.Rect(0, 0, 200, 100)
-        text_colour = (255, 255, 255)
-        surface.fill(COLOUR_MAP_EDITOR_BOXES, info_box)#pygame.BLEND_RGB_ADD)
+        info_box = pygame.Rect(0, 0, 182,104)
+        text_colour = COLOUR_MAP_EDIT_TEXT
+        surface.fill(COLOUR_MAP_EDITOR_BOXES,
+                     info_box)  # pygame.BLEND_RGB_ADD)
         # add a label to say which block layer is currently selected
         if self.current_layer == self.midground_blocks:
             self.display_text("midground layer", (4, 0), text_colour)
         else:
             self.display_text("foreground layer", (4, 0), text_colour)
         # display currently selected tile
-        #surface.blit(self.cursor_block.image, (30, 30))
+        # remembering to scale it, since we are drawing on the
+        # unscaled surface
+        self.cursor_block.image.set_alpha(255)  # force opacity to max
         surface.blit(pygame.transform.scale(self.cursor_block.image,
                                             (BLOCK_SIZE * SCALING_FACTOR,
                                              BLOCK_SIZE * SCALING_FACTOR)),
-                     (10,28))
+                     (10, 28))
 
-    def draw_grid(self, surface, origin, grid_colour):
+        # TEST - draw block palette
+        # this appears as a floating block that is always half a blockss deeper
+        # than the deepest block on the screen. This ensures that it never
+        # overlaps the visible map
+        deepest_block = 0
+        surface.blit(self.editor_palette, PALETTE_POSITION)
+
+    # def draw_tile_palette(self, surface):
+    #     # draw the full tile palette as a floating block
+    #     # underneath the lowest tile in the current level
+    #     palette = pygame.Surface((12 * BLOCK_SIZE, )
+
+    def draw_grid(self, surface, origin):
         """ overlays a grid to show the block spacing """
         grid_size = BLOCK_SIZE * SCALING_FACTOR
+        grid_colour = COLOUR_GRID_LINES
         offset = [(s * SCALING_FACTOR) % grid_size for s in self.world.scroll]
         limit = [size * SCALING_FACTOR for size in DISPLAY_SIZE]
         label_offset = (grid_size / 2 - self.world.editor.char_width,
@@ -889,10 +993,10 @@ class BlockMap:
                                   - self.world.scroll[Y] * SCALING_FACTOR
                                   + origin[Y] + GRID_LINE_WIDTH)
 
-            #if not self.erasing:
-                # draw the currently selected tile type at the cursor pos
-                # this has to be separately scaled, because we are drawing
-                # on the unscaled surface (so the grid axes text looks nice)
+            # if not self.erasing:
+            # draw the currently selected tile type at the cursor pos
+            # this has to be separately scaled, because we are drawing
+            # on the unscaled surface (so the grid axes text looks nice)
             #    surface.blit(
             #        pygame.transform.scale(
             #            self.cursor_block.image,
@@ -940,29 +1044,8 @@ class BlockMap:
                 + DISPLAY_SIZE[Y] / BLOCK_SIZE / 2)
         ]
 
-    def _change_editor_tile(self, direction):
-        """ cycle the selected editor tile the number of places
-        given by direction - should be just +/- 1"""
-        if not self.erasing:
-            palette_index = self.editor_palette.index(
-                self.current_editor_tile)
-            palette_index = (palette_index + direction) \
-                            % len(self.editor_palette)
-            self.current_editor_tile = self.editor_palette[palette_index]
-            self.cursor_block.setType(self.current_editor_tile)
-
-    def next_editor_tile(self):
-        self.erasing = False
-        self._change_editor_tile(1)
-
-    def previous_editor_tile(self):
-        self.erasing = False
-        self._change_editor_tile(-1)
-
     def blank_editor_tile(self):
-        self.erasing = True
-        self.change_block(erasing = True)
-        self.erasing = False
+        self.change_block(erasing=True)
 
     def change_block(self, erasing=False):
         """ changes the block at the cursor location to the current
@@ -976,10 +1059,12 @@ class BlockMap:
                 self.current_layer.pop((self.cursor[X], self.cursor[Y]))
         else:
             if existing_block:
-                existing_block.setType(self.current_editor_tile)
+                existing_block.setType(self.cursor_block.type)
             else:
-                # create new block
-                b = Block(self.tile_images, self.current_editor_tile, self.cursor)
+                # create new block that is a clone of the currently
+                # selected block shown in the edit info box
+                b = self.cursor_block.clone(self.cursor_block,
+                                            self.cursor)
                 # create a tuple from the cursor list object
                 # so that it can be used as a dict index
                 # then assign current block tile to this index
@@ -1154,6 +1239,7 @@ class BlockMap:
             return True
         else:
             return False
+
 
 def arrow(screen, lcolor, tricolor, start, end, trirad):
     # draws a line with a triangular arrow head

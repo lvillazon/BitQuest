@@ -295,9 +295,12 @@ class World:
                         else:
                             self.blocks.cursor_down()
                     elif pressed[K_LEFTBRACKET]:  # [
-                        self.blocks.previous_editor_tile()
+# not used, now we have a block palette on-screen
+#                        self.blocks.previous_editor_tile()
+                        pass
                     elif pressed[K_RIGHTBRACKET]:  # ]
-                        self.blocks.next_editor_tile()
+#                        self.blocks.next_editor_tile()
+                        pass
                     elif pressed[K_BACKSPACE]:
                         if self.blocks.mover_is_selected():
                             console_msg("deleting mover", 8)
@@ -342,14 +345,14 @@ class World:
 
                         for event in pygame.event.get():
                             if event.type == pygame.MOUSEBUTTONDOWN:
+                                mouse_pos = (pygame.mouse.get_pos()[X]
+                                             / SCALING_FACTOR
+                                             + self.scroll[X],
+                                             pygame.mouse.get_pos()[Y]
+                                             / SCALING_FACTOR
+                                             + self.scroll[Y]
+                                             )
                                 if event.button == 1:  # left click
-                                    mouse_pos = (pygame.mouse.get_pos()[X]
-                                                 / SCALING_FACTOR
-                                                 + self.scroll[X],
-                                                 pygame.mouse.get_pos()[Y]
-                                                 / SCALING_FACTOR
-                                                 + self.scroll[Y]
-                                                 )
                                     if shift:
                                         self.blocks.select_block(mouse_pos,
                                                                  'add')
@@ -358,9 +361,8 @@ class World:
                                         self.blocks.select_block(mouse_pos,
                                                                  'set')
                                 elif event.button == 3:  # right click
-                                    pass
+                                    self.blocks.select_block(mouse_pos, 'pick')
                             # 2: middle button
-                            # 3: right button
                             # 4: scroll up
                             # 5: scroll down
 
@@ -449,7 +451,7 @@ class World:
 
         # draw the grid overlay next so it is on top of all blocks
         if self.blocks.show_grid:
-            self.blocks.draw_grid(self.screen, self.game_origin, (0, 0, 0))
+            self.blocks.draw_grid(self.screen, self.game_origin)
         # previously, the grid took the colour from the editor choice
         #                                  self.editor.get_fg_color())
 

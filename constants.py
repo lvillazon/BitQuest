@@ -78,7 +78,18 @@ SPEECH_EXPIRY_TIME = 3000 # number of ms before the text begins to disappear
 SPEECH_EXPIRY_RATE = 1000 # ms between each line of text disappearing
 
 # Block map constants
+PALETTE_SCALE = 2  # the palette is scaled less than the normal level
 GRID_LINE_WIDTH = 2
+EDIT_INFO_BOX_POSITION = (0, 0)  # pixel coords
+#EDIT_INFO_BOX_SIZE = (1)
+PALETTE_POSITION = (182, 0)
+DEFAULT_BLOCK_TYPE = '1'  # map editor defaults to basic dirt block
+EDITOR_PALETTE_WIDTH = 16  # how many blocks wide for the block palette
+PALETTE_GAP = 2  # pixels between tiles on the editor palette
+_width = (EDITOR_PALETTE_WIDTH *
+         (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
+_height = 3 * (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP) + PALETTE_GAP
+PALETTE_SIZE = (_width, _height)
 
 # parsing constants
 NEW_LINE = '\n'
@@ -95,3 +106,5 @@ COLOUR_MENU_BG= (0x5D, 0x8A, 0xA8)  # airforce blue
 COLOUR_MENU_TITLE = (0xFF, 0xBF, 0x00)  # amber
 COLOUR_MENU_TEXT = (0xFF, 0xBF, 0x00)  # amber
 COLOUR_MAP_EDITOR_BOXES = (0xc2, 0xc2, 0xa3)
+COLOUR_GRID_LINES = (0, 0, 0)
+COLOUR_MAP_EDIT_TEXT = (0, 0, 0)
