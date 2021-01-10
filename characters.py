@@ -9,6 +9,7 @@ import io
 from constants import *
 import sprite_sheet
 from particles import Jet
+from console_messages import console_msg
 
 class Character:
     """Base class for player and NPC sprites
@@ -315,11 +316,11 @@ class Dog(Character):
                                   (0, 0, 0),
                                   (254, 0, 0))  # red, but not 255 because that's the alpha
 
-    def input(self, msg):
+    def input(self, msg=''):
         # get input from the user in a separate editor window
-        self.world.input.activate(msg)
+        self.world.input.activate('input:' + msg)
         while self.world.input.is_active():
-            self.world.update()
+            self.world.update(self)
         result = self.world.input.convert_to_lines()[0]
         console_msg("input:" + str(result), 8)
         return result

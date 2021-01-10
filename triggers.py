@@ -131,10 +131,18 @@ class Flagpole(Trigger):
         self.name = name
         self.activated = False
         self.blocks = blocks
-        self.frame_number = 0;
+        self.frame_number = 0
         self.frame_count = len(blocks[0].frames)
         self.flap_count = 1
         self.text_area = None
+
+    def reset(self):
+        # override default behaviour, since flagpoles are unaffected by reset
+        # but we replay the unfurling animation of any activated flagpoles
+        # just because it looks nice and provides a visual hint of the
+        # current progress
+        self.flap_count = 1
+        self.frame_number = 0
 
     def check(self, character):
         """ check if the trigger has activated

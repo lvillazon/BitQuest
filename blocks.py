@@ -73,9 +73,11 @@ class Moveable:
     def reset(self, block_map):
         # return all blocks to their original (pre-triggered) locations
         for i in range(len(self.blocks)):
-            if self.blocks[i]:  # guard against a null block in the list
-                # remove the block from its current position in the block map
-                del block_map[self.blocks[i].grid_position]
+            # guard against a null block in the list
+            if self.blocks[i]:
+                if self.blocks[i].grid_position in block_map:
+                    # remove the block from its current position in the block map
+                    del block_map[self.blocks[i].grid_position]
 
                 # reset its position
                 self.blocks[i].x = self.home_positions[i][X]
@@ -426,51 +428,44 @@ class BlockMap:
         """
         self.cursor_to_mouse(mouse_pos)
         b = self.get_block(self.current_layer, *self.cursor)
-        if b:
-            if mode == 'add':
+        if mode == 'add':
+            if b:
                 self.selected_blocks.append(b)
-            elif mode == 'set':
-                self.selected_blocks = [b]
+        elif mode == 'set':
+            self.selected_blocks = [b]
         elif mode == 'pick':
             # acts like an eye-drop tool, copying the block tile at
             # the cursor and setting this as the current block that will be
             # used for subsequent block placement
-            # if the cursor is over the map, use the current block
-            if pygame.mouse.get_pos()[Y] >= PALETTE_SIZE[Y]:
-                if b:
-                    self.cursor_block.copyTile(b)
-            else:
-                # use the block from the block palette under the cursor
+            # if the cursor is over the map, use the current block,
+            # but if the cursor is over the palette, use the palette block
+            # instead
+            if self.get_palette_block(pygame.mouse.get_pos()):
                 b = self.get_palette_block(pygame.mouse.get_pos())
-                if b:
-                    self.cursor_block.copyTile(b)
+
+            if b:  # avoid setting the cursor block to None
+                self.cursor_block.copyTile(b)
 
     def get_palette_block(self, mouse_pos):
         """ return a block object corresponding to the tile on the palette
-        at the mouse position"""
-        row = int((mouse_pos[Y] - PALETTE_GAP)/
-                  (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
-        col = int((mouse_pos[X] - PALETTE_POSITION[X]) /
-                  (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
-        i = col + row * EDITOR_PALETTE_WIDTH
-        print(col, row, i)
-        if i < len(self.palette_blocks):
-            return self.palette_blocks[i]
-        else:
-            return None
-
-    PALETTE_SCALE = 2  # the palette is scaled less than the normal level
-    GRID_LINE_WIDTH = 2
-    EDIT_INFO_BOX_POSITION = (0, 0)  # pixel coords
-    EDIT_INFO_BOX_SIZE = (182, 100)
-    PALETTE_POSITION = (182, 0)
-    DEFAULT_BLOCK_TYPE = '1'  # map editor defaults to basic dirt block
-    EDITOR_PALETTE_WIDTH = 16  # how many blocks wide for the block palette
-    PALETTE_GAP = 2  # pixels between tiles on the editor palette
-    _width = (EDITOR_PALETTE_WIDTH *
-              (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
-    _height = 3 * (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP) + PALETTE_GAP
-    PALETTE_SIZE = (_width, _height)
+        at the mouse position, or None if the mouse isn't over the palette"""
+        # we shrink the collision rect by palette_gap, to avoid the annoying
+        # case where the pointer is over the very bottom margin of the
+        # palette and this causes the selection rectangle to display
+        # outside the palette area.
+        palette_rect = pygame.Rect(PALETTE_POSITION,
+                                   (PALETTE_SIZE[X],
+                                    PALETTE_SIZE[Y] - PALETTE_GAP))
+        if palette_rect.collidepoint(mouse_pos):
+            row = int((mouse_pos[Y] - PALETTE_GAP)/
+                      (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
+            col = int((mouse_pos[X] - PALETTE_POSITION[X]) /
+                      (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
+            i = col + row * EDITOR_PALETTE_WIDTH
+            # print(col, row, i)  # DEBUG
+            if i < len(self.palette_blocks):
+                return self.palette_blocks[i]
+        return None
 
     def cancel_selection(self):
         self.selected_blocks = []
@@ -563,7 +558,19 @@ class BlockMap:
     def save_grid(self, level=1):
         """save current grid map to the level file
         this function is only accessible in map editor mode"""
+
         # TODO add save dialogue to change name/folder
+        file_name = LEVEL_MAP_FILE_STEM + str(level) + LEVEL_MAP_FILE_EXTENSION
+        backup_file = LEVEL_MAP_FILE_STEM + str(level) + BACKUP_EXTENSION
+        # backup the save file to protect against map file corruption
+        try:
+            os.remove(backup_file)  # delete any previous backup
+        except OSError:
+            pass  # fail silently
+        try:
+            os.rename(file_name, backup_file)  # prev save is now the backup
+        except OSError:
+            pass  # fail silently
 
         # reset the map to its original state before saving
         # otherwise triggered blocks will be saved in their current state
@@ -581,19 +588,21 @@ class BlockMap:
                     max_y = b.grid_position[Y]
 
         # write this map to the file
-        file_name = LEVEL_MAP_FILE_STEM + str(level) + LEVEL_MAP_FILE_EXTENSION
         preamble = \
-            "Level data is split into 4 sections, each section ends with " \
-            "### on its own line:\n" \
+            "Level data is split into 6 sections,\n"\
+            "each section ends with ### on its own line:\n" \
             "   1. This section is for comments only and is ignored.\n" \
             "   2. The midground section shows the arrangements of " \
-            "collidable blocks and triggers.\n" \
+            "collidable blocks \n      and triggers.\n" \
             "   3. Foreground layer is drawn on top of the player and " \
             "doesn't collide.\n" \
             "   4. The next section defines the blocks that move when " \
             "triggered.\n" \
-            "   5. This section defines the trigger locations, as x, y and " \
-            "block group number, each on their own line.\n"
+            "   5. This section defines the trigger locations, as x, y and\n" \
+            "      block group number, each on their own line.\n" \
+            "   6. This lists the names of each puzzle on the level,\n" \
+            "      and the (x,y) coordinates for the player and dog start " \
+            "positions.\n"
         delimiter = "###\n"
         with open(file_name, 'w') as file:
             file.write(preamble)  # section 1
@@ -634,6 +643,16 @@ class BlockMap:
                         file.write('(' + str(a[0].id) + ', ')
                         file.write(str(a[1]) + '), ')
                     file.write(']\n')
+            file.write(delimiter)
+
+            # section 6
+            file.write("# puzzle start positions\n")
+            for p in self.puzzle_info:
+                file.write(str(p) + ', ')                         # number
+                file.write("'" + self.puzzle_info[p][0] + "', ")  # name
+                file.write(str(self.puzzle_info[p][1]) + ', ')    # player
+                file.write(str(self.puzzle_info[p][2]))           # dog
+                file.write('\n')
             file.write(delimiter)
 
     def load_grid(self, level=1):
@@ -764,6 +783,24 @@ class BlockMap:
                         t.add_action(self.movers[action[0]], action[1])
                 # add the complete trigger to the list maintained by the map
                 self.triggers.append(t)
+            i += 1
+
+        # Each puzzle within the level also has a number, name
+        # and the (x,y) coords for the start positions of player and dog
+        # these are stored in a tuple of (name, player_start, dog_start)
+        # with the puzzle number as the key
+        self.puzzle_info = {}
+        i += 1  # skip over the ### section delimiter
+        console_msg("Puzzle info:", 8)
+        while i < len(level_data) and level_data[i] != '###':
+            if level_data[i][0] != "#":  # comment lines are ignored
+                values = eval(level_data[i])
+                console_msg(values, 8)
+                self.puzzle_info[values[0]] = (
+                    values[1],
+                    values[2],
+                    values[3]
+                )
             i += 1
 
     def get_block(self, block_dict, x, y):
@@ -936,17 +973,26 @@ class BlockMap:
                                              BLOCK_SIZE * SCALING_FACTOR)),
                      (10, 28))
 
-        # TEST - draw block palette
-        # this appears as a floating block that is always half a blockss deeper
-        # than the deepest block on the screen. This ensures that it never
-        # overlaps the visible map
-        deepest_block = 0
+        # draw block palette
+        # currently anchored at the top of the screen
         surface.blit(self.editor_palette, PALETTE_POSITION)
+        # draw selection rectangle, if the mouse is over the palette
+        if self.get_palette_block(pygame.mouse.get_pos()):
+            m = pygame.mouse.get_pos()  # for brevity
+            left = (((m[X] - PALETTE_POSITION[X]) // PALETTE_CURSOR_SIZE[X])
+                    * PALETTE_CURSOR_SIZE[X]
+                    + PALETTE_POSITION[X]
+                    - PALETTE_GAP)
+            top = (((m[Y] - PALETTE_POSITION[Y]) // PALETTE_CURSOR_SIZE[Y])
+                    * PALETTE_CURSOR_SIZE[Y]
+                    + PALETTE_POSITION[Y])
+            size = PALETTE_CURSOR_SIZE
+            selection_rect = pygame.Rect((left, top), size)
+            pygame.draw.rect(surface,
+                             COLOUR_MAP_CURSOR,
+                             selection_rect,
+                             PALETTE_GAP * 2)
 
-    # def draw_tile_palette(self, surface):
-    #     # draw the full tile palette as a floating block
-    #     # underneath the lowest tile in the current level
-    #     palette = pygame.Surface((12 * BLOCK_SIZE, )
 
     def draw_grid(self, surface, origin):
         """ overlays a grid to show the block spacing """
@@ -956,12 +1002,16 @@ class BlockMap:
         limit = [size * SCALING_FACTOR for size in DISPLAY_SIZE]
         label_offset = (grid_size / 2 - self.world.editor.char_width,
                         grid_size / 2 - self.world.editor.line_height / 2)
-
+        # make sure grid lines don't cover the input box
+        if self.world.input.is_active():
+            input_offset = self.world.input.height + 2
+        else:
+            input_offset = 2  # the 2 is a fudge factor to tidy things up
         # vertical grid lines & X-axis labels
         for x in range(-offset[X], limit[X] - offset[X], grid_size):
             pygame.draw.line(surface, grid_colour,
                              (x, 0),
-                             (x, limit[Y] + origin[Y]),
+                             (x, limit[Y] + origin[Y] - input_offset),
                              GRID_LINE_WIDTH)
             axis_label = "{0:2d} ".format(int(x / grid_size +
                                               self.world.scroll[
@@ -970,12 +1020,12 @@ class BlockMap:
                               (x + label_offset[X], 20), grid_colour)
 
         # horizontal grid lines & Y-axis labels
-        for y in range(-offset[Y], limit[Y], grid_size):
+        for y in range(-offset[Y], limit[Y] - input_offset, grid_size):
             pygame.draw.line(surface, grid_colour,
                              (0, y + origin[Y]),
                              (limit[X], y + origin[Y]),
                              GRID_LINE_WIDTH)
-            if y + label_offset[Y] < limit[Y]:
+            if y + label_offset[Y] < limit[Y] - input_offset - LABEL_HEIGHT:
                 axis_label = "{0:2d} ".format(int(y / grid_size +
                                                   self.world.scroll[
                                                       Y] / BLOCK_SIZE))
@@ -1005,7 +1055,7 @@ class BlockMap:
             #    )
 
             # highlight cursor
-            pygame.draw.rect(surface, (255, 255, 255),
+            pygame.draw.rect(surface, COLOUR_MAP_CURSOR,
                              self.cursor_rect,
                              GRID_LINE_WIDTH)
             # add grid coords of cursor
@@ -1239,6 +1289,21 @@ class BlockMap:
             return True
         else:
             return False
+
+    def get_puzzle_name(self, puzzle_number):
+        if puzzle_number not in self.puzzle_info:  # validation check
+            puzzle_number = 0
+        return self.puzzle_info[puzzle_number][PUZZLE_NAME]
+
+    def get_player_start(self, puzzle_number):
+        if puzzle_number not in self.puzzle_info:
+            puzzle_number = 0
+        return self.puzzle_info[puzzle_number][PLAYER_START]
+
+    def get_dog_start(self, puzzle_number):
+        if puzzle_number not in self.puzzle_info:
+            puzzle_number = 0
+        return self.puzzle_info[puzzle_number][DOG_START]
 
 
 def arrow(screen, lcolor, tricolor, start, end, trirad):

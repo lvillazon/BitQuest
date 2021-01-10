@@ -71,17 +71,9 @@ class World:
                                       BLOCK_TILESET_FILE)
         console_msg("Map loaded", 1)
 
-        # set the names and player/dog start positions for all the puzzles
-        # TODO this should be part of the level map file
-        self.puzzle_info = {0: ("the pillar", (4, 6), (6, 8)),
-                            1: ("the pit", (58, 6), (57, 8)),
-                            2: ("the lift", (80, 6), (78, 8)),
-                            3: ("the staircase", (91, 6), (90, 8)),
-                            4: ("the choice", (105, 6), (103, 8)),
-                            }
-        self.puzzle = 0
+        self.puzzle = 0  # TODO: load current progress from log file
         self.session.set_current_level(
-            self.puzzle_info[self.puzzle][PUZZLE_NAME]
+            self.blocks.get_puzzle_name(self.puzzle)
         )
         self.session.save_header()
 
@@ -101,8 +93,8 @@ class World:
                                   (16, 16),
                                   )
         console_msg("BIT sprite initialised", 1)
-        self.player.set_position(self.puzzle_info[self.puzzle][PLAYER_START])
-        self.dog.set_position(self.puzzle_info[self.puzzle][DOG_START])
+        self.player.set_position(self.blocks.get_player_start(self.puzzle))
+        self.dog.set_position(self.blocks.get_dog_start(self.puzzle))
 
         self.dog.facing_right = False
         self.show_fps = False
@@ -268,6 +260,17 @@ class World:
                 if self.game_origin[Y] == 0:
                     self.editor.show()
 
+            # the number keys allow jumping directly to that puzzle
+            # this is only enabled if the user has map editing privileges
+            if ALLOW_MAP_EDITOR:
+                level_shortcuts = [
+                    K_0, K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9
+                ]
+                for k in level_shortcuts:
+                    if pressed[k]:
+                        self.puzzle = level_shortcuts.index(k)
+                        self.rewind_level()
+
             if self.blocks.map_edit_mode:
                 ctrl = pygame.key.get_mods() & KMOD_CTRL
                 shift = pygame.key.get_mods() & KMOD_SHIFT
@@ -362,9 +365,9 @@ class World:
                                                                  'set')
                                 elif event.button == 3:  # right click
                                     self.blocks.select_block(mouse_pos, 'pick')
-                            # 2: middle button
-                            # 4: scroll up
-                            # 5: scroll down
+                                # 2: middle button
+                                # 4: scroll up
+                                # 5: scroll down
 
             # DEBUG stats
             if pressed[K_f]:
@@ -384,7 +387,7 @@ class World:
                         self.blocks.toggle_grid()
                     self.repeat_lock = True
             # check the mouse to see if any buttons were clicked
-            # currently just the rewind button
+            # currently just the rewind and play button
             self.check_buttons()
 
             # process all other events to clear the queue
@@ -521,10 +524,8 @@ class World:
         console_msg("Rewinding!", 8)
         self.rewinding = True
         self.blocks.reset()
-        self.player.set_position(
-            self.puzzle_info[self.puzzle][PLAYER_START])
-        self.dog.set_position(
-            self.puzzle_info[self.puzzle][DOG_START])
+        self.player.set_position(self.blocks.get_player_start(self.puzzle))
+        self.dog.set_position(self.blocks.get_dog_start(self.puzzle))
         self.dog.clear_speech_bubble()
 
     def end_of_level_display(self):

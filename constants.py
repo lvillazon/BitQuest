@@ -23,6 +23,7 @@ LEVEL_MAP_FILE_EXTENSION = '.txt'
 USER_PROGRAM_FILE = 'assets/BitQuest_user_program.py'
 SAVE_FILES_FOLDER = 'logs/'
 SAVE_FILE_EXTENSION = '.log'
+BACKUP_EXTENSION = '.bak'
 REWIND_ICON_FILE = 'assets/rewind.png'
 REWIND_HOVER_ICON_FILE = 'assets/rewind_hover.png'
 PLAY_ICON_FILE = 'assets/play.png'
@@ -86,10 +87,12 @@ PALETTE_POSITION = (182, 0)
 DEFAULT_BLOCK_TYPE = '1'  # map editor defaults to basic dirt block
 EDITOR_PALETTE_WIDTH = 16  # how many blocks wide for the block palette
 PALETTE_GAP = 2  # pixels between tiles on the editor palette
-_width = (EDITOR_PALETTE_WIDTH *
-         (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
-_height = 3 * (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP) + PALETTE_GAP
-PALETTE_SIZE = (_width, _height)
+PALETTE_CURSOR_SIZE = ((BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP),
+                       (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
+_width = EDITOR_PALETTE_WIDTH * PALETTE_CURSOR_SIZE[X]
+_height = 3 * PALETTE_CURSOR_SIZE[Y] + PALETTE_GAP
+PALETTE_SIZE = (_width, _height)  # the rectangle for the map tile palette
+LABEL_HEIGHT = 8
 
 # parsing constants
 NEW_LINE = '\n'
@@ -108,3 +111,4 @@ COLOUR_MENU_TEXT = (0xFF, 0xBF, 0x00)  # amber
 COLOUR_MAP_EDITOR_BOXES = (0xc2, 0xc2, 0xa3)
 COLOUR_GRID_LINES = (0, 0, 0)
 COLOUR_MAP_EDIT_TEXT = (0, 0, 0)
+COLOUR_MAP_CURSOR = (255, 255, 255)
