@@ -63,12 +63,12 @@ DOG_START = 2
 
 # character animation constants
 STANDING_FRAME = 7
-# these 2 affect where the camera is centred as it follows the player
-CAMERA_X_OFFSET = int(DISPLAY_SIZE[X] / 2) - 16  # 16 = half of sprite width
-CAMERA_Y_OFFSET = DISPLAY_SIZE[Y] - 32 - 10  # 32 = sprite height
-CHARACTER_SIZE = 32
 CHARACTER_WIDTH = 16
 CHARACTER_HEIGHT = 16
+# these 2 affect where the camera is centred as it follows the player
+CAMERA_X_OFFSET = int(DISPLAY_SIZE[X] / 2) - CHARACTER_WIDTH * 5  # position camera to the right of the focus character
+# the extra 10 means the display is not lined up exactly on the grid
+CAMERA_Y_OFFSET = DISPLAY_SIZE[Y] - CHARACTER_HEIGHT * 2 - 10
 
 # speech bubble constants
 MAX_BUBBLE_TEXT_LINES = 10  # 10 lines maximum in a speech bubble

@@ -11,7 +11,9 @@ from pygame.locals import *
 
 import blocks
 import characters
+import code_editor
 import editor
+import input_dialog
 import interpreter
 import scenery
 from console_messages import console_msg
@@ -120,12 +122,12 @@ class World:
         self.python_interpreter = interpreter.VirtualMachine(self)
         console_msg("Interpreter initialised", 2)
 
-        self.editor = editor.CodeWindow(screen, 300,
+        self.editor = code_editor.CodeWindow(screen, 300,
                                         self.code_font,
                                         self.python_interpreter,
                                         self.session)
         input_height = self.code_font.get_linesize() * 3
-        self.input = editor.InputDialog(screen, input_height, self.code_font)
+        self.input = input_dialog.InputDialog(screen, input_height, self.code_font)
         console_msg("Editors initialised", 2)
 
         self.camera_shake = False
@@ -437,17 +439,10 @@ class World:
 
         # overlay all speech bubble at the native resolution
         if self.dog.speaking:
-            # position the tip of the speak bubble at the middle
-            # of the top edge of the sprite box
-            position = (
-                (self.dog.location.x - self.scroll[X] + 16)
-                * SCALING_FACTOR + self.game_origin[X],
-                (self.dog.location.y - self.scroll[Y])
-                * SCALING_FACTOR + self.game_origin[Y]
-                - self.dog.text_size[Y]
-            )
-            self.dog.draw_speech_bubble(display)
-            self.screen.blit(self.dog.bubble, position)
+            position = self.dog.speech_position()
+            position[X] = (position[X] - self.scroll[X]) * SCALING_FACTOR + self.game_origin[X]
+            position[Y] = (position[Y] - self.scroll[Y]) * SCALING_FACTOR + self.game_origin[Y]
+            self.screen.blit(self.dog.get_speech_bubble(display), position)
 
         # draw the swirling dust - DEBUG disabled due to looking bad
         # self.dust_storm.update(self.screen, self.game_origin[Y], scroll)

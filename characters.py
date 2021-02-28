@@ -10,6 +10,8 @@ from constants import *
 import sprite_sheet
 from particles import Jet
 from console_messages import console_msg
+from text_panel import TextPanel
+
 
 class Character:
     """Base class for player and NPC sprites
@@ -254,12 +256,13 @@ class Dog(Character):
         self.collidable = True
         self.busy = False  # used to block code execution during movement
         self.speaking = False
-        self.speech = None
-        self.speech_bubble_fg = (0, 0, 0)
-        self.speech_bubble_bg = (0, 0, 0)
-        self.speech_bubble_size = [0, 0]
-        self.text = []
-        self.text_size = [0, 0]
+        self.speech_bubble = None
+        #self.speech = None
+        #self.speech_bubble_fg = (0, 0, 0)
+        #self.speech_bubble_bg = (0, 0, 0)
+        #self.speech_bubble_size = [0, 0]
+        #self.text = []
+        #self.text_size = [0, 0]
         self.jets = []  # the particle streams that appear when flying
         # create 2 jets, 1 for each leg
         # the origin coordinates are just zero,
@@ -326,85 +329,104 @@ class Dog(Character):
         return result
 
     def clear_speech_bubble(self):
-        self.text = []
-        self.text_size = [0,0]
-        self.speaking = False
+        if self.speech_bubble != None:
+            self.speech_bubble.clear()
+
+    # def old_clear_speech_bubble(self):
+    #     self.text = []
+    #     self.text_size = [0,0]
+    #     self.speaking = False
 
     def create_speech_bubble(self, text, fg_col, bg_col):
         # show a speak-bubble above the character with the text in it
-        new_text = str(text)
-        # make sure speech bubble has at least 1 character width
-        # non-printing chars or empty strings make the bubble look weird
-        if (self.world.code_font.size(new_text)[X]
-            < self.world.code_font.size(" ")[X]):
-            new_text = new_text + " "
-        self.text.append(new_text)
-        self.speech_bubble_size = self.world.code_font.size(new_text)
-        if self.speech_bubble_size[X] > self.text_size[X]:
-            self.text_size[X] = self.speech_bubble_size[X]
-        if len(self.text) <= MAX_BUBBLE_TEXT_LINES:
-            self.text_size[Y] += self.speech_bubble_size[Y]
-        self.speech_bubble_fg = fg_col
-        self.speech_bubble_bg = bg_col
-        self.speech_expires = pygame.time.get_ticks() + SPEECH_EXPIRY_TIME
+        self.speech_bubble = TextPanel(text, fg_col, bg_col, self.world.code_font)
         self.speaking = True
 
-    def draw_speech_bubble(self, surface):
-        bubble_rect = pygame.Rect((0, 0), (
-            (self.text_size[X]
-             + TEXT_MARGIN * 2
-             + BALLOON_THICKNESS * 2
-             + BUBBLE_MARGIN),
-            (self.text_size[Y]
-             + TEXT_MARGIN * 2
-             + BALLOON_THICKNESS * 2
-             + BUBBLE_MARGIN * 2)
-            ))
-        self.bubble = pygame.Surface(bubble_rect.size)
-        # fill with red to use as the transparency key
-        self.bubble.fill((255, 0, 0))
-        self.bubble.set_colorkey((255, 0, 0))
-        # create a rectangle with clipped corners for the speech bubble
-        # (rounded corners aren't available until pygame 2.0)
-        bubble_points = (
-            (BALLOON_THICKNESS, bubble_rect.size[Y] - BALLOON_THICKNESS),  # A
-            (BUBBLE_MARGIN + BALLOON_THICKNESS,
-             bubble_rect.size[Y] - BUBBLE_MARGIN*2),                       # B
-            (BUBBLE_MARGIN + BALLOON_THICKNESS,
-             BUBBLE_MARGIN),                                               # C
-            (BUBBLE_MARGIN*2, 0),                                          # D
-            (bubble_rect.size[X] - BUBBLE_MARGIN, 0),                      # E
-            (bubble_rect.size[X] - BALLOON_THICKNESS,
-             BUBBLE_MARGIN),                                               # F
-            (bubble_rect.size[X] - BALLOON_THICKNESS,
-             bubble_rect.size[Y] - BUBBLE_MARGIN*3),                       # G
-            (bubble_rect.size[X] - BUBBLE_MARGIN,
-             bubble_rect.size[Y] - BUBBLE_MARGIN*2),                       # H
-            (BUBBLE_MARGIN*3, bubble_rect.size[Y] - BUBBLE_MARGIN*2),      # I
-        )
-        pygame.draw.polygon(self.bubble,
-                            self.speech_bubble_bg,
-                            bubble_points,
-                            0)
-        pygame.draw.polygon(self.bubble,
-                            self.speech_bubble_fg,
-                            bubble_points,
-                            BALLOON_THICKNESS)
-        # draw the lines of text, working upwards from the most recent,
-        # until the bubble is full
-        output_line = len(self.text) - 1
-        line_y_pos = (bubble_rect.size[Y]
-                      - BUBBLE_MARGIN * 2
-                      - TEXT_MARGIN
-                      - self.speech_bubble_size[Y])
-        color = self.speech_bubble_fg
-        while line_y_pos >= TEXT_MARGIN and output_line >= 0:
-            line = self.world.code_font.render(self.text[output_line],
-                                               True, color)
-            line_x_pos = BUBBLE_MARGIN + TEXT_MARGIN + BALLOON_THICKNESS
-            self.bubble.blit(line, (line_x_pos, line_y_pos))
-            output_line -= 1
-            line_y_pos -= self.speech_bubble_size[Y]
+    # def old_create_speech_bubble(self, text, fg_col, bg_col):
+    #     # show a speak-bubble above the character with the text in it
+    #     new_text = str(text)
+    #     # make sure speech bubble has at least 1 character width
+    #     # non-printing chars or empty strings make the bubble look weird
+    #     if (self.world.code_font.size(new_text)[X]
+    #         < self.world.code_font.size(" ")[X]):
+    #         new_text = new_text + " "
+    #     self.text.append(new_text)
+    #     self.speech_bubble_size = self.world.code_font.size(new_text)
+    #     if self.speech_bubble_size[X] > self.text_size[X]:
+    #         self.text_size[X] = self.speech_bubble_size[X]
+    #     if len(self.text) <= MAX_BUBBLE_TEXT_LINES:
+    #         self.text_size[Y] += self.speech_bubble_size[Y]
+    #     self.speech_bubble_fg = fg_col
+    #     self.speech_bubble_bg = bg_col
+    #     self.speech_expires = pygame.time.get_ticks() + SPEECH_EXPIRY_TIME
+    #     self.speaking = True
+
+    def get_speech_bubble(self, surface):
+        return self.speech_bubble.rendered(surface)
+
+    def speech_position(self):
+        # position the tip of the speak bubble at the middle
+        # of the top edge of the sprite box
+        # the -8 is a fudge factor to put the speech bubble just above the sprite
+        position = [self.location.x, self.location.y - self.speech_bubble.get_height() / SCALING_FACTOR - 8]
+        return position
+
+    # def old_draw_speech_bubble(self, surface):
+    #     bubble_rect = pygame.Rect((0, 0), (
+    #         (self.text_size[X]
+    #          + TEXT_MARGIN * 2
+    #          + BALLOON_THICKNESS * 2
+    #          + BUBBLE_MARGIN),
+    #         (self.text_size[Y]
+    #          + TEXT_MARGIN * 2
+    #          + BALLOON_THICKNESS * 2
+    #          + BUBBLE_MARGIN * 2)
+    #         ))
+    #     self.bubble = pygame.Surface(bubble_rect.size)
+    #     # fill with red to use as the transparency key
+    #     self.bubble.fill((255, 0, 0))
+    #     self.bubble.set_colorkey((255, 0, 0))
+    #     # create a rectangle with clipped corners for the speech bubble
+    #     # (rounded corners aren't available until pygame 2.0)
+    #     bubble_points = (
+    #         (BALLOON_THICKNESS, bubble_rect.size[Y] - BALLOON_THICKNESS),  # A
+    #         (BUBBLE_MARGIN + BALLOON_THICKNESS,
+    #          bubble_rect.size[Y] - BUBBLE_MARGIN*2),                       # B
+    #         (BUBBLE_MARGIN + BALLOON_THICKNESS,
+    #          BUBBLE_MARGIN),                                               # C
+    #         (BUBBLE_MARGIN*2, 0),                                          # D
+    #         (bubble_rect.size[X] - BUBBLE_MARGIN, 0),                      # E
+    #         (bubble_rect.size[X] - BALLOON_THICKNESS,
+    #          BUBBLE_MARGIN),                                               # F
+    #         (bubble_rect.size[X] - BALLOON_THICKNESS,
+    #          bubble_rect.size[Y] - BUBBLE_MARGIN*3),                       # G
+    #         (bubble_rect.size[X] - BUBBLE_MARGIN,
+    #          bubble_rect.size[Y] - BUBBLE_MARGIN*2),                       # H
+    #         (BUBBLE_MARGIN*3, bubble_rect.size[Y] - BUBBLE_MARGIN*2),      # I
+    #     )
+    #     pygame.draw.polygon(self.bubble,
+    #                         self.speech_bubble_bg,
+    #                         bubble_points,
+    #                         0)
+    #     pygame.draw.polygon(self.bubble,
+    #                         self.speech_bubble_fg,
+    #                         bubble_points,
+    #                         BALLOON_THICKNESS)
+    #     # draw the lines of text, working upwards from the most recent,
+    #     # until the bubble is full
+    #     output_line = len(self.text) - 1
+    #     line_y_pos = (bubble_rect.size[Y]
+    #                   - BUBBLE_MARGIN * 2
+    #                   - TEXT_MARGIN
+    #                   - self.speech_bubble_size[Y])
+    #     color = self.speech_bubble_fg
+    #     while line_y_pos >= TEXT_MARGIN and output_line >= 0:
+    #         line = self.world.code_font.render(self.text[output_line],
+    #                                            True, color)
+    #         line_x_pos = BUBBLE_MARGIN + TEXT_MARGIN + BALLOON_THICKNESS
+    #         self.bubble.blit(line, (line_x_pos, line_y_pos))
+    #         output_line -= 1
+    #         line_y_pos -= self.speech_bubble_size[Y]
 
     def update_speech_bubble(self):
         pass

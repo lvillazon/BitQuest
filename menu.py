@@ -1,6 +1,6 @@
 import pygame
 from pygame.locals import *
-import editor
+import input_dialog
 from console_messages import console_msg
 from constants import *
 from session import Session
@@ -195,7 +195,7 @@ class Menu:
                     finished = True
         return self.input_dialog.convert_to_lines()[0]
 
-class MenuInputDialog(editor.InputDialog):
+class MenuInputDialog(input_dialog.InputDialog):
     """ used for entering text options in menus"""
 
     def __init__(self, screen, prompt, font):
