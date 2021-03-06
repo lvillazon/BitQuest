@@ -13,9 +13,14 @@ CURSOR_FAIL = 0
 CURSOR_OK = 1
 CURSOR_LINE_WRAP = 2
 
+# the pygame clipboard code is not currently stable and may break from release to release
+# for version 2.0.1, clipboard text is stored on Windows machines as "text/plain;charset=utf-8"
+# the correct type string MUST be used to access the clipboard contents
+CLIPBOARD_TEXT = "text/plain;charset=utf-8"
+
 
 class Editor:
-    # on-screen editor for writing programs
+    # on-screen editor for writing text
 
     def __init__(self, screen, height, code_font):
         self.code_font = code_font
@@ -35,7 +40,7 @@ class Editor:
         # width of a single character
         # (monospaced font, so they're all the same)
         self.char_width = self.code_font.size(" ")[X]
-        # the margin allows space for the line numbers in the code editor
+        # the margin allows space for the line numbers in the editor
         self.left_margin = self.side_gutter
         # calculate the number of characters that fit on a line
         self.row_width = int((self.width - self.left_margin - self.side_gutter)
@@ -372,7 +377,7 @@ class Editor:
         console_msg("PASTE, 8")
         self.save_history()
         # strip trailing nulls
-        clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT) \
+        clipboard_text = pygame.scrap.get(CLIPBOARD_TEXT) \
             .decode("utf-8", errors='ignore').replace('\0', '')
 
         for char in clipboard_text:

@@ -558,6 +558,7 @@ class BlockMap:
     def save_grid(self, level=1):
         """save current grid map to the level file
         this function is only accessible in map editor mode"""
+        console_msg("Saving map...", 1, line_end='')
 
         # TODO add save dialogue to change name/folder
         file_name = LEVEL_MAP_FILE_STEM + str(level) + LEVEL_MAP_FILE_EXTENSION
@@ -654,6 +655,7 @@ class BlockMap:
                 file.write(str(self.puzzle_info[p][2]))           # dog
                 file.write('\n')
             file.write(delimiter)
+        console_msg("done", 1)
 
     def load_grid(self, level=1):
         """read in map data from the level file
@@ -836,9 +838,10 @@ class BlockMap:
             self.map_edit_mode = False
 
     def toggle_map_editor(self):
-        self.map_edit_mode = not self.map_edit_mode
-        # make sure grid turns on/off with the editor
-        self.show_grid = self.map_edit_mode
+        if ALLOW_MAP_EDITOR:
+            self.map_edit_mode = not self.map_edit_mode
+            # make sure grid turns on/off with the editor
+            self.show_grid = self.map_edit_mode
 
     def update(self, surface):
         """ draw any blocks that are on-screen """
@@ -1119,6 +1122,18 @@ class BlockMap:
                 # so that it can be used as a dict index
                 # then assign current block tile to this index
                 self.current_layer[(self.cursor[X], self.cursor[Y])] = b
+
+    def delete(self):
+        # removes an object, depending on what is at the cursor
+        if self.mover_is_selected():
+            console_msg("deleting mover", 8)
+            self.remove_moveable_group()
+        elif self.trigger_is_selected():
+            console_msg("deleting trigger", 8)
+            self.remove_trigger()
+        else:
+            self.blank_editor_tile()
+
 
     def remove_moveable_group(self):
         """ Remove the moveable block group from the map

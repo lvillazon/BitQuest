@@ -144,6 +144,16 @@ class Character:
             self.location.bottom = (round(self.location.bottom / BLOCK_SIZE)
                                     * BLOCK_SIZE)
 
+    def move_left(self):
+        # request the character to begin moving
+        self.moving_left = True
+        self.moving_right = False
+
+    def move_right(self):
+        # request the character to begin moving
+        self.moving_left = False
+        self.moving_right = True
+
     def move(self, rectangle, movement):
         """ Move in the x, check for collisions, then move in the y and
         check again. This helps to avoid glitches at corner collisions."""

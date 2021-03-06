@@ -22,6 +22,7 @@ class InputDialog(Editor):
 
     def print_line_number(self, n, row):
         # override to suppress line numbers
+        # hella ugly - TODO move the line number code from Editor to CodeEditor
         pass
 
     def activate(self, prompt):

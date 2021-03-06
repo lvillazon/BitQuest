@@ -87,6 +87,7 @@ class Function(object):
 def make_cell(value):
     """Create a real Python closure and grab a cell."""
     # I have no idea what is going on here and neither does AK!
+    # she says:
     # Thanks to Alex Gaynor for help with this bit of twistiness.
     fn = (lambda x: lambda: x)(value)
     return fn.__closure__[0]
@@ -94,7 +95,6 @@ def make_cell(value):
 
 # data structure to handle loop and exception blocks
 Block = collections.namedtuple('Block', ['type', 'handler', 'stack_height'])
-
 
 class VirtualMachineError(Exception):
     pass
