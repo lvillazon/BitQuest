@@ -1,10 +1,40 @@
 import pygame
 
+# the modifier keys that are recognised by the game - any others will not be checked
+VALID_MODIFIER_KEYS = [pygame.KMOD_CTRL, pygame.KMOD_SHIFT, pygame.KMOD_ALT]
+
+
+def get_key_code(key_combo):
+    # key combo is the name of the key, with modifiers optionally preceding it
+    # eg Ctrl+A or ESCAPE or Alt+Shift+UP
+    # modifiers can be in any order and separated by any non-alphanumeric character
+    # case is not significant
+    # to find the key name, work back from the end of the string,
+    # until you reach the first non-alphanumeric, or the beginning of the string, whichever is 1st#
+    position = len(key_combo) - 1
+    while position >= 0 and key_combo[position].isalnum():
+        position -= 1
+    key_name = key_combo[position + 1:]
+    name = pygame.key.key_code(key_name)
+    return name
+
+
+def get_modifier_list(key_combo):
+    # looks for the names of any modifier keys in the key_combo string
+    # and returns a list of the pygame modifier codes for any it finds
+    key_mods = []
+    if "CTRL" in key_combo.upper():
+        key_mods.append(pygame.KMOD_CTRL)
+    if "ALT" in key_combo.upper():
+        key_mods.append(pygame.KMOD_ALT)
+    if "SHIFT" in key_combo.upper():
+        key_mods.append(pygame.KMOD_SHIFT)
+    return key_mods
+
 
 class InputHandler(object):
-
     """
-    dictionary mapping keypresses to actions
+    dictionary mapping key presses to actions
         K_a:  # move left
         K_d:  # move right
         K_w:  # look up
@@ -40,233 +70,61 @@ class InputHandler(object):
     class KeyAction(object):
         # defines the response for a single key
 
-        def __init__(self, code, down=None, up=None, repeat=False, ctrl=False, alt=False, shift=False):
-            self.key_code = code        # pygame keycode
-            self.up_action = up         # function reference
-            self.down_action = down     # function reference
-            self.auto_repeat = repeat   # booleans
-            self.ctrl = ctrl
-            self.alt = alt
-            self.shift = shift
+        def __init__(self, key_combo, action):
+            self.key_code = get_key_code(key_combo)
+            self.key_modifiers = get_modifier_list(key_combo)
+            self.action = action
+            print("Adding key action for", key_combo, self.key_code, self.key_modifiers)
 
-        def check_modifiers(self, ctrl, alt, shift):
-            return (ctrl == self.ctrl) and (alt == self.alt) and (shift == self.shift)
+        def check_mods(self):
+            # check that each of the modifiers required for this key action match the current keyboard state
+            for mod in VALID_MODIFIER_KEYS:
+                # if the modifier is listed for this key action, then it must be pressed for the mod check to pass
+                # if it isn't listed then it must NOT be pressed for the mod check to pass
+                if mod in self.key_modifiers:
+                    if pygame.key.get_mods() & mod == 0:
+                        return False
+                else:
+                    if pygame.key.get_mods() & mod == 1:
+                        return False
+            return True
 
     def __init__(self):
         # create empty dictionary for key -> action mappings
-        self.actions = {}
-        self.repeat_lock = False
+        self.down_actions = {}
+        self.up_actions = {}
+        self.press_actions = {}
 
-    def get_keystroke_name(self, key_code, ctrl, alt, shift):
-        c = "CTRL+" if ctrl else ""
-        a = "ALT+" if alt else ""
-        s = "SHIFT+" if shift else ""
-        return c + a + s + str(key_code)
+    def register_key_press(self, key_combo, action):
+        self.press_actions[key_combo] = self.KeyAction(key_combo, action)
 
-    def register_key_press(self, key_code, action, release_action=None,
-                           auto_repeat=False, ctrl=False, alt=False, shift=False):
-        # associate the methods with the corresponding key
-        # this allows other classes to define behaviour that should occur when a key is pressed or released
-        # without needing to include the code to actually detect that event
-        # key_code is one of the pygame key constants eg K_a
-        # action and release_action are function calls
+    def register_key_release(self):
+        pass
 
-        self.actions[self.get_keystroke_name(key_code, ctrl, alt, shift)] = \
-            self.KeyAction(key_code, action, release_action, auto_repeat, ctrl, alt, shift)
+    def register_key_up(self, key_combo, action):
+        self.up_actions[key_combo] = self.KeyAction(key_combo, action)
 
-    def handle_key_presses(self):
-        # tests for key presses and calls any registered actions
+    def register_key_down(self, key_combo, action):
+        self.down_actions[key_combo] = self.KeyAction(key_combo, action)
 
-        # create a list of all the keys that are currently pressed
+    def handle_keyboard_input(self):
+        # call the registered actions for any keyboard events
+
+        # get a list of all the keys that are currently pressed
         all_key_states = pygame.key.get_pressed()
-        ctrl = (pygame.key.get_mods() & pygame.KMOD_CTRL) > 0  # get current state of modifier keys
-        shift = (pygame.key.get_mods() & pygame.KMOD_SHIFT) > 0
-        alt = (pygame.key.get_mods() & pygame.KMOD_ALT) > 0
+        for key_combo in self.down_actions:
+            if (all_key_states[self.down_actions[key_combo].key_code]  # key is pressed
+                    and self.down_actions[key_combo].check_mods()):    # modifiers match too
+                self.down_actions[key_combo].action()                  # so call the registered action
 
-        # execute any registered actions that correspond to pressed keys
-        for key_stroke in self.actions.keys():
-            # keys without the auto_repeat flag set do not trigger additional actions if the key is held down
-            if not self.repeat_lock or self.actions[key_stroke].auto_repeat:
-                # check the key is pressed and the modifier key states match the registered values
-                if all_key_states[self.actions[key_stroke].key_code] \
-                        and self.actions[key_stroke].check_modifiers(ctrl, alt, shift) \
-                        and self.actions[key_stroke].down_action != None:
-                    self.actions[key_stroke].down_action()
-                    self.repeat_lock = True
+        # now check for those actions that trigger when a key is NOT pressed
+        for key_combo in self.up_actions:
+            if not all_key_states[self.up_actions[key_combo].key_code]:  # key is NOT pressed
+                self.up_actions[key_combo].action()  # so call the registered action
 
-            if not all_key_states[self.actions[key_stroke].key_code] and self.actions[key_stroke].up_action:
-                self.actions[key_stroke].up_action()
-
-        # process all other events to clear the queue
-        for event in pygame.event.get():
-            if event.type == pygame.KEYUP:
-                self.repeat_lock = False  # release the lock
-            # if event.type == pygame.QUIT:
-            #     self.running = False
-
-
-"""        
-        if pressed[K_a]:
-            self.player.moving_left = True
-            self.player.moving_right = False
-        elif pressed[K_d]:
-            self.player.moving_left = False
-            self.player.moving_right = True
-        # DEBUG give player the ability to fly!
-        # elif pressed[K_w]:
-        #     self.player.moving_down = False;
-        #     self.player.moving_up = True
-        # elif pressed[K_s]:
-        #     self.player.moving_down = True;
-        #     self.player.moving_up = False
-        if pressed[K_w] or pressed[K_s]:
-            if pressed[K_w]:
-                self.camera_pan[Y] -= 2
-            else:
-                self.camera_pan[Y] += 2
-        elif not self.blocks.show_grid:
-            self.camera_pan[Y] = int(self.camera_pan[Y] * 0.9)
-
-        if pressed[K_ESCAPE]:
-            # only show editor when it is completely hidden
-            # this prevents it immediately reshowing after hiding
-            if self.game_origin[Y] == 0:
-                self.editor.show()
-
-        # the number keys allow jumping directly to that puzzle
-        # this is only enabled if the user has map editing privileges
-        if ALLOW_MAP_EDITOR:
-            level_shortcuts = [
-                K_0, K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9
-            ]
-            for k in level_shortcuts:
-                if pressed[k]:
-                    self.puzzle = level_shortcuts.index(k)
-                    self.rewind_level()
-
-        if self.blocks.map_edit_mode:
-            ctrl = pygame.key.get_mods() & KMOD_CTRL
-            shift = pygame.key.get_mods() & KMOD_SHIFT
-
-            # these actions do not auto repeat when held down
-            if not self.repeat_lock:
-                self.repeat_lock = True
-
-                if pressed[K_F9]:
-                    console_msg("Saving map...", 1, line_end='')
-                    self.blocks.save_grid()
-                    console_msg("done", 1)
-                elif pressed[K_RIGHT]:
-                    self.blocks.cursor_right()
-                elif pressed[K_LEFT]:
-                    self.blocks.cursor_left()
-                elif pressed[K_UP]:
-                    if ctrl:
-                        self.camera_pan[Y] -= BLOCK_SIZE
-                    else:
-                        self.blocks.cursor_up()
-                elif pressed[K_DOWN]:
-                    if ctrl:
-                        self.camera_pan[Y] += BLOCK_SIZE
-                    else:
-                        self.blocks.cursor_down()
-                elif pressed[K_LEFTBRACKET]:  # [
-                    # not used, now we have a block palette on-screen
-                    #                        self.blocks.previous_editor_tile()
-                    pass
-                elif pressed[K_RIGHTBRACKET]:  # ]
-                    #                        self.blocks.next_editor_tile()
-                    pass
-                elif pressed[K_BACKSPACE]:
-                    if self.blocks.mover_is_selected():
-                        console_msg("deleting mover", 8)
-                        self.blocks.remove_moveable_group()
-                    elif self.blocks.trigger_is_selected():
-                        console_msg("deleting trigger", 8)
-                        self.blocks.remove_trigger()
-                    else:
-                        self.blocks.blank_editor_tile()
-                elif pressed[K_RETURN]:
-                    # change/add a block
-                    # at the current grid cursor location
-                    self.blocks.change_block()
-                elif pressed[K_TAB]:
-                    # switch between midground and foreground block layers
-                    self.blocks.switch_layer()
-                elif pressed[K_r]:
-                    # reset all block triggers and movers
-                    self.blocks.reset()
-                elif pressed[K_h]:
-                    # home the cursor to the centre of the screen
-                    self.blocks.home_cursor()
-                elif pressed[K_m]:
-                    # turn the selection into a movable group
-                    self.blocks.create_mover()
-                elif pressed[K_t]:
-                    # turn the block at the cursor into a trigger
-                    # or link an existing trigger to a mover
-                    self.blocks.set_trigger()
-                elif pressed[K_l]:
-                    # toggle random mode for the trigger actions
-                    # if the cursor is currently on a trigger
-                    self.blocks.toggle_trigger_randomness()
-                elif pressed[K_INSERT]:
-                    # insert a new column of blocks at the cursor
-                    self.blocks.insert_column()
-                elif pressed[K_DELETE]:
-                    # remove a column at the cursor
-                    self.blocks.delete_column()
-                else:
-                    self.repeat_lock = False  # reset, since no key pressed
-
-                    for event in pygame.event.get():
-                        if event.type == pygame.MOUSEBUTTONDOWN:
-                            mouse_pos = (pygame.mouse.get_pos()[X]
-                                         / SCALING_FACTOR
-                                         + self.scroll[X],
-                                         pygame.mouse.get_pos()[Y]
-                                         / SCALING_FACTOR
-                                         + self.scroll[Y]
-                                         )
-                            if event.button == 1:  # left click
-                                if shift:
-                                    self.blocks.select_block(mouse_pos,
-                                                             'add')
-                                else:
-                                    # just select a single block
-                                    self.blocks.select_block(mouse_pos,
-                                                             'set')
-                            elif event.button == 3:  # right click
-                                self.blocks.select_block(mouse_pos, 'pick')
-                            # 2: middle button
-                            # 4: scroll up
-                            # 5: scroll down
-
-        # DEBUG stats
-        if pressed[K_f]:
-            if not self.repeat_lock:
-                # toggle fps stats
-                self.show_fps = not self.show_fps
-                if not self.show_fps:
-                    self.frame_counter = 0
-
-        if pressed[K_g]:
-            ctrl = pygame.key.get_mods() & KMOD_CTRL
-            shift = pygame.key.get_mods() & KMOD_SHIFT
-            if not self.repeat_lock:
-                if ALLOW_MAP_EDITOR and ctrl and shift:
-                    self.blocks.toggle_map_editor()
-                else:
-                    self.blocks.toggle_grid()
-                self.repeat_lock = True
-        # check the mouse to see if any buttons were clicked
-        # currently just the rewind and play button
-        self.check_buttons()
-
-        # process all other events to clear the queue
-        for event in pygame.event.get():
-            if event.type == KEYUP:
-                self.repeat_lock = False  # release the lock
-            if event.type == QUIT:
-                self.running = False
-"""
+        # now check for actions that only trigger at the moment the key is pressed down
+        for event in pygame.event.get(pygame.KEYDOWN):
+            for key_combo in self.press_actions:
+                if (self.press_actions[key_combo].key_code == event.key
+                        and self.press_actions[key_combo].check_mods()):
+                    self.press_actions[key_combo].action()
