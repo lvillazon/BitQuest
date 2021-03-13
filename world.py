@@ -16,6 +16,7 @@ import editor
 import input_dialog
 import interpreter
 import scenery
+from camera import Camera
 from console_messages import console_msg
 from constants import *
 from input_handler import InputHandler
@@ -62,8 +63,7 @@ class World:
         #        self.scenery = scenery.Scenery('Day', 'Desert')
         self.scenery = scenery.Scenery(self, 'Day', 'Field')
 
-        self.true_scroll = [0.0, 0.0]
-        self.scroll = [0, 0]  # integer version of true_scroll
+        self.camera = Camera()
         # location of the game area on the window
         # used to scroll the game area out of the way of the code editor
         self.game_origin = [0, 0]
@@ -273,22 +273,12 @@ class World:
 
         frame_start_time = time.time_ns()  # used to calculate fps
 
-        # track the camera with the focus character, but with a bit of lag
-        self.true_scroll[X] += (focus.location.x -
-                                self.true_scroll[X] - CAMERA_X_OFFSET) / 16
-        if self.true_scroll[X] < 0:
-            # can't scroll past the start of the world
-            self.true_scroll[X] = 0
-        self.true_scroll[Y] += (focus.location.y -
-                                self.true_scroll[Y] - CAMERA_Y_OFFSET) / 16
-        self.scroll = [int(self.true_scroll[X]) + self.camera_pan[X],
-                       int(self.true_scroll[Y]) + self.camera_pan[Y]]
-        if self.camera_shake:
-            self.scroll[X] += random.randint(-1, 1)
-            self.scroll[Y] += random.randint(-1, 1)
+################## CAMERA REFACTORING IN PROGRESS
+        self.camera.update(focus)
+################## CAMERA REFACTORING END
 
         # render the background
-        self.scenery.draw_background(display)
+        self.scenery.draw_background(display, self.camera.scroll())
 
         # move and render the player sprite
         self.player.update(display)
@@ -309,7 +299,7 @@ class World:
             # still need to check if buttons outside the editor were clicked
             self.check_buttons()
         else:
-            #################### REFACTOR BLOCK #######################
+            #################### INPUT REFACTOR BLOCK #######################
             # only handle keystrokes for game control
             # if the code editor isn't open
             self.user_input.handle_keyboard_input()
@@ -415,8 +405,8 @@ class World:
         # overlay all speech bubble at the native resolution
         if self.dog.speaking:
             position = self.dog.speech_position()
-            position[X] = (position[X] - self.scroll[X]) * SCALING_FACTOR + self.game_origin[X]
-            position[Y] = (position[Y] - self.scroll[Y]) * SCALING_FACTOR + self.game_origin[Y]
+            position[X] = (position[X] - self.camera.scroll_x()) * SCALING_FACTOR + self.game_origin[X]
+            position[Y] = (position[Y] - self.camera.scroll__y) * SCALING_FACTOR + self.game_origin[Y]
             self.screen.blit(self.dog.get_speech_bubble(display), position)
 
         # draw the swirling dust - DEBUG disabled due to looking bad
@@ -561,10 +551,10 @@ class World:
     def set_mouse_position(self):
         mouse_pos = (pygame.mouse.get_pos()[X]
                      / SCALING_FACTOR
-                     + self.scroll[X],
+                     + self.camera.scroll_x(),
                      pygame.mouse.get_pos()[Y]
                      / SCALING_FACTOR
-                     + self.scroll[Y]
+                     + self.camera.scroll_y()
                      )
 
 #                             if event.type == pygame.MOUSEBUTTONDOWN:
