@@ -2,9 +2,7 @@
  BitQuest module to handle the game world rendering
  and character movement
 """
-import random
 import time
-from datetime import datetime
 
 import pygame
 from pygame.locals import *
@@ -12,16 +10,13 @@ from pygame.locals import *
 import blocks
 import characters
 import code_editor
-import editor
 import input_dialog
 import interpreter
 import scenery
 from camera import Camera
 from console_messages import console_msg
 from constants import *
-from input_handler import InputHandler
-from particles import DustStorm
-from sprite_sheet import SpriteSheet
+from input_handler import KeyboardHandler, MouseHandler
 
 '''
 https://wiki.libsdl.org/Installation
@@ -66,12 +61,15 @@ class World:
         self.camera = Camera()
         # location of the game area on the window
         # used to scroll the game area out of the way of the code editor
+        # this can't be done by the camera, because the editor is always just 'below' the visible part of the map
+        # regardless of where the camera is currently panned to. In other words, the editor is not part of the
+        # game world.
         self.game_origin = [0, 0]
 
         # load puzzle blocks
         self.blocks = blocks.BlockMap(self,
                                       BLOCK_TILE_DICTIONARY_FILE,
-                                      BLOCK_TILESET_FILE)
+                                      BLOCK_TILESET_FILE, self.camera)
         console_msg("Map loaded", 1)
 
         self.puzzle = 0  # TODO: load current progress from log file
@@ -124,9 +122,9 @@ class World:
         console_msg("Interpreter initialised", 2)
 
         self.editor = code_editor.CodeWindow(screen, 300,
-                                        self.code_font,
-                                        self.python_interpreter,
-                                        self.session)
+                                             self.code_font,
+                                             self.python_interpreter,
+                                             self.session)
         input_height = self.code_font.get_linesize() * 3
         self.input = input_dialog.InputDialog(screen, input_height, self.code_font)
         console_msg("Editors initialised", 2)
@@ -141,16 +139,17 @@ class World:
         self.clock = pygame.time.Clock()
 
         # register all the keyboard and mouse actions
-        self.user_input = InputHandler()
-        self.user_input.register_key_down('A', self.player.move_left)
-        self.user_input.register_key_down('D', self.player.move_right)
-        self.user_input.register_key_down('W', self.camera_pan_up)
-        self.user_input.register_key_up('W', self.camera_pan_up_release)
-        self.user_input.register_key_down('S', self.camera_pan_down)
-        self.user_input.register_key_up('S', self.camera_pan_down_release)
-        self.user_input.register_key_press('ESCAPE', self.show_editor)
-        self.user_input.register_key_press('G', self.blocks.toggle_grid)
-        self.user_input.register_key_press('F', self.toggle_fps_stats)
+        self.keyboard_input = KeyboardHandler()
+        self.mouse_input = MouseHandler(self.camera)
+        self.keyboard_input.register_key_down('A', self.player.move_left)
+        self.keyboard_input.register_key_down('D', self.player.move_right)
+        self.keyboard_input.register_key_down('W', self.camera_pan_up)
+        self.keyboard_input.register_key_up('W', self.camera_pan_up_release)
+        self.keyboard_input.register_key_down('S', self.camera_pan_down)
+        self.keyboard_input.register_key_up('S', self.camera_pan_down_release)
+        self.keyboard_input.register_key_press('ESCAPE', self.show_editor)
+        self.keyboard_input.register_key_press('G', self.blocks.toggle_grid)
+        self.keyboard_input.register_key_press('F', self.toggle_fps_stats)
 
         # the number keys allow jumping directly to that puzzle
         # this is only enabled if the user has map editing privileges
@@ -158,60 +157,65 @@ class World:
             for k in "0123456789":
                 # dynamically create a function that jumps to the required level and register it to that key press
                 jump_to_level = self.get_level_shortcut(int(k))
-                self.user_input.register_key_press(k, jump_to_level)
+                self.keyboard_input.register_key_press(k, jump_to_level)
 
-            # # keyboard actions for map edit mode
-            self.user_input.register_key_press('CTRL+SHIFT+G', self.blocks.toggle_map_editor)
-            self.user_input.register_key_press('F9', self.blocks.save_grid)
-            self.user_input.register_key_press('RIGHT', self.blocks.cursor_right)
-            self.user_input.register_key_press('LEFT', self.blocks.cursor_left)
-            self.user_input.register_key_press('UP', self.blocks.cursor_up)
-            self.user_input.register_key_press('CTRL+UP', self.camera_pan_up)
-            self.user_input.register_key_press('DOWN', self.blocks.cursor_down)
-            self.user_input.register_key_press('CTRL+DOWN', self.camera_pan_down)
-            self.user_input.register_key_press('BACKSPACE', self.blocks.delete)
-            self.user_input.register_key_press('RETURN', self.blocks.change_block)
-            self.user_input.register_key_press('TAB', self.blocks.switch_layer)
-            self.user_input.register_key_press('R', self.blocks.reset)
-            self.user_input.register_key_press('H', self.blocks.home_cursor)
-            self.user_input.register_key_press('M', self.blocks.create_mover)
-            self.user_input.register_key_press('T', self.blocks.set_trigger)
-            self.user_input.register_key_press('L', self.blocks.toggle_trigger_randomness)
-            self.user_input.register_key_press('INSERT', self.blocks.insert_column)
-            self.user_input.register_key_press('DELETE', self.blocks.delete_column)
+            """
+            keyboard actions for map edit mode
+            K_a:  # move left
+            K_d:  # move right
+            K_w:  # look up
+            K_s:  # look down
+            K_Escape:  # toggle editor
+            K_0 ... K_9:  # level shortcuts
 
-        #
-        #                         for event in pygame.event.get():
-        #                             if event.type == pygame.MOUSEBUTTONDOWN:
-        #                                 mouse_pos = (pygame.mouse.get_pos()[X]
-        #                                              / SCALING_FACTOR
-        #                                              + self.scroll[X],
-        #                                              pygame.mouse.get_pos()[Y]
-        #                                              / SCALING_FACTOR
-        #                                              + self.scroll[Y]
-        #                                              )
-        #                                 if event.button == 1:  # left click
-        #                                     if shift:
-        #                                         self.blocks.select_block(mouse_pos,
-        #                                                                  'add')
-        #                                     else:
-        #                                         # just select a single block
-        #                                         self.blocks.select_block(mouse_pos,
-        #                                                                  'set')
-        #                                 elif event.button == 3:  # right click
-        #                                     self.blocks.select_block(mouse_pos, 'pick')
-        #                                 # 2: middle button
-        #                                 # 4: scroll up
-        #                                 # 5: scroll down
-        #
+            # map edit mode
+            K_F9  # save map
+            K_LEFT/RIGHT/UP/DOWN:  # move cursor
+            CTRL+K_UP/DOWN:  # pan camera
+            K_BACKSPACE:  # delete block/mover/trigger
+            K_RETURN:     # change/add a block at the current grid cursor location
+            K_TAB:  # switch between midground and foreground block layers
+            K_r:    # reset all block triggers and movers
+            K_h:    # home the cursor to the centre of the screen
+            K_m:    # turn the selection into a movable group
+            K_t     # turn the block at the cursor into a trigger or link an existing trigger to a mover
+            K_l     # toggle random mode for the trigger actions if the cursor is currently on a trigger
+            K_INSERT  # insert a new column of blocks at the cursor
+            K_DELETE  # remove a column at the cursor
 
-        #             # check the mouse to see if any buttons were clicked
-        #             # currently just the rewind and play button
-        #             self.check_buttons()
-        #
+            # left click: select current block
+            # SHIFT+left click: add current block to selection
+            # right click:  set current block as the selected block type ('eyedropper' tool)
+
+
+            K_f:  # display framerate stats
+            K_g:  # toggle grid
+            CTRL+SHIFT+K_g:  # toggle map editor
+            """
+            self.keyboard_input.register_key_press('CTRL+SHIFT+G', self.blocks.toggle_map_editor)
+            self.keyboard_input.register_key_press('F9', self.blocks.save_grid)
+            self.keyboard_input.register_key_press('RIGHT', self.blocks.cursor_right)
+            self.keyboard_input.register_key_press('LEFT', self.blocks.cursor_left)
+            self.keyboard_input.register_key_press('UP', self.blocks.cursor_up)
+            self.keyboard_input.register_key_press('CTRL+UP', self.camera_pan_up)
+            self.keyboard_input.register_key_press('DOWN', self.blocks.cursor_down)
+            self.keyboard_input.register_key_press('CTRL+DOWN', self.camera_pan_down)
+            self.keyboard_input.register_key_press('BACKSPACE', self.blocks.delete)
+            self.keyboard_input.register_key_press('RETURN', self.blocks.change_block)
+            self.keyboard_input.register_key_press('TAB', self.blocks.switch_layer)
+            self.keyboard_input.register_key_press('R', self.blocks.reset)
+            self.keyboard_input.register_key_press('H', self.blocks.home_cursor)
+            self.keyboard_input.register_key_press('M', self.blocks.create_mover)
+            self.keyboard_input.register_key_press('T', self.blocks.set_trigger)
+            self.keyboard_input.register_key_press('L', self.blocks.toggle_trigger_randomness)
+            self.keyboard_input.register_key_press('INSERT', self.blocks.insert_column)
+            self.keyboard_input.register_key_press('DELETE', self.blocks.delete_column)
+
+            self.mouse_input.register_left_click(self.blocks.add_to_selection, 'SHIFT')
+            self.mouse_input.register_left_click(self.blocks.select_block, 'NONE')
+            self.mouse_input.register_right_click(self.blocks.pick_block, 'NONE')
 
         console_msg("Input handler initialised", 2)
-
         console_msg("World initialisation complete", 1)
 
     def get_bit_x(self):
@@ -273,21 +277,19 @@ class World:
 
         frame_start_time = time.time_ns()  # used to calculate fps
 
-################## CAMERA REFACTORING IN PROGRESS
         self.camera.update(focus)
-################## CAMERA REFACTORING END
 
         # render the background
         self.scenery.draw_background(display, self.camera.scroll())
 
         # move and render the player sprite
-        self.player.update(display)
+        self.player.update(display, self.camera.scroll())
 
         # move and render the dog
-        self.dog.update(display)
+        self.dog.update(display, self.camera.scroll())
 
         # draw the foreground scenery on top of the characters
-        self.blocks.update(display)
+        self.blocks.update(display, self.camera.scroll())
         # self.scenery.draw_foreground(display)
 
         # update the input window and editor, if necessary
@@ -299,70 +301,14 @@ class World:
             # still need to check if buttons outside the editor were clicked
             self.check_buttons()
         else:
-            #################### INPUT REFACTOR BLOCK #######################
             # only handle keystrokes for game control
             # if the code editor isn't open
-            self.user_input.handle_keyboard_input()
+            self.keyboard_input.handle_actions()
+            self.mouse_input.handle_actions()
             # process all other events to clear the queue
             for event in pygame.event.get():
                 if event.type == QUIT:
                     self.running = False
-
-            #################### OLD STUFF
-#
-#                         for event in pygame.event.get():
-#                             if event.type == pygame.MOUSEBUTTONDOWN:
-#                                 mouse_pos = (pygame.mouse.get_pos()[X]
-#                                              / SCALING_FACTOR
-#                                              + self.scroll[X],
-#                                              pygame.mouse.get_pos()[Y]
-#                                              / SCALING_FACTOR
-#                                              + self.scroll[Y]
-#                                              )
-#                                 if event.button == 1:  # left click
-#                                     if shift:
-#                                         self.blocks.select_block(mouse_pos,
-#                                                                  'add')
-#                                     else:
-#                                         # just select a single block
-#                                         self.blocks.select_block(mouse_pos,
-#                                                                  'set')
-#                                 elif event.button == 3:  # right click
-#                                     self.blocks.select_block(mouse_pos, 'pick')
-#                                 # 2: middle button
-#                                 # 4: scroll up
-#                                 # 5: scroll down
-#
-#             # DEBUG stats
-#             if pressed[K_f]:
-#                 if not self.repeat_lock:
-#                     # toggle fps stats
-#                     self.show_fps = not self.show_fps
-#                     if not self.show_fps:
-#                         self.frame_counter = 0
-#
-#             if pressed[K_g]:
-#                 ctrl = pygame.key.get_mods() & KMOD_CTRL
-#                 shift = pygame.key.get_mods() & KMOD_SHIFT
-#                 if not self.repeat_lock:
-#                     if ALLOW_MAP_EDITOR and ctrl and shift:
-#                         self.blocks.toggle_map_editor()
-#                     else:
-#                         self.blocks.toggle_grid()
-#                     self.repeat_lock = True
-#             # check the mouse to see if any buttons were clicked
-#             # currently just the rewind and play button
-#             self.check_buttons()
-#
-#             # process all other events to clear the queue
-#             for event in pygame.event.get():
-#                 if event.type == KEYUP:
-#                     self.repeat_lock = False  # release the lock
-#                 if event.type == QUIT:
-#                     self.running = False
-
-##################### END OF REFACTOR BLOCK
-
 
         if self.show_fps:
             self.frame_counter += 1
@@ -406,7 +352,7 @@ class World:
         if self.dog.speaking:
             position = self.dog.speech_position()
             position[X] = (position[X] - self.camera.scroll_x()) * SCALING_FACTOR + self.game_origin[X]
-            position[Y] = (position[Y] - self.camera.scroll__y) * SCALING_FACTOR + self.game_origin[Y]
+            position[Y] = (position[Y] - self.camera.scroll_y) * SCALING_FACTOR + self.game_origin[Y]
             self.screen.blit(self.dog.get_speech_bubble(display), position)
 
         # draw the swirling dust - DEBUG disabled due to looking bad
@@ -548,33 +494,3 @@ class World:
         if not self.show_fps:
             self.frame_counter = 0
 
-    def set_mouse_position(self):
-        mouse_pos = (pygame.mouse.get_pos()[X]
-                     / SCALING_FACTOR
-                     + self.camera.scroll_x(),
-                     pygame.mouse.get_pos()[Y]
-                     / SCALING_FACTOR
-                     + self.camera.scroll_y()
-                     )
-
-#                             if event.type == pygame.MOUSEBUTTONDOWN:
-#                                 mouse_pos = (pygame.mouse.get_pos()[X]
-#                                              / SCALING_FACTOR
-#                                              + self.scroll[X],
-#                                              pygame.mouse.get_pos()[Y]
-#                                              / SCALING_FACTOR
-#                                              + self.scroll[Y]
-#                                              )
-#                                 if event.button == 1:  # left click
-#                                     if shift:
-#                                         self.blocks.select_block(mouse_pos,
-#                                                                  'add')
-#                                     else:
-#                                         # just select a single block
-#                                         self.blocks.select_block(mouse_pos,
-#                                                                  'set')
-#                                 elif event.button == 3:  # right click
-#                                     self.blocks.select_block(mouse_pos, 'pick')
-#                                 # 2: middle button
-#                                 # 4: scroll up
-#                                 # 5: scroll down

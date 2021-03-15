@@ -11,11 +11,11 @@ import triggers
 ALPHA = (255, 255, 255)
 
 
-def draw_collider(surface, colour, collider, width, scroll):
+def draw_collider(surface, colour, collider, width):
     """ debug routine to show colliders"""
     if SHOW_COLLIDERS:
-        rect = pygame.Rect(collider.x - scroll[X],
-                           collider.y - scroll[Y],
+        rect = pygame.Rect(collider.x - self.camera.scroll_x(),
+                           collider.y - self.camera,scroll_y(),
                            collider.width,
                            collider.height)
         pygame.draw.rect(surface, colour, rect, width)
@@ -26,8 +26,7 @@ class Moveable:
     when a trigger activates. They are simply arbitrary collections
     of blocks that move in concert when activated."""
 
-    def __init__(self, world, id_num, blocks):
-        self.world = world  # so we can set camera_shake
+    def __init__(self, id_num, blocks):
         self.id = id_num  # unique number used for loading/saving
         self.blocks = blocks  # list of blocks
         self.home_positions = []  # initial x,y coords of all blocks (pixels)
@@ -39,7 +38,8 @@ class Moveable:
                 # insert a placeholder, so that the reset function
                 # doesn't get out of sync
                 self.home_positions.append(None)
-        self.activated = False
+        self.activated = False  # True if the mover has ever been triggered
+        self.moving = False     # True only while the mover is actually transitioning to the activated state
         # target_offset is the number of x,y pixels the group should shift by
         # it is set by the trigger when it activates
         # as the group moves into place, current_offset
@@ -51,8 +51,8 @@ class Moveable:
 
     def activate(self, offset):
         self.activated = True
+        self.moving = True
         self.target_offset = [coord * BLOCK_SIZE for coord in offset]
-        self.world.camera_shake = True
         # the movement value of the block is used to transfer momentum
         # to any characters that are touching the blocks
         # this allows pillars to lift or push characters around
@@ -132,22 +132,12 @@ class Moveable:
                         self.movement[i] = 0.0
 
             if self.movement == [0.0, 0.0]:
-                self.world.camera_shake = False
+                self.moving = False
                 for b in self.blocks:
                     b.movement = [0, 0]
             return True
         else:
             return False
-
-    # def get_bounding_box(self):
-    #     """ return a rectangle surrounding this group of blocks """
-    #     left = self.blocks[0].x - self.world.scroll[X]
-    #     top = self.blocks[0].y - self.world.scroll[Y]
-    #     # the block x,y values are for the top left corner of the block
-    #     # so we need to add one extra block's worth for the full width/height
-    #     width = self.blocks[-1].x - self.world.scroll[X] - left + BLOCK_SIZE
-    #     height = self.blocks[-1].y - self.world.scroll[Y] - top + BLOCK_SIZE
-    #     return pygame.Rect(left, top, width, height)
 
 
 class Block:
@@ -237,7 +227,7 @@ class Block:
 
 class BlockMap:
 
-    def __init__(self, world, tile_dictionary_file, tileset_file):
+    def __init__(self, world, tile_dictionary_file, tileset_file, camera):
         """ The level maps are defined using text files that use
         ASCII symbols to represent each tile type.
         For example a complete pillar is
@@ -246,6 +236,7 @@ class BlockMap:
            |Bb/
         """
         self.world = world  # link back to the world game state
+        self.camera = camera # link to the game camera, so we can access the scroll value
         self.level = 0  # placeholder; load_grid sets this
 
         # The tile dictionary is used to convert the ASCII tile symbols
@@ -416,11 +407,17 @@ class BlockMap:
     def grid_to_screen_pos(self, grid_pos):
         # convert grid coords to screen coords
         return (grid_pos[X] * BLOCK_SIZE
-                - self.world.scroll[X]
+                - self.camera.scroll_x()
                 + BLOCK_SIZE / 2,
                 grid_pos[Y] * BLOCK_SIZE
-                - self.world.scroll[Y]
+                - self.camera.scroll_y()
                 + BLOCK_SIZE / 2)
+
+    def add_to_selection(self, mouse_pos):
+        self.select_block(mouse_pos, 'add')
+
+    def pick_block(self, mouse_pos):
+        self.select_block(mouse_pos, 'pick')
 
     def select_block(self, mouse_pos, mode='set'):
         """ if mode is 'add', the current block is added to the selection
@@ -472,8 +469,7 @@ class BlockMap:
 
     def create_mover(self):
         # Create a new moving block group
-        mover = Moveable(self.world,
-                         self.get_next_mover_id(),
+        mover = Moveable(self.get_next_mover_id(),
                          self.selected_blocks)
         self.movers[mover.id] = mover
         # delete the selection now, because it is saved as a moveable group
@@ -727,8 +723,7 @@ class BlockMap:
                 mover_blocks = [self.get_block(
                     self.midground_blocks, grid[X], grid[Y])
                     for grid in values[1]]
-                mover = Moveable(self.world,
-                                 values[0],  # id
+                mover = Moveable(values[0],  # id
                                  mover_blocks
                                  )
                 key = values[0]
@@ -838,17 +833,16 @@ class BlockMap:
             self.map_edit_mode = False
 
     def toggle_map_editor(self):
-        if ALLOW_MAP_EDITOR:
-            self.map_edit_mode = not self.map_edit_mode
-            # make sure grid turns on/off with the editor
-            self.show_grid = self.map_edit_mode
+        self.map_edit_mode = not self.map_edit_mode
+        # make sure grid turns on/off with the editor
+        self.show_grid = self.map_edit_mode
 
-    def update(self, surface):
+    def update(self, surface, scroll):
         """ draw any blocks that are on-screen """
 
         # calculate the upper and lower bounds of the visible screen
         # so that we don't waste time drawing blocks that are off screen
-        min_visible_block_x = self.world.scroll[X] // BLOCK_SIZE
+        min_visible_block_x = scroll[X] // BLOCK_SIZE
         max_visible_block_x = (min_visible_block_x
                                + DISPLAY_SIZE[X] // BLOCK_SIZE
                                + 1)
@@ -864,8 +858,8 @@ class BlockMap:
                 else:
                     b.image.set_alpha(255)
                 surface.blit(b.image,
-                             (b.x - self.world.scroll[X],
-                              b.y - self.world.scroll[Y]))
+                             (b.x - scroll[X],
+                              b.y - scroll[Y]))
 
                 if self.map_edit_mode:
                     # highlight the block if it is currently selected
@@ -875,8 +869,7 @@ class BlockMap:
                         # highlight triggers
                         for t in self.triggers:
                             if b == t.block:
-                                self.highlight_block(surface, b,
-                                                     COLOUR_TRIGGER_BLOCK)
+                                self.highlight_block(surface, b, COLOUR_TRIGGER_BLOCK)
                         # highlight moving block groups
                         for m in self.movers:
                             if b in self.movers[m].blocks:
@@ -893,16 +886,19 @@ class BlockMap:
                 else:
                     b.image.set_alpha(255)
                 surface.blit(b.image,
-                             (b.x - self.world.scroll[X],
-                              b.y - self.world.scroll[Y]))
+                             (b.x - scroll[X],
+                              b.y - scroll[Y]))
 
         # give any moving blocks a chance to update
         # if any are currently moving, we set busy to true, so that
         # the player program is paused until the moves are complete
+        # and also tell the camera to shake
         self.busy = False
+        self.camera.set_shaking(False)
         for m in self.movers:
             if self.movers[m].update(self.midground_blocks):
                 self.busy = True
+                self.camera.set_shaking(True)
 
         if self.map_edit_mode:
             # if we are in trigger linking mode, run a line from the
@@ -946,8 +942,8 @@ class BlockMap:
                                          trigger_pos, mover_pos)
 
     def highlight_block(self, surface, block, colour):
-        left = block.x - self.world.scroll[X]
-        top = block.y - self.world.scroll[Y]
+        left = block.x - self.camera.scroll_x()
+        top = block.y - self.camera.scroll_y()
         # the block x,y values are for the top left corner of the block
         # so we need to add one extra block's worth for the full
         # width/height
@@ -999,9 +995,10 @@ class BlockMap:
 
     def draw_grid(self, surface, origin):
         """ overlays a grid to show the block spacing """
+        scroll = self.camera.scroll()  # for brevity
         grid_size = BLOCK_SIZE * SCALING_FACTOR
         grid_colour = COLOUR_GRID_LINES
-        offset = [(s * SCALING_FACTOR) % grid_size for s in self.world.scroll]
+        offset = [(s * SCALING_FACTOR) % grid_size for s in scroll]
         limit = [size * SCALING_FACTOR for size in DISPLAY_SIZE]
         label_offset = (grid_size / 2 - self.world.editor.char_width,
                         grid_size / 2 - self.world.editor.line_height / 2)
@@ -1016,11 +1013,8 @@ class BlockMap:
                              (x, 0),
                              (x, limit[Y] + origin[Y] - input_offset),
                              GRID_LINE_WIDTH)
-            axis_label = "{0:2d} ".format(int(x / grid_size +
-                                              self.world.scroll[
-                                                  X] / BLOCK_SIZE))
-            self.display_text(axis_label,
-                              (x + label_offset[X], 20), grid_colour)
+            axis_label = "{0:2d} ".format(int(x / grid_size + scroll[X] / BLOCK_SIZE))
+            self.display_text(axis_label, (x + label_offset[X], 20), grid_colour)
 
         # horizontal grid lines & Y-axis labels
         for y in range(-offset[Y], limit[Y] - input_offset, grid_size):
@@ -1029,9 +1023,7 @@ class BlockMap:
                              (limit[X], y + origin[Y]),
                              GRID_LINE_WIDTH)
             if y + label_offset[Y] < limit[Y] - input_offset - LABEL_HEIGHT:
-                axis_label = "{0:2d} ".format(int(y / grid_size +
-                                                  self.world.scroll[
-                                                      Y] / BLOCK_SIZE))
+                axis_label = "{0:2d} ".format(int(y / grid_size + scroll[Y] / BLOCK_SIZE))
                 self.display_text(axis_label,
                                   (GRID_LINE_WIDTH * 2,
                                    y + origin[Y] + label_offset[Y]),
@@ -1040,22 +1032,11 @@ class BlockMap:
 
         if self.map_edit_mode:
             self.cursor_rect.x = (self.cursor[X] * grid_size
-                                  - self.world.scroll[X] * SCALING_FACTOR
+                                  - scroll[X] * SCALING_FACTOR
                                   + GRID_LINE_WIDTH)
             self.cursor_rect.y = (self.cursor[Y] * grid_size
-                                  - self.world.scroll[Y] * SCALING_FACTOR
+                                  - scroll[Y] * SCALING_FACTOR
                                   + origin[Y] + GRID_LINE_WIDTH)
-
-            # if not self.erasing:
-            # draw the currently selected tile type at the cursor pos
-            # this has to be separately scaled, because we are drawing
-            # on the unscaled surface (so the grid axes text looks nice)
-            #    surface.blit(
-            #        pygame.transform.scale(
-            #            self.cursor_block.image,
-            #            (grid_size, grid_size)),
-            #        (self.cursor_rect[X], self.cursor_rect[Y])
-            #    )
 
             # highlight cursor
             pygame.draw.rect(surface, COLOUR_MAP_CURSOR,
@@ -1091,9 +1072,9 @@ class BlockMap:
         """ move the cursor to the centre of the screen
         taking into account the current scroll value"""
         self.cursor = [
-            int(self.world.scroll[X] / BLOCK_SIZE
+            int(self.camera.scroll_x() / BLOCK_SIZE
                 + DISPLAY_SIZE[X] / BLOCK_SIZE / 2),
-            int(self.world.scroll[Y] / BLOCK_SIZE
+            int(self.camera.scroll_y() / BLOCK_SIZE
                 + DISPLAY_SIZE[Y] / BLOCK_SIZE / 2)
         ]
 
@@ -1253,10 +1234,11 @@ class BlockMap:
         trigger - characters can overlap the block, activating the trigger
         cosmetic - no collision physics or trigger (but may animate)
         """
+        scroll = self.camera.scroll()  # to avoid multiple accesses, and for brevity
         if SHOW_COLLIDERS:
             # DEBUG draw character collider in green
             draw_collider(self.world.display,
-                          (0, 255, 0), character_rect, 1, self.world.scroll)
+                          (0, 255, 0), character_rect, 1, scroll)
 
         # check for collisions with solid objects
         collisions = []
@@ -1276,7 +1258,7 @@ class BlockMap:
                         # DEBUG draw block colliders in yellow
                         draw_collider(self.world.display,
                                       (255, 255, 0),
-                                      collider, 1, self.world.scroll)
+                                      collider, 1, scroll)
 
                     if character_rect.colliderect(collider):
                         collisions.append(b)
@@ -1285,7 +1267,7 @@ class BlockMap:
                         if SHOW_COLLIDERS:
                             draw_collider(self.world.display,
                                           (255, 0, 0),
-                                          collider, 0, self.world.scroll)
+                                          collider, 0, scroll)
 
         return collisions
 

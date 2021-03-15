@@ -39,8 +39,7 @@ class Camera(object):
         # return current Y scroll value
         return self._scroll[Y]
 
-    def start_shaking(self):
-        self._shake = True
-
-    def stop_shaking(self):
-        self._shake = False
+    def set_shaking(self, state):
+        # set shaking to True or False
+        # if True then the camera position gets jiggled around randomly to create shake
+        self._shake = state
