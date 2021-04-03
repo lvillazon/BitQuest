@@ -98,7 +98,7 @@ class World:
         self.dog.set_position(self.blocks.get_dog_start(self.puzzle))
 
         self.dog.facing_right = False
-        self.show_fps = False
+        self._show_fps = False
         # this flag prevents certain key actions from automatically repeating
         # it is cleared when any key is released
         self.repeat_lock = False
@@ -306,20 +306,12 @@ class World:
             self.keyboard_input.handle_actions()
             self.mouse_input.handle_actions()
             # process all other events to clear the queue
-            for event in pygame.event.get():
-                if event.type == QUIT:
-                    self.running = False
+            # for event in pygame.event.get():
+            #     if event.type == QUIT:
+            #         self.running = False
 
-        if self.show_fps:
-            self.frame_counter += 1
-            if self.frame_counter > 60:
-                self.frame_counter = 0
-                console_msg(
-                    'frame draw:{0}ms fps:{1} render budget left:{2}ms'.format(
-                        self.frame_draw_time / 1000000,
-                        int(1000000000 / self.frame_draw_time),
-                        int((1000000000 - 60
-                             * self.frame_draw_time) / 1000000)), 1)
+        if self._show_fps:
+            self.show_fps()
 
         # scroll the editor in and out of view as required
         if self.editor.is_active():
@@ -352,7 +344,7 @@ class World:
         if self.dog.speaking:
             position = self.dog.speech_position()
             position[X] = (position[X] - self.camera.scroll_x()) * SCALING_FACTOR + self.game_origin[X]
-            position[Y] = (position[Y] - self.camera.scroll_y) * SCALING_FACTOR + self.game_origin[Y]
+            position[Y] = (position[Y] - self.camera.scroll_y()) * SCALING_FACTOR + self.game_origin[Y]
             self.screen.blit(self.dog.get_speech_bubble(display), position)
 
         # draw the swirling dust - DEBUG disabled due to looking bad
@@ -410,6 +402,18 @@ class World:
 
         self.frame_draw_time = time.time_ns() - frame_start_time
         self.clock.tick(60)  # lock the framerate to 60fps
+
+    def show_fps(self):
+        # debug info - display current fps stats to console.
+        self.frame_counter += 1
+        if self.frame_counter > 60:
+            self.frame_counter = 0
+            console_msg(
+                'frame draw:{0}ms fps:{1} render budget left:{2}ms'.format(
+                    self.frame_draw_time / 1000000,
+                    int(1000000000 / self.frame_draw_time),
+                    int((1000000000 - 60
+                         * self.frame_draw_time) / 1000000)), 1)
 
     def check_buttons(self):
         """ react to any button clicks """
@@ -490,7 +494,10 @@ class World:
         return short_cut
 
     def toggle_fps_stats(self):
-        self.show_fps = not self.show_fps
-        if not self.show_fps:
+        self._show_fps = not self._show_fps
+        if not self._show_fps:
             self.frame_counter = 0
 
+
+    # def test_multiple(self, key):
+    #     print("handling",key)

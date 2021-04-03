@@ -56,9 +56,9 @@ def get_key_name(key_combo):
     # modifiers can be in any order and separated by any non-alphanumeric character
     # case is not significant
     # to find the key name, work back from the end of the string,
-    # until you reach the first non-alphanumeric, or the beginning of the string, whichever is 1st
+    # until you reach the first non-alphanumeric, non-space, or the beginning of the string, whichever is 1st
     position = len(key_combo) - 1
-    while position >= 0 and key_combo[position].isalnum():
+    while position >= 0 and (key_combo[position].isalnum() or key_combo[position] == ' '):
         position -= 1
     key_name = key_combo[position + 1:]
     return key_name
@@ -100,17 +100,41 @@ class KeyboardAction(InputAction):
         self.key_code = pygame.key.key_code(self.key_name)
 
 
+class UnicodeAction(object):
+    # an action that triggers in response to a particular unicode keyboard character event
+    # ie an action that distinguishes between A and a, even though they share a physical key
+    def __init__(self, unicode_char, action):
+        self.unicode_char = unicode_char;
+        self.action = action;
+
+
 class KeyboardHandler(object):
     def __init__(self):
         # create empty dictionary for key -> action mappings
         self.down_actions = {}
         self.up_actions = {}
         self.press_actions = {}
+        self.unicode_action = None  # method called for actions that relate to a specific char eg A vs a
+        self.allowed_unicode_chars = []  # list of chars that will trigger the unicode action
 
     def register_key_press(self, key_combo, action):
         # assigns a single keypress or key+modifiers combo to a function call
         # eg 'A' or 'ESCAPE' or 'CTRL+S'
         self.press_actions[key_combo] = KeyboardAction(key_combo, action)
+
+    def register_unicode_chars(self, char_list, action):
+        # assigns every key in the list to the same action
+        # the action is passed the key as a parameter
+        self.unicode_action = action
+        self.allowed_unicode_chars = char_list
+
+    # not using this method any more, since it seems inefficient to create separate
+    # functions for every possible keystroke
+    # def _get_key_handler(self, action, key):
+    #     # create a closure to return a specific handler routine for each key
+    #     def handler():
+    #         action(key)
+    #     return handler
 
     def register_key_up(self, key_combo, action):
         self.up_actions[key_combo] = KeyboardAction(key_combo, action)
@@ -134,11 +158,22 @@ class KeyboardHandler(object):
                 self.up_actions[key_combo].action()  # so call the registered action
 
         # now check for actions that only trigger at the moment the key is pressed down
-        for event in pygame.event.get(pygame.KEYDOWN):
-            for key_combo in self.press_actions:
-                if (self.press_actions[key_combo].key_code == event.key
-                        and self.press_actions[key_combo].check_mods()):
-                    self.press_actions[key_combo].action()
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                for key_combo in self.press_actions:
+                    if (self.press_actions[key_combo].key_code == event.key
+                            and self.press_actions[key_combo].check_mods()):
+                        print("activating", key_combo)
+                        self.press_actions[key_combo].action()
+
+                if event.unicode != '' and event.unicode in self.allowed_unicode_chars:
+                    self.unicode_action(event.unicode)
+#                deprecated closure method of doing the same thing
+#                if event.unicode != '' and event.unicode in self.unicode_actions:
+#                    self.unicode_actions[event.unicode].action()
+
+        # process all other events to clear the queue
+        pygame.event.clear()
 
 
 class MouseHandler(object):

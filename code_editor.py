@@ -1,4 +1,7 @@
 import pygame
+
+import button_tray
+from console_messages import console_msg
 from constants import *
 from editor import Editor
 
@@ -12,19 +15,11 @@ class CodeWindow(Editor):
         self.python_interpreter = p
         self.session = session
         # define the permitted actions for special keys
-        self.key_action = {pygame.K_ESCAPE: self.hide,
-                           pygame.K_RETURN: self.carriage_return,
-                           pygame.K_BACKSPACE: self.backspace,
-                           pygame.K_DELETE: self.delete,
-                           pygame.K_UP: self.cursor_up,
-                           pygame.K_DOWN: self.cursor_down,
-                           pygame.K_LEFT: self.cursor_left,
-                           pygame.K_RIGHT: self.cursor_right,
-                           pygame.K_PAGEUP: self.page_up,
-                           pygame.K_PAGEDOWN: self.page_down,
-                           pygame.K_TAB: self.tab,
-                           pygame.K_F5: self.run_program,
-                           }
+        self.keyboard_input.register_key_press('ESCAPE', self.hide)
+        self.keyboard_input.register_key_press('RETURN', self.carriage_return)
+        self.keyboard_input.register_key_press('F5', self.run_program)
+        self.keyboard_input.register_key_press('CTRL+S', self.save_program)
+        self.keyboard_input.register_key_press('CTRL+O', self.load_program)
 
     def draw(self):
         super().draw()

@@ -4,6 +4,7 @@ from constants import *
 
 # used to index into (x,y) tuples
 from console_messages import console_msg
+from input_handler import KeyboardHandler
 
 X = 0
 Y = 1
@@ -46,6 +47,8 @@ class Editor:
         self.row_width = int((self.width - self.left_margin - self.side_gutter)
                              / self.char_width)
         self.buttons = button_tray.ButtonTray(EDITOR_ICON_FILE, self.surface)
+        self.keyboard_input = KeyboardHandler()
+        self.register_keyboard_input(self.keyboard_input)
         self.title = "Title"
         self.centre_title = False  # set to true for the menu input dialog
         self.reset()
@@ -76,6 +79,9 @@ class Editor:
     def show(self):
         pygame.key.set_repeat(500, 50)
         self.active = True
+        # process all events to guarantee the keyboard queue is clear
+        pygame.event.clear()
+
 
     def hide(self):
         pygame.key.set_repeat()  # disable autorepeat
@@ -238,14 +244,15 @@ class Editor:
         else:
             return CURSOR_FAIL
 
+    def select_left(self):
+        # check if we should start a new text selection
+        if not self.selecting:
+            self.start_selecting()
+        self.cursor_left()
+
     def cursor_right(self):
         # moves cursor with line wrap
         # returns true if the cursor successfully moved
-
-        # check if SHIFT is held,
-        # to see if we should be starting a new selection
-        if (pygame.key.get_mods() & pygame.KMOD_SHIFT) and not self.selecting:
-            self.start_selecting()
 
         if self.cursor_col < len(self.text[self.cursor_line]):
             self.cursor_col += 1
@@ -260,6 +267,12 @@ class Editor:
             return CURSOR_LINE_WRAP
         else:
             return CURSOR_FAIL
+
+    def select_right(self):
+        # check if we should start a new text selection
+        if not self.selecting:
+            self.start_selecting()
+        self.cursor_right()
 
     def cursor_up(self):
         # moves cursor, snapping to the end of the line if necessary
@@ -284,6 +297,12 @@ class Editor:
         else:
             return CURSOR_FAIL
 
+    def select_up(self):
+        # check if we should start a new text selection
+        if not self.selecting:
+            self.start_selecting()
+        self.cursor_up()
+
     def cursor_down(self):
         # moves cursor, snapping to the end of the line if necessary
         # returns true if the cursor successfully moved
@@ -306,6 +325,12 @@ class Editor:
             return CURSOR_OK
         else:
             return CURSOR_FAIL
+
+    def select_down(self):
+        # check if we should start a new text selection
+        if not self.selecting:
+            self.start_selecting()
+        self.cursor_down()
 
     def cursor_to_mouse_pos(self):
         # if the mouse is within the text area
@@ -451,56 +476,102 @@ class Editor:
     def get_bg_color(self):
         return self.color_modes[self.palette][1]
 
-    def update(self):
-        # process all the keystrokes in the event queue
-
+    def register_keyboard_input(self, handler):
+        # bind all the editor actions to their respective keys
         printable = "1234567890-=[]#;',./abcdefghijklmnopqrstuvwxyz " \
                     '!"£$%^&*()_+{}~:@<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key in self.key_action:
-                    # handle all the special keys
-                    self.key_action[event.key]()
-                elif pygame.key.get_mods() & pygame.KMOD_CTRL:
-                    # handle the keyboard shortcuts
-                    shortcuts = {pygame.K_x: self.clipboard_cut,
-                                 pygame.K_c: self.clipboard_copy,
-                                 pygame.K_v: self.clipboard_paste,
-                                 pygame.K_s: self.save_program,
-                                 pygame.K_o: self.load_program,
-                                 pygame.K_a: self.select_all,
-                                 pygame.K_z: self.undo,
-                                 }
-                    if event.key in shortcuts:
-                        shortcuts[event.key]()
-                else:
-                    # handle all the printable characters
-                    if event.unicode != '' and event.unicode in printable:
-                        self.add_keystroke(event.unicode)
+        handler.register_unicode_chars(printable, self.add_keystroke)
+        self.keyboard_input.register_key_press('CTRL+X', self.clipboard_cut)
+        self.keyboard_input.register_key_press('CTRL+C', self.clipboard_copy)
+        self.keyboard_input.register_key_press('CTRL+V', self.clipboard_paste)
+        self.keyboard_input.register_key_press('CTRL+Z', self.undo)
+        self.keyboard_input.register_key_press('BACKSPACE', self.backspace)
+        self.keyboard_input.register_key_press('DELETE', self.delete)
+        self.keyboard_input.register_key_press('UP', self.cursor_up)
+        self.keyboard_input.register_key_press('DOWN', self.cursor_down)
+        self.keyboard_input.register_key_press('LEFT', self.cursor_left)
+        self.keyboard_input.register_key_press('RIGHT', self.cursor_right)
+        self.keyboard_input.register_key_press('PAGEUP', self.page_up)
+        self.keyboard_input.register_key_press('PAGEDOWN', self.page_down)
+        self.keyboard_input.register_key_press('TAB', self.tab)
+        self.keyboard_input.register_key_press('SHIFT+RIGHT', self.select_right)
+        self.keyboard_input.register_key_press('SHIFT+LEFT', self.select_left)
+        self.keyboard_input.register_key_press('SHIFT+UP', self.select_up)
+        self.keyboard_input.register_key_press('SHIFT+DOWN', self.select_down)
+        self.keyboard_input.register_key_up('LEFT SHIFT', self.stop_selecting)
 
-            elif event.type == pygame.KEYUP:
-                if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT):
-                    self.stop_selecting()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                # check if the click happened within the editor area
-                if pygame.mouse.get_pos()[Y] > self.height:
-                    mouse_button = {1: self.left_click,
-                                    # 2: middle button
-                                    # 3: right button
-                                    4: self.cursor_up,  # scroll up
-                                    5: self.cursor_down,  # scroll down
-                                    }
-                    if event.button in mouse_button:
-                        mouse_button[event.button]()
-            elif event.type == pygame.MOUSEBUTTONUP:
-                self.mouse_up()
+        # TODO
+        # MOUSE LEFT_CLICK self.left_click,
+        # MOUSE SCROLL_UP self.cursor_up
+        # MOUSE SCROLL_DOWN self.cursor_down
+        # MOUSE BUTTON RELEASED: self.mouse_up()
+        #
+        #     # we also have to handle the quit event, since the main loop
+        #     # isn't watching events while the editor is open
+        #     # we don't actually want to quit the game though
+        #     # TODO prompt user to save code
+        #     elif event.type == pygame.QUIT:
+        #         console_msg("WARNING: Save code before quitting?", 2)
+        #
+        # if self.selecting:
+        #     # use the mouse to update the selected block,
+        #     # provided SHIFT is not held down
+        #     # this keeps mouse and keyboard selections
+        #     # from interfering with each other
+        #     if not (pygame.key.get_mods() & pygame.KMOD_SHIFT):
+        #         self.cursor_to_mouse_pos()
+        pass
+
+    def update(self):
+        # process all the keystrokes in the event queue
+        self.keyboard_input.handle_actions()
+        # printable = "1234567890-=[]#;',./abcdefghijklmnopqrstuvwxyz " \
+        #             '!"£$%^&*()_+{}~:@<>?ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        # for event in pygame.event.get():
+        #     if event.type == pygame.KEYDOWN:
+        #         if event.key in self.key_action:
+        #             # handle all the special keys
+        #             self.key_action[event.key]()
+        #         elif pygame.key.get_mods() & pygame.KMOD_CTRL:
+        #             # handle the keyboard shortcuts
+        #             shortcuts = {pygame.K_x: self.clipboard_cut,
+        #                          pygame.K_c: self.clipboard_copy,
+        #                          pygame.K_v: self.clipboard_paste,
+        #                          pygame.K_s: self.save_program,
+        #                          pygame.K_o: self.load_program,
+        #                          pygame.K_a: self.select_all,
+        #                          pygame.K_z: self.undo,
+        #                          }
+        #             if event.key in shortcuts:
+        #                 shortcuts[event.key]()
+        #         else:
+        #             # handle all the printable characters
+        #             if event.unicode != '' and event.unicode in printable:
+        #                 self.add_keystroke(event.unicode)
+        #
+        #     elif event.type == pygame.KEYUP:
+        #         if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT):
+        #             self.stop_selecting()
+        #     elif event.type == pygame.MOUSEBUTTONDOWN:
+        #         # check if the click happened within the editor area
+        #         if pygame.mouse.get_pos()[Y] > self.height:
+        #             mouse_button = {1: self.left_click,
+        #                             # 2: middle button
+        #                             # 3: right button
+        #                             4: self.cursor_up,  # scroll up
+        #                             5: self.cursor_down,  # scroll down
+        #                             }
+        #             if event.button in mouse_button:
+        #                 mouse_button[event.button]()
+        #     elif event.type == pygame.MOUSEBUTTONUP:
+        #         self.mouse_up()
 
             # we also have to handle the quit event, since the main loop
             # isn't watching events while the editor is open
             # we don't actually want to quit the game though
             # TODO prompt user to save code
-            elif event.type == pygame.QUIT:
-                console_msg("WARNING: Save code before quitting?", 2)
+            # elif event.type == pygame.QUIT:
+            #     console_msg("WARNING: Save code before quitting?", 2)
 
         if self.selecting:
             # use the mouse to update the selected block,
