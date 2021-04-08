@@ -1,4 +1,7 @@
 import pygame
+
+import button_tray
+from console_messages import console_msg
 from constants import *
 from editor import Editor
 
@@ -24,6 +27,8 @@ class CodeWindow(Editor):
                            pygame.K_PAGEDOWN: self.page_down,
                            pygame.K_TAB: self.tab,
                            pygame.K_F5: self.run_program,
+                           pygame.K_s: self.save_program,
+                           pygame.K_o: self.load_program,
                            }
 
     def draw(self):

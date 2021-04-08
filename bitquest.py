@@ -46,7 +46,7 @@ if not game_menu.quit():
         # when programs are running, the world is updated from the interpreter
         # so we don't want to do it here as well, because it will just slow the
         # intepreter down
-        if game_world.running:
+        if game_world.playing:
             # keep the camera focussed on BIT while he is doing something
             if game_world.dog.busy:
                 game_world.update(game_world.dog)

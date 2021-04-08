@@ -11,23 +11,12 @@ import triggers
 ALPHA = (255, 255, 255)
 
 
-def draw_collider(surface, colour, collider, width, scroll):
-    """ debug routine to show colliders"""
-    if SHOW_COLLIDERS:
-        rect = pygame.Rect(collider.x - scroll[X],
-                           collider.y - scroll[Y],
-                           collider.width,
-                           collider.height)
-        pygame.draw.rect(surface, colour, rect, width)
-
-
 class Moveable:
     """ pillars, drawbridges and other objects that move
     when a trigger activates. They are simply arbitrary collections
     of blocks that move in concert when activated."""
 
-    def __init__(self, world, id_num, blocks):
-        self.world = world  # so we can set camera_shake
+    def __init__(self, id_num, blocks):
         self.id = id_num  # unique number used for loading/saving
         self.blocks = blocks  # list of blocks
         self.home_positions = []  # initial x,y coords of all blocks (pixels)
@@ -39,7 +28,8 @@ class Moveable:
                 # insert a placeholder, so that the reset function
                 # doesn't get out of sync
                 self.home_positions.append(None)
-        self.activated = False
+        self.activated = False  # True if the mover has ever been triggered
+        self.moving = False  # True only while the mover is actually transitioning to the activated state
         # target_offset is the number of x,y pixels the group should shift by
         # it is set by the trigger when it activates
         # as the group moves into place, current_offset
@@ -51,8 +41,8 @@ class Moveable:
 
     def activate(self, offset):
         self.activated = True
+        self.moving = True
         self.target_offset = [coord * BLOCK_SIZE for coord in offset]
-        self.world.camera_shake = True
         # the movement value of the block is used to transfer momentum
         # to any characters that are touching the blocks
         # this allows pillars to lift or push characters around
@@ -132,22 +122,12 @@ class Moveable:
                         self.movement[i] = 0.0
 
             if self.movement == [0.0, 0.0]:
-                self.world.camera_shake = False
+                self.moving = False
                 for b in self.blocks:
                     b.movement = [0, 0]
             return True
         else:
             return False
-
-    # def get_bounding_box(self):
-    #     """ return a rectangle surrounding this group of blocks """
-    #     left = self.blocks[0].x - self.world.scroll[X]
-    #     top = self.blocks[0].y - self.world.scroll[Y]
-    #     # the block x,y values are for the top left corner of the block
-    #     # so we need to add one extra block's worth for the full width/height
-    #     width = self.blocks[-1].x - self.world.scroll[X] - left + BLOCK_SIZE
-    #     height = self.blocks[-1].y - self.world.scroll[Y] - top + BLOCK_SIZE
-    #     return pygame.Rect(left, top, width, height)
 
 
 class Block:
@@ -170,7 +150,8 @@ class Block:
         self.setType(block_type)
         self.movement = [0, 0]
 
-    def clone(self, source_block, grid_position):
+    @staticmethod
+    def clone(source_block, grid_position):
         """ creates a new copy of source_block at grid_position"""
         return Block(source_block.block_tiles,
                      source_block.type,
@@ -199,7 +180,7 @@ class Block:
             self.frame_count = len(self.frames)
             self.image = self.frames[0]
         else:
-            console_msg("UNRECOGNISED BLOCK CODE:" + type, 3)
+            console_msg("UNRECOGNISED BLOCK CODE:" + block_type, 3)
 
     def copyTile(self, other_block):
         """ Makes this block use the same tile(s) as other_block
@@ -237,7 +218,7 @@ class Block:
 
 class BlockMap:
 
-    def __init__(self, world, tile_dictionary_file, tileset_file):
+    def __init__(self, world, tile_dictionary_file, tileset_file, camera):
         """ The level maps are defined using text files that use
         ASCII symbols to represent each tile type.
         For example a complete pillar is
@@ -246,6 +227,7 @@ class BlockMap:
            |Bb/
         """
         self.world = world  # link back to the world game state
+        self.camera = camera  # link to the game camera, so we can access the scroll value
         self.level = 0  # placeholder; load_grid sets this
 
         # The tile dictionary is used to convert the ASCII tile symbols
@@ -308,21 +290,21 @@ class BlockMap:
         self.tile_images = {}
         # build the dictionary of tile images from the dictionary
         # previously read in from the file
-        for id in tile_dict:
+        for tile_id in tile_dict:
             images = []
-            for coords in tile_dict[id]['tiles']:
+            for coords in tile_dict[tile_id]['tiles']:
                 images.append(self.tile_sheet.image_at(
                     (BLOCK_SIZE * coords[X], BLOCK_SIZE * coords[Y],
                      BLOCK_SIZE, BLOCK_SIZE),
                     ALPHA))
-            self.tile_images[id] = images
+            self.tile_images[tile_id] = images
 
         # use the tile images to build the editor palette
         # this comprises a list of blocks, one for each tile
         # and a surface with all the tiles arranged in a grid
         self.palette_blocks = []
-        for id in tile_dict:
-            b = Block(self.tile_images, id, (0, 0))
+        for tile_id in tile_dict:
+            b = Block(self.tile_images, tile_id, (0, 0))
             self.palette_blocks.append(b)
 
         self.editor_palette = pygame.Surface(PALETTE_SIZE)
@@ -341,6 +323,12 @@ class BlockMap:
             if col >= EDITOR_PALETTE_WIDTH:
                 col = 0
                 row += 1
+
+        # Each puzzle within the level also has a number, name
+        # and the (x,y) coords for the start positions of player and dog
+        # these are stored in a tuple of (name, player_start, dog_start)
+        # with the puzzle number as the key
+        self.puzzle_info = {}
 
         # build the layer dictionaries from the level map
         self.load_grid(level=1)
@@ -416,11 +404,17 @@ class BlockMap:
     def grid_to_screen_pos(self, grid_pos):
         # convert grid coords to screen coords
         return (grid_pos[X] * BLOCK_SIZE
-                - self.world.scroll[X]
+                - self.camera.scroll_x()
                 + BLOCK_SIZE / 2,
                 grid_pos[Y] * BLOCK_SIZE
-                - self.world.scroll[Y]
+                - self.camera.scroll_y()
                 + BLOCK_SIZE / 2)
+
+    def add_to_selection(self, mouse_pos):
+        self.select_block(mouse_pos, 'add')
+
+    def pick_block(self, mouse_pos):
+        self.select_block(mouse_pos, 'pick')
 
     def select_block(self, mouse_pos, mode='set'):
         """ if mode is 'add', the current block is added to the selection
@@ -457,7 +451,7 @@ class BlockMap:
                                    (PALETTE_SIZE[X],
                                     PALETTE_SIZE[Y] - PALETTE_GAP))
         if palette_rect.collidepoint(mouse_pos):
-            row = int((mouse_pos[Y] - PALETTE_GAP)/
+            row = int((mouse_pos[Y] - PALETTE_GAP) /
                       (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
             col = int((mouse_pos[X] - PALETTE_POSITION[X]) /
                       (BLOCK_SIZE * PALETTE_SCALE + PALETTE_GAP))
@@ -472,8 +466,7 @@ class BlockMap:
 
     def create_mover(self):
         # Create a new moving block group
-        mover = Moveable(self.world,
-                         self.get_next_mover_id(),
+        mover = Moveable(self.get_next_mover_id(),
                          self.selected_blocks)
         self.movers[mover.id] = mover
         # delete the selection now, because it is saved as a moveable group
@@ -505,7 +498,7 @@ class BlockMap:
         """ if the cursor is on a trigger, toggle the random flag"""
         self.cancel_selection()
         selected_trigger = self.trigger_at_cursor()
-        if selected_trigger != None:
+        if selected_trigger is not None:
             selected_trigger.toggle_random()
 
     def set_trigger(self):  # , mouse_pos):
@@ -550,6 +543,7 @@ class BlockMap:
         rather than using a simple list index, so that the id doesn't change
         if movers are later deleted"""
         highest_id = 0
+        m = 0
         for m in self.movers:
             if m > highest_id:
                 highest_id = m
@@ -558,6 +552,7 @@ class BlockMap:
     def save_grid(self, level=1):
         """save current grid map to the level file
         this function is only accessible in map editor mode"""
+        console_msg("Saving map...", 1, line_end='')
 
         # TODO add save dialogue to change name/folder
         file_name = LEVEL_MAP_FILE_STEM + str(level) + LEVEL_MAP_FILE_EXTENSION
@@ -589,7 +584,7 @@ class BlockMap:
 
         # write this map to the file
         preamble = \
-            "Level data is split into 6 sections,\n"\
+            "Level data is split into 6 sections,\n" \
             "each section ends with ### on its own line:\n" \
             "   1. This section is for comments only and is ignored.\n" \
             "   2. The midground section shows the arrangements of " \
@@ -648,12 +643,13 @@ class BlockMap:
             # section 6
             file.write("# puzzle start positions\n")
             for p in self.puzzle_info:
-                file.write(str(p) + ', ')                         # number
+                file.write(str(p) + ', ')  # number
                 file.write("'" + self.puzzle_info[p][0] + "', ")  # name
-                file.write(str(self.puzzle_info[p][1]) + ', ')    # player
-                file.write(str(self.puzzle_info[p][2]))           # dog
+                file.write(str(self.puzzle_info[p][1]) + ', ')  # player
+                file.write(str(self.puzzle_info[p][2]))  # dog
                 file.write('\n')
             file.write(delimiter)
+        console_msg("done", 1)
 
     def load_grid(self, level=1):
         """read in map data from the level file
@@ -725,8 +721,7 @@ class BlockMap:
                 mover_blocks = [self.get_block(
                     self.midground_blocks, grid[X], grid[Y])
                     for grid in values[1]]
-                mover = Moveable(self.world,
-                                 values[0],  # id
+                mover = Moveable(values[0],  # id
                                  mover_blocks
                                  )
                 key = values[0]
@@ -803,7 +798,8 @@ class BlockMap:
                 )
             i += 1
 
-    def get_block(self, block_dict, x, y):
+    @staticmethod
+    def get_block(block_dict, x, y):
         """returns the block at grid coord x,y"""
         if (x, y) in block_dict:
             return block_dict[(x, y)]
@@ -832,7 +828,7 @@ class BlockMap:
     def toggle_grid(self):
         self.show_grid = not self.show_grid
         if not self.show_grid:
-            # make ssure the edit mode turns off with the grid
+            # make sure the edit mode turns off with the grid
             self.map_edit_mode = False
 
     def toggle_map_editor(self):
@@ -840,12 +836,12 @@ class BlockMap:
         # make sure grid turns on/off with the editor
         self.show_grid = self.map_edit_mode
 
-    def update(self, surface):
+    def update(self, surface, scroll):
         """ draw any blocks that are on-screen """
 
         # calculate the upper and lower bounds of the visible screen
         # so that we don't waste time drawing blocks that are off screen
-        min_visible_block_x = self.world.scroll[X] // BLOCK_SIZE
+        min_visible_block_x = scroll[X] // BLOCK_SIZE
         max_visible_block_x = (min_visible_block_x
                                + DISPLAY_SIZE[X] // BLOCK_SIZE
                                + 1)
@@ -855,14 +851,14 @@ class BlockMap:
             if min_visible_block_x <= coord[X] <= max_visible_block_x:
                 b = self.midground_blocks[coord]
                 # fade out the midground blocks when editing the foreground
-                if (self.map_edit_mode and \
+                if (self.map_edit_mode and
                         self.current_layer != self.midground_blocks):
                     b.image.set_alpha(100)
                 else:
                     b.image.set_alpha(255)
                 surface.blit(b.image,
-                             (b.x - self.world.scroll[X],
-                              b.y - self.world.scroll[Y]))
+                             (b.x - scroll[X],
+                              b.y - scroll[Y]))
 
                 if self.map_edit_mode:
                     # highlight the block if it is currently selected
@@ -872,8 +868,7 @@ class BlockMap:
                         # highlight triggers
                         for t in self.triggers:
                             if b == t.block:
-                                self.highlight_block(surface, b,
-                                                     COLOUR_TRIGGER_BLOCK)
+                                self.highlight_block(surface, b, COLOUR_TRIGGER_BLOCK)
                         # highlight moving block groups
                         for m in self.movers:
                             if b in self.movers[m].blocks:
@@ -884,22 +879,25 @@ class BlockMap:
             if min_visible_block_x <= coord[X] <= max_visible_block_x:
                 b = self.foreground_blocks[coord]
                 # fade out the foreground blocks when editing the midground
-                if (self.map_edit_mode and \
+                if (self.map_edit_mode and
                         self.current_layer != self.foreground_blocks):
                     b.image.set_alpha(100)
                 else:
                     b.image.set_alpha(255)
                 surface.blit(b.image,
-                             (b.x - self.world.scroll[X],
-                              b.y - self.world.scroll[Y]))
+                             (b.x - scroll[X],
+                              b.y - scroll[Y]))
 
         # give any moving blocks a chance to update
         # if any are currently moving, we set busy to true, so that
         # the player program is paused until the moves are complete
+        # and also tell the camera to shake
         self.busy = False
+        self.camera.set_shaking(False)
         for m in self.movers:
             if self.movers[m].update(self.midground_blocks):
                 self.busy = True
+                self.camera.set_shaking(True)
 
         if self.map_edit_mode:
             # if we are in trigger linking mode, run a line from the
@@ -909,8 +907,7 @@ class BlockMap:
                                  (pygame.mouse.get_pos()[X] / SCALING_FACTOR,
                                   pygame.mouse.get_pos()[Y] / SCALING_FACTOR),
                                  self.grid_to_screen_pos(
-                                     self.link_trigger.block.grid_position)
-                                 , 1)
+                                     self.link_trigger.block.grid_position), 1)
             # if we are in pending link mode, draw an arrow from the
             # anchor block in a mover to the cursor, so that we can specify
             # where the mover should move to
@@ -943,8 +940,8 @@ class BlockMap:
                                          trigger_pos, mover_pos)
 
     def highlight_block(self, surface, block, colour):
-        left = block.x - self.world.scroll[X]
-        top = block.y - self.world.scroll[Y]
+        left = block.x - self.camera.scroll_x()
+        top = block.y - self.camera.scroll_y()
         # the block x,y values are for the top left corner of the block
         # so we need to add one extra block's worth for the full
         # width/height
@@ -955,7 +952,7 @@ class BlockMap:
     def draw_edit_info_box(self, surface):
         """ overlays the panel showing the currently selected layer
         and block tile"""
-        info_box = pygame.Rect(0, 0, 182,104)
+        info_box = pygame.Rect(0, 0, 182, 104)
         text_colour = COLOUR_MAP_EDIT_TEXT
         surface.fill(COLOUR_MAP_EDITOR_BOXES,
                      info_box)  # pygame.BLEND_RGB_ADD)
@@ -984,8 +981,8 @@ class BlockMap:
                     + PALETTE_POSITION[X]
                     - PALETTE_GAP)
             top = (((m[Y] - PALETTE_POSITION[Y]) // PALETTE_CURSOR_SIZE[Y])
-                    * PALETTE_CURSOR_SIZE[Y]
-                    + PALETTE_POSITION[Y])
+                   * PALETTE_CURSOR_SIZE[Y]
+                   + PALETTE_POSITION[Y])
             size = PALETTE_CURSOR_SIZE
             selection_rect = pygame.Rect((left, top), size)
             pygame.draw.rect(surface,
@@ -993,12 +990,12 @@ class BlockMap:
                              selection_rect,
                              PALETTE_GAP * 2)
 
-
     def draw_grid(self, surface, origin):
         """ overlays a grid to show the block spacing """
+        scroll = self.camera.scroll()  # for brevity
         grid_size = BLOCK_SIZE * SCALING_FACTOR
         grid_colour = COLOUR_GRID_LINES
-        offset = [(s * SCALING_FACTOR) % grid_size for s in self.world.scroll]
+        offset = [(s * SCALING_FACTOR) % grid_size for s in scroll]
         limit = [size * SCALING_FACTOR for size in DISPLAY_SIZE]
         label_offset = (grid_size / 2 - self.world.editor.char_width,
                         grid_size / 2 - self.world.editor.line_height / 2)
@@ -1013,11 +1010,8 @@ class BlockMap:
                              (x, 0),
                              (x, limit[Y] + origin[Y] - input_offset),
                              GRID_LINE_WIDTH)
-            axis_label = "{0:2d} ".format(int(x / grid_size +
-                                              self.world.scroll[
-                                                  X] / BLOCK_SIZE))
-            self.display_text(axis_label,
-                              (x + label_offset[X], 20), grid_colour)
+            axis_label = "{0:2d} ".format(int(x / grid_size + scroll[X] / BLOCK_SIZE))
+            self.display_text(axis_label, (x + label_offset[X], 20), grid_colour)
 
         # horizontal grid lines & Y-axis labels
         for y in range(-offset[Y], limit[Y] - input_offset, grid_size):
@@ -1026,9 +1020,7 @@ class BlockMap:
                              (limit[X], y + origin[Y]),
                              GRID_LINE_WIDTH)
             if y + label_offset[Y] < limit[Y] - input_offset - LABEL_HEIGHT:
-                axis_label = "{0:2d} ".format(int(y / grid_size +
-                                                  self.world.scroll[
-                                                      Y] / BLOCK_SIZE))
+                axis_label = "{0:2d} ".format(int(y / grid_size + scroll[Y] / BLOCK_SIZE))
                 self.display_text(axis_label,
                                   (GRID_LINE_WIDTH * 2,
                                    y + origin[Y] + label_offset[Y]),
@@ -1037,22 +1029,11 @@ class BlockMap:
 
         if self.map_edit_mode:
             self.cursor_rect.x = (self.cursor[X] * grid_size
-                                  - self.world.scroll[X] * SCALING_FACTOR
+                                  - scroll[X] * SCALING_FACTOR
                                   + GRID_LINE_WIDTH)
             self.cursor_rect.y = (self.cursor[Y] * grid_size
-                                  - self.world.scroll[Y] * SCALING_FACTOR
+                                  - scroll[Y] * SCALING_FACTOR
                                   + origin[Y] + GRID_LINE_WIDTH)
-
-            # if not self.erasing:
-            # draw the currently selected tile type at the cursor pos
-            # this has to be separately scaled, because we are drawing
-            # on the unscaled surface (so the grid axes text looks nice)
-            #    surface.blit(
-            #        pygame.transform.scale(
-            #            self.cursor_block.image,
-            #            (grid_size, grid_size)),
-            #        (self.cursor_rect[X], self.cursor_rect[Y])
-            #    )
 
             # highlight cursor
             pygame.draw.rect(surface, COLOUR_MAP_CURSOR,
@@ -1088,9 +1069,9 @@ class BlockMap:
         """ move the cursor to the centre of the screen
         taking into account the current scroll value"""
         self.cursor = [
-            int(self.world.scroll[X] / BLOCK_SIZE
+            int(self.camera.scroll_x() / BLOCK_SIZE
                 + DISPLAY_SIZE[X] / BLOCK_SIZE / 2),
-            int(self.world.scroll[Y] / BLOCK_SIZE
+            int(self.camera.scroll_y() / BLOCK_SIZE
                 + DISPLAY_SIZE[Y] / BLOCK_SIZE / 2)
         ]
 
@@ -1119,6 +1100,17 @@ class BlockMap:
                 # so that it can be used as a dict index
                 # then assign current block tile to this index
                 self.current_layer[(self.cursor[X], self.cursor[Y])] = b
+
+    def delete(self):
+        # removes an object, depending on what is at the cursor
+        if self.mover_is_selected():
+            console_msg("deleting mover", 8)
+            self.remove_moveable_group()
+        elif self.trigger_is_selected():
+            console_msg("deleting trigger", 8)
+            self.remove_trigger()
+        else:
+            self.blank_editor_tile()
 
     def remove_moveable_group(self):
         """ Remove the moveable block group from the map
@@ -1240,8 +1232,8 @@ class BlockMap:
         """
         if SHOW_COLLIDERS:
             # DEBUG draw character collider in green
-            draw_collider(self.world.display,
-                          (0, 255, 0), character_rect, 1, self.world.scroll)
+            self.draw_collider(self.world.display,
+                               (0, 255, 0), character_rect, 1)
 
         # check for collisions with solid objects
         collisions = []
@@ -1259,18 +1251,18 @@ class BlockMap:
                                            BLOCK_SIZE, BLOCK_SIZE)
                     if SHOW_COLLIDERS:
                         # DEBUG draw block colliders in yellow
-                        draw_collider(self.world.display,
-                                      (255, 255, 0),
-                                      collider, 1, self.world.scroll)
+                        self.draw_collider(self.world.display,
+                                           (255, 255, 0),
+                                           collider, 1)
 
                     if character_rect.colliderect(collider):
                         collisions.append(b)
 
                         # DEBUG draw active colliders in red
                         if SHOW_COLLIDERS:
-                            draw_collider(self.world.display,
-                                          (255, 0, 0),
-                                          collider, 0, self.world.scroll)
+                            self.draw_collider(self.world.display,
+                                               (255, 0, 0),
+                                               collider, 0)
 
         return collisions
 
@@ -1305,31 +1297,31 @@ class BlockMap:
             puzzle_number = 0
         return self.puzzle_info[puzzle_number][DOG_START]
 
+    def draw_collider(self, surface, colour, collider, width):
+        """ debug routine to show colliders"""
+        if SHOW_COLLIDERS:
+            rect = pygame.Rect(collider.x - self.camera.scroll_x(),
+                               collider.y - self.camera.scroll_y(),
+                               collider.width,
+                               collider.height)
+            pygame.draw.rect(surface, colour, rect, width)
 
-def arrow(screen, lcolor, tricolor, start, end, trirad):
+
+def arrow(screen, line_color, arrowhead_color, start, end, arrowhead_radius):
     # draws a line with a triangular arrow head
-    # lcolor = line colour
-    # tricolor = arrow head colour
-    # trirad = radius of arrow head
-    # pinched from https://stackoverflow.com/questions/43527894/drawing-arrowheads-which-follow-the-direction-of-the-line-in-pygame
-    pygame.draw.line(screen, lcolor, start, end, 1)
+    # pinched from
+    # https://stackoverflow.com/questions/43527894/drawing-arrowheads-which-follow-the-direction-of-the-line-in-pygame
+    pygame.draw.line(screen, line_color, start, end, 1)
     rotation = math.degrees(
         math.atan2(start[1] - end[1], end[0] - start[0])) + 90
-    pygame.draw.polygon(screen, tricolor,
+    pygame.draw.polygon(screen, arrowhead_color,
                         ((end[0],
                           end[1]),
-                         (end[0] + trirad * math.sin(
+                         (end[0] + arrowhead_radius * math.sin(
                              math.radians(rotation - 160)),
-                          end[1] + trirad * math.cos(
+                          end[1] + arrowhead_radius * math.cos(
                               math.radians(rotation - 160))),
-                         (end[0] + trirad * math.sin(
+                         (end[0] + arrowhead_radius * math.sin(
                              math.radians(rotation + 160)),
-                          end[1] + trirad * math.cos(
+                          end[1] + arrowhead_radius * math.cos(
                               math.radians(rotation + 160)))))
-    # pygame.draw.polygon(screen, tricolor,
-    #                 ((end[0]+trirad*math.sin(math.radians(rotation)),
-    #                   end[1]+trirad*math.cos(math.radians(rotation))),
-    #                  (end[0]+trirad*math.sin(math.radians(rotation-120)),
-    #                   end[1]+trirad*math.cos(math.radians(rotation-120))),
-    #                  (end[0]+trirad*math.sin(math.radians(rotation+120)),
-    #                   end[1]+trirad*math.cos(math.radians(rotation+120)))))

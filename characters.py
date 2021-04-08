@@ -55,6 +55,16 @@ class Character:
                            'down': None,
                            }
         self.collidable = False
+        self.collision_test = None
+        self.trigger_test = None
+
+    def set_collision_test(self, collision_tester):
+        # inject the routine that handles collision checking with the block map
+        self.collision_test = collision_tester
+
+    def set_trigger_test(self, trigger_tester):
+        # inject the routine that handles trigger checking (collisions) with the block map
+        self.trigger_test = trigger_tester
 
     def load_sprites(self, sprite_file):
         # load character animation frames
@@ -72,7 +82,7 @@ class Character:
         self.move_vertical_right_frames = [self.standing_right_frame]\
                                           * self.frame_count
 
-    def update(self, surface):
+    def update(self, surface, scroll):
         """movement system & collisions based on daFluffyPotato
         (https://www.youtube.com/watch?v=abH2MSBdnWc)"""
 
@@ -96,7 +106,7 @@ class Character:
 
         if self.collidable:
             # activate any triggers we have collided with or otherwise set off
-            self.world.blocks.trigger_test(self)
+            self.trigger_test(self)
 
         # perform collision detection and update position
         self.location, self.collisions = self.move(self.location, movement)
@@ -118,9 +128,6 @@ class Character:
                 frame = self.standing_right_frame
             else:
                 frame = self.standing_left_frame
-
-        surface.blit(frame, (self.location.x - self.world.scroll[X],
-                             self.location.y - self.world.scroll[Y]))
 
         # cancel movement if we have collided in that direction
         if self.collisions['up']:
@@ -144,6 +151,19 @@ class Character:
             self.location.bottom = (round(self.location.bottom / BLOCK_SIZE)
                                     * BLOCK_SIZE)
 
+        surface.blit(frame, (self.location.x - scroll[X],
+                         self.location.y - scroll[Y]))
+
+    def move_left(self):
+        # request the character to begin moving
+        self.moving_left = True
+        self.moving_right = False
+
+    def move_right(self):
+        # request the character to begin moving
+        self.moving_left = False
+        self.moving_right = True
+
     def move(self, rectangle, movement):
         """ Move in the x, check for collisions, then move in the y and
         check again. This helps to avoid glitches at corner collisions."""
@@ -156,7 +176,7 @@ class Character:
 
         # check if moving blocks will hit the character
         # first in the X direction
-        hit_list = self.world.blocks.collision_test(rectangle)
+        hit_list = self.collision_test(rectangle)
         for block in hit_list:
             if block.movement[X] < 0 and rectangle.right > block.left():
                 rectangle.right = block.left()
@@ -166,7 +186,7 @@ class Character:
                 collision_directions['left'] = True
 
         # then the Y direction
-        hit_list = self.world.blocks.collision_test(rectangle)
+        hit_list = self.collision_test(rectangle)
         for block in hit_list:
             if block.movement[Y] < 0 and rectangle.bottom > block.top():
                 rectangle.bottom = block.top()
@@ -176,18 +196,12 @@ class Character:
                 collision_directions['up'] = True
 
         # now check if the character's own movement causes a collision
-        rectangle.x += movement[X]
-        hit_list = self.world.blocks.collision_test(rectangle)
-        for block in hit_list:
-            if movement[X] > 0 and rectangle.right > block.left():
-                rectangle.right = block.left()
-                collision_directions['right'] = True
-            elif movement[X] < 0 and rectangle.left < block.right():
-                rectangle.left = block.right()
-                collision_directions['left'] = True
-
+        # we update the Y coordinate first, to make sure that player
+        # momentum won't carry them over a gap of a single block
+        # this is necessary to prevent glitch exploits where player mash
+        # buttons to allow them to skip over gaps and short-circuit levels.
         rectangle.y += movement[Y]
-        hit_list = self.world.blocks.collision_test(rectangle)
+        hit_list = self.collision_test(rectangle)
         for block in hit_list:
             if movement[Y] > 0 and rectangle.bottom > block.top():
                 rectangle.bottom = block.top()
@@ -195,6 +209,16 @@ class Character:
             elif movement[Y] < 0 and rectangle.top < block.bottom():
                 rectangle.top = block.bottom()
                 collision_directions['up'] = True
+
+        rectangle.x += movement[X]
+        hit_list = self.collision_test(rectangle)
+        for block in hit_list:
+            if movement[X] > 0 and rectangle.right > block.left():
+                rectangle.right = block.left()
+                collision_directions['right'] = True
+            elif movement[X] < 0 and rectangle.left < block.right():
+                rectangle.left = block.right()
+                collision_directions['left'] = True
 
         return rectangle, collision_directions
 
@@ -226,6 +250,8 @@ class Person(Character):
         super().__init__(world, name, sprite_file, size)
         self.subject_to_gravity = True
         self.collidable = True
+        self.set_trigger_test(world.blocks.trigger_test)
+        self.set_collision_test(world.blocks.collision_test)
 
 class Ghostly(Character):
     """ doesn't interact with blocks or triggers
@@ -254,6 +280,8 @@ class Dog(Character):
     def __init__(self, world, name, sprite_file, size):
         super().__init__(world, name, sprite_file, size)
         self.collidable = True
+        self.set_trigger_test(world.blocks.trigger_test)
+        self.set_collision_test(world.blocks.collision_test)
         self.busy = False  # used to block code execution during movement
         self.speaking = False
         self.speech_bubble = None
@@ -431,7 +459,7 @@ class Dog(Character):
     def update_speech_bubble(self):
         pass
 
-    def update(self, surface):
+    def update(self, surface, scroll):
         if self.destination[X] > self.gridX():
             self.moving_right = True
         elif self.destination[X] < self.gridX():
@@ -440,7 +468,7 @@ class Dog(Character):
             self.moving_down = True
         elif self.destination[Y] < self.gridY():
             self.moving_up = True
-        super().update(surface)
+        super().update(surface, scroll)
         if (self.moving_up or
                 self.moving_down or
                 self.moving_right or
@@ -469,9 +497,9 @@ class Dog(Character):
             self.wobble_counter = (self.wobble_counter +1) % len(self.wobble)
             self.jets[0].nozzle[X] = self.location.left + wobble_factor[X] + 4
             self.jets[0].nozzle[Y] = self.location.bottom + wobble_factor[Y] + 2
-            self.jets[0].update(surface, self.world.scroll)
+            self.jets[0].update(surface, scroll)
             self.jets[1].nozzle[X] = self.location.right + wobble_factor[X] - 4
             self.jets[1].nozzle[Y] = self.location.bottom + wobble_factor[Y] + 2
-            self.jets[1].update(surface, self.world.scroll)
+            self.jets[1].update(surface, scroll)
 
 

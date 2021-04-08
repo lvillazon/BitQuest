@@ -43,13 +43,6 @@ class Editor:
         self.buttons = button_tray.ButtonTray(EDITOR_ICON_FILE, self.surface)
         self.title = "Title"
         self.centre_title = False  # set to true for the menu input dialog
-        self.reset()
-        self.active = False
-        self.run_enabled = False
-
-        console_msg("Editor row width =" + str(self.row_width), 8)
-
-    def reset(self):
         # the text is represented as a list of logical lines
         # each line is a list of characters
         # there are no line terminator characters or padding characters
@@ -67,6 +60,27 @@ class Editor:
         self.selection_end = (0, 0)
         self.deleting_block = False
         self.v_scroll = 0  # line offset to allow text to be scrolled
+        self.active = False
+        self.run_enabled = False
+        self.key_action = {}
+
+        console_msg("Editor row width =" + str(self.row_width), 8)
+
+    # def reset(self):
+    #     # sets some parameters back to their initial values
+    #     self.text = [[]]
+    #     # undo history is a list where each element is a copy of self.text
+    #     self.history = []
+    #     # absolute line number of the cursor
+    #     self.cursor_line = 0
+    #     # character position of the cursor within the current line
+    #     self.cursor_col = 0
+    #     self.selecting = False  # True when currently marking a block of text
+    #     # cursor coords of the start and end of the marked block
+    #     self.selection_start = (0, 0)
+    #     self.selection_end = (0, 0)
+    #     self.deleting_block = False
+    #     self.v_scroll = 0  # line offset to allow text to be scrolled
 
     def show(self):
         pygame.key.set_repeat(500, 50)
@@ -187,7 +201,7 @@ class Editor:
             # we want to match the indentation of the current line
             # so we must check for spaces at the start of the current line
             # which we do by comparing the length of the line with the length
-            # of the lstripped string version of the line
+            # of the left-stripped string version of the line
             indent = (len(self.text[self.cursor_line]) -
                       len(''.join(self.text[self.cursor_line]).lstrip()))
 
@@ -461,8 +475,6 @@ class Editor:
                     shortcuts = {pygame.K_x: self.clipboard_cut,
                                  pygame.K_c: self.clipboard_copy,
                                  pygame.K_v: self.clipboard_paste,
-                                 pygame.K_s: self.save_program,
-                                 pygame.K_o: self.load_program,
                                  pygame.K_a: self.select_all,
                                  pygame.K_z: self.undo,
                                  }
@@ -623,7 +635,7 @@ class Editor:
                 line_number += 1
                 # remove continuation char and join lines
                 line = line.rstrip('\\') + \
-                       ''.join(self.text[line_number]).lstrip()
+                    ''.join(self.text[line_number]).lstrip()
                 console_msg("continuation line=" + line, 8)
             source.append(line)
             line_number += 1

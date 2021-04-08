@@ -479,8 +479,11 @@ class VirtualMachine:
         success = True
         token_list = []
         unrecognised = []
+        source = self.get_code()
+        if not source:  # bail immediately if source is empty
+            return False, ''
         try:
-            code_object = compile(self.get_code(), '', 'exec')
+            code_object = compile(source, '', 'exec')
             token_list = dis.get_instructions(code_object)
         except Exception as e:
             # handle lexing errors
