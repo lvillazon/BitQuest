@@ -1,7 +1,7 @@
 """
 Global constants for BitQuest
 """
-
+VERSION = "0.2"  # 0.x = beta testing phase
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
 SHOW_COLLIDERS = False  # draws outline around object colliders
 X = 0  # index values into a variety of positional tuples

@@ -17,7 +17,7 @@ from constants import *
 https://wiki.libsdl.org/Installation
 https://github.com/pygame/pygame/issues/1722
 '''
-console_msg('Started.', 0)
+console_msg('Started. Version ' + VERSION, 0)
 
 # set environment variables to request the window manager to position the top left of the game window
 import os
