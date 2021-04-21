@@ -27,9 +27,10 @@ class CodeWindow(Editor):
                            pygame.K_PAGEDOWN: self.page_down,
                            pygame.K_TAB: self.tab,
                            pygame.K_F5: self.run_program,
-                           pygame.K_s: self.save_program,
-                           pygame.K_o: self.load_program,
                            }
+        # add 2 new shortcuts for loading and saving programs
+        self.ctrl_shortcuts[pygame.K_s] = self.save_program
+        self.ctrl_shortcuts[pygame.K_o] = self.load_program
 
     def draw(self):
         super().draw()

@@ -10,39 +10,39 @@ each section ends with ### on its own line:
    6. This lists the names of each puzzle on the level,
       and the (x,y) coordinates for the player and dog start positions.
 ###
-                                                                                                                                
-                                                                                                                                
-                                                                                 1                =       =                     
-                                                                                 1           111111       1111111               
-                                                                                 1                1       1 1 1 1               
-                         Pp                                                      1               =1       1=1=1=1               
-                         []            ZX                      ZX                1   ZX         =11   ZX  1111111   ZX          
-                         []            CV                      CV                1   CV        =111   CV        1   CV          
-   =                    =Bb            NM              =       NM              =   = NM       =1111   NM        1   NM          
-9Ppw90qw90qw90qw90qw90qw9  90qw990qw9909090qw90dddda  u90qw90qw1190qw90qw90qw90qw390ww933331111   232222222112222222112222222222
-1[]4123456785678567856781  456788123481234567891234    12345678123456         111                                               
- []                                                8ua8                       111                                               
-                                                    is                                                                          
-                                                                                                                                
-                                                                                                                                
-                                                                                                           11                   
+                                                                                                                                222222                             
+                                                                                                                                2    1                             
+                                                                                 1                =              =              2 22 1                             
+                                                                                 1           111111              1111111        2 =1 1                             
+                                                                                 1                1              1 1 1 1        2222 1                             
+                         Pp                                                      1               =1              1=1=1=1             1                             
+                         []            ZX                      ZX                1   ZX         =11   ZX         1111111   ZX   222222                 2           
+                         []            CV                      CV                1   CV        =111   CV               1   CV         Pp               2           
+   =                    =Bb            NM              =       NM              =   = NM       =1111   NM               1   NM         B]               2           
+9Ppw90qw90qw90qw90qw90qw9  90qw990qw9909090qw90dddda  u90qw90qw1190qw90qw90qw90qw390ww933331111   232222211111112211222222211112222222Bb222222222222222222222222222
+1[]4123456785678567856781  456788123481234567891234    12345678123456         111                                                     [b                           
+ []                                                8ua8                       111                                                                                  
+                                                    is                                                                                                             
+                                                                                                                                                                   
+                                                                                                                                                                   
+                                                                                                                  11                                               
 ###
-                                                                                                                                
-                                                                                                                                
-                                                                                                                                
-                                                                                                                                
-                                                                                                                                
-                                                                                                                                
-                                                                                                                                
--                                -         -                 -                                                                  
-{|/}                             {|/}      {|/}              {|                                                                 
- 0q                      11                 0qw90qw    90qw                   111                                               
- 23                      11                   23234s  i1234                  1111                                               
-                                             1856785   7878 7                1111                                               
-                                             34123456785678                                                                     
-                                                                                                                                
-                                                                                                                                
-                                                                                                                                
+                                                                                                                                                                   
+                                                                                                                                                                   
+                                                                                                                                                                   
+                                                                                                                                                                   
+                                                                                                                                                                   
+                                                                                                                                                                   
+                                                                                                                                                                   
+-                                -         -                 -                                                                                                     
+{|/}                             {|/}      {|/}              {|                                                                                                    
+ 0q                      11                 0qw90qw    90qw                   111                                                                                  
+ 23                      11                   23234s  i1234                  1111                                                                                  
+                                             1856785   7878 7                1111                                                                                  
+                                             34123456785678                                                                                                        
+                                                                                                                                                                   
+                                                                                                                                                                   
+                                                                                                                                                                   
 ###
 # movers
 0, [(25, 5), (26, 5), (25, 6), (26, 6), (25, 7), (26, 7), (25, 8), (26, 8), ]
@@ -55,10 +55,11 @@ each section ends with ### on its own line:
 7, [(97, 5), (97, 6), (97, 7), (97, 8), ]
 9, [(98, 4), (98, 5), (98, 6), (98, 7), (98, 8), ]
 15, [(87, 9), (88, 9), (89, 9), (90, 9), (91, 9), (92, 9), ]
-16, [(107, 3), ]
-17, [(109, 3), ]
-18, [(111, 3), ]
-19, [(112, 7), (112, 8), (112, 9), ]
+16, [(114, 3), ]
+17, [(116, 3), ]
+18, [(118, 3), ]
+19, [(119, 7), (119, 8), (119, 9), ]
+20, [(134, 7), (135, 7), (135, 8), (134, 8), (134, 9), (135, 9), (135, 10), (134, 10), ]
 ###
 # triggers
 'pressure plate', False, (24, 8), [(0, (0, 4)), ]
@@ -71,15 +72,17 @@ each section ends with ### on its own line:
 'pressure plate', False, (96, 6), [(7, (0, 3)), ]
 'pressure plate', False, (98, 2), [(9, (0, 5)), ]
 'pressure plate', False, (97, 5), [(15, (0, -6)), ]
-'pressure plate', False, (107, 5), [(19, (0, 2)), ]
-'pressure plate', False, (109, 5), [(19, (0, 2)), ]
-'pressure plate', False, (111, 5), [(19, (0, 2)), ]
-'pressure plate', True, (106, 2), [(16, (0, -3)), (17, (0, -3)), (18, (0, -3)), ]
+'pressure plate', False, (114, 5), [(19, (0, 2)), ]
+'pressure plate', False, (116, 5), [(19, (0, 2)), ]
+'pressure plate', False, (118, 5), [(19, (0, 2)), ]
+'pressure plate', True, (113, 2), [(16, (0, -3)), (17, (0, -3)), (18, (0, -3)), ]
 'flagpole', 'Introduction', (39, 8)
 'flagpole', 'The Pit', (63, 8)
 'flagpole', 'The Lift', (85, 8)
 'flagpole', 'Staircase', (102, 8)
-'flagpole', '3 buttons', (116, 8)
+'flagpole', 'The Choice', (123, 8)
+'flagpole', 'The Spiral', (126, 8)
+'pressure plate', False, (130, 3), [(20, (0, 2)), ]
 ###
 # puzzle start positions
 0, 'Introduction', (6, 6), (56, 8)
@@ -87,4 +90,5 @@ each section ends with ### on its own line:
 2, 'The Lift', (66, 6), (65, 8)
 3, 'The Staircase', (88, 6), (87, 8)
 4, 'The Choice', (105, 6), (104, 8)
+5, 'The Spiral', (126, 6), (125, 8)
 ###
