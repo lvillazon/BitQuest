@@ -389,8 +389,8 @@ class Dog(Character):
     #     self.speech_expires = pygame.time.get_ticks() + SPEECH_EXPIRY_TIME
     #     self.speaking = True
 
-    def get_speech_bubble(self, surface):
-        return self.speech_bubble.rendered(surface)
+    def get_speech_bubble(self):
+        return self.speech_bubble.rendered()
 
     def speech_position(self):
         # position the tip of the speak bubble at the middle

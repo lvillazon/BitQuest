@@ -12,10 +12,12 @@ import characters
 import code_editor
 import input_dialog
 import interpreter
+#import renderer
 import scenery
 from camera import Camera
 from console_messages import console_msg
 from constants import *
+from signposts import Signposts
 
 '''
 https://wiki.libsdl.org/Installation
@@ -54,8 +56,8 @@ class World:
         self.run_enabled = True
 
         # load scenery layers
-        # self.scenery = scenery.Scenery('Day', 'Desert')
-        self.scenery = scenery.Scenery(self, 'Day', 'Field')
+        self.scenery = scenery.Scenery(self.display,
+                                       'Day', 'Field')
 
         self.camera = Camera()
 
@@ -130,6 +132,13 @@ class World:
         self.input = input_dialog.InputDialog(screen, input_height, self.code_font)
         console_msg("Editors initialised", 2)
 
+        # initialise info signposts
+        self.signposts = Signposts(self.code_font,
+                                   self.editor.get_fg_color(),
+                                   self.editor.get_bg_color())
+        console_msg("Info panels initialised", 7)
+
+
         self.playing = True  # true when we are playing a level (not a menu)
         self.frame_draw_time = 1
         self.frame_counter = 0
@@ -198,7 +207,8 @@ class World:
         self.camera.update(focus)
 
         # render the background
-        self.scenery.draw_background(display, self.camera.scroll())
+        # OLD RENDER METHOD: self.scenery.draw_background(display, self.camera.scroll())
+        self.scenery.draw(self.camera.scroll())
 
         # move and render the player sprite
         self.player.update(display, self.camera.scroll())
@@ -268,12 +278,14 @@ class World:
                                      - self.input.height)
             self.screen.blit(self.input.surface, input_dialog_position)
 
-        # overlay all speech bubble at the native resolution
+        # overlay any speech bubbles and info windows at the native resolution
         if self.dog.speaking:
             position = self.dog.speech_position()
             position[X] = (position[X] - self.camera.scroll_x()) * SCALING_FACTOR + self.game_origin[X]
             position[Y] = (position[Y] - self.camera.scroll_y()) * SCALING_FACTOR + self.game_origin[Y]
-            self.screen.blit(self.dog.get_speech_bubble(display), position)
+            self.screen.blit(self.dog.get_speech_bubble(), position)
+
+        self.signposts.display_open_signs(self.screen, self.camera.scroll())
 
         # draw the swirling dust - DEBUG disabled due to looking bad
         # self.dust_storm.update(self.screen, self.game_origin[Y], scroll)
@@ -555,6 +567,14 @@ class World:
                 else:
                     self.blocks.toggle_grid()
                 self.repeat_lock = True
+
         # check the mouse to see if any buttons were clicked
         # currently just the rewind and play button
         self.check_buttons()
+
+        # check if any signposts were clicked
+        # button 0 is left click
+        if pygame.mouse.get_pressed(num_buttons=5)[0]:
+            self.signposts.check_for_signpost_at(pygame.mouse.get_pos(),
+                                                 self.camera.scroll())
+

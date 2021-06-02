@@ -17,8 +17,8 @@ each section ends with ### on its own line:
                                                                                  1                1              1 1 1 1               
                          Pp                                                      1               =1              1=1=1=1               
                          []            ZX                      ZX                1   ZX         =11   ZX         1111111   ZX          
-                         []            CV                      CV                1   CV        =111   CV               1   CV          
-   =                    =Bb            NM              =       NM              =   = NM       =1111   NM               1   NM          
+          fg             []            CV                      CV                1   CV        =111   CV               1   CV          
+   =      FG            =Bb            NM              =       NM              =   = NM       =1111   NM               1   NM          
 9Ppw90qw90qw90qw90qw90qw9  90qw990qw9909090qw90dddda  u90qw90qw1190qw90qw90qw90qw390ww933331111   2322222111111122112222222112222222222
 1[]4123456785678567856781  456788123481234567891234    12345678123456         111                                                      
  []                                                8ua8                       111                                                      

@@ -43,8 +43,9 @@ GREEN = (113, 201, 168)
 # world constants
 WINDOW_SIZE = (908, 680)
 EDITOR_HEIGHT = 300
-DISPLAY_SIZE = (227, 170)
 SCALING_FACTOR = 4
+DISPLAY_SIZE = (WINDOW_SIZE[X] // SCALING_FACTOR,
+                WINDOW_SIZE[Y] // SCALING_FACTOR)
 EDITOR_POPUP_SPEED = 25  # how fast the editor scrolls into view
 EDITOR_UNDO_HISTORY = 100  # how many keystrokes can be undone
 BLOCK_SIZE = 16  # size in pixels of a the block 'grid'

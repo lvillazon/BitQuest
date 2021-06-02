@@ -201,9 +201,10 @@ class Block:
         """ These blocks are not collidable,
         even if they are on the midground layer
         This allows triggers to be placed behind cosmetic foliage etc
-        without blocking character movement
+        without blocking character movement.
+        It also allows the player to walk past signposts
         """
-        if self.type not in '-{|/}=ZXCVNM':
+        if self.type not in '-{|/}=ZXCVNMfgFG':
             return True
         else:
             return False
@@ -419,6 +420,30 @@ class BlockMap:
     def select_block(self, mouse_pos, mode='set'):
         """ if mode is 'add', the current block is added to the selection
         otherwise just this block is selected, clearing any previous selection
+        """
+        self.cursor_to_mouse(mouse_pos)
+        b = self.get_block(self.current_layer, *self.cursor)
+        if mode == 'add':
+            if b:
+                self.selected_blocks.append(b)
+        elif mode == 'set':
+            self.selected_blocks = [b]
+        elif mode == 'pick':
+            # acts like an eye-drop tool, copying the block tile at
+            # the cursor and setting this as the current block that will be
+            # used for subsequent block placement
+            # if the cursor is over the map, use the current block,
+            # but if the cursor is over the palette, use the palette block
+            # instead
+            if self.get_palette_block(pygame.mouse.get_pos()):
+                b = self.get_palette_block(pygame.mouse.get_pos())
+
+            if b:  # avoid setting the cursor block to None
+                self.cursor_block.copyTile(b)
+
+    def get_clicked_signpost(self, mouse_pos):
+        """ returns the id of the signpost at the mouse cursor,
+        or None if there wasn't one
         """
         self.cursor_to_mouse(mouse_pos)
         b = self.get_block(self.current_layer, *self.cursor)

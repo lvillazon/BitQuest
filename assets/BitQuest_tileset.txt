@@ -40,3 +40,7 @@ C,flagpole middle left,(13, 29), (15, 29), (17, 29), (19, 29), (21, 29), (23, 29
 V,flagpole middle right,(14, 29), (16, 29), (18, 29), (20, 29), (22, 29), (24, 29), (26, 29), (28, 29)
 N,flagpole bottom left,(13, 30), (15, 30), (17, 30), (19, 30), (21, 30), (23, 30), (25, 30), (27, 30)
 M,flagpole bottom right,(14, 30), (16, 30), (18, 30), (20, 30), (22, 30), (24, 30), (26, 30), (28, 30)
+f,signpost top left,(11, 29)
+g,signpost top right,(12, 29)
+F,signpost bottom left,(11, 30)
+G,signpost bottom right,(12, 30)

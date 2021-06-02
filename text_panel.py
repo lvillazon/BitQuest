@@ -33,7 +33,7 @@ class TextPanel:
         self.text = []
         self.font_size = [0, 0]
 
-    def rendered(self, surface):
+    def rendered(self):
         rect = pygame.Rect((0, 0), (
             (self.get_width()
              + TEXT_MARGIN * 2

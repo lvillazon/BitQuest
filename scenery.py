@@ -5,8 +5,8 @@ from constants import *
 class Scenery:
     GROUND_LEVEL_OFFSET = -112  # offset for background layers
 
-    def __init__(self, world, time_of_day, landscape):
-        self.world = world
+    def __init__(self, surface, time_of_day, landscape):
+        self.surface = surface
         self.scenery_layers = self.load_scenery('assets', time_of_day,
                                                 landscape)
         self.tile_width = self.scenery_layers[0]['tile'].get_rect().size[X]
@@ -43,6 +43,9 @@ class Scenery:
             scenery.append(layer)
         print(len(scenery), "scenery layers loaded")
         return scenery
+
+    def draw(self, scroll):
+        self.draw_background(self.surface, scroll)
 
     def draw_background(self, surface, scroll):
         # draw the scenery before anything else, each frame

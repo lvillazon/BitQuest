@@ -145,10 +145,7 @@ class Flagpole(Trigger):
         self.frame_number = 0
 
     def check(self, character):
-        """ check if the trigger has activated
-        for now this just handles the pressure plate type of trigger
-        others will be added - possibly by subclassing this
-        """
+        # check if the flagpole has been activated
         trigger_rect = pygame.Rect(self.blocks[0].x,
                                    self.blocks[0].y,
                                    BLOCK_SIZE, BLOCK_SIZE)
