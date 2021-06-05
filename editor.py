@@ -63,6 +63,12 @@ class Editor:
         self.active = False
         self.run_enabled = False
         self.key_action = {}
+        self.ctrl_shortcuts = {pygame.K_x: self.clipboard_cut,
+                               pygame.K_c: self.clipboard_copy,
+                               pygame.K_v: self.clipboard_paste,
+                               pygame.K_a: self.select_all,
+                               pygame.K_z: self.undo,
+                              }
 
         console_msg("Editor row width =" + str(self.row_width), 8)
 
@@ -472,14 +478,8 @@ class Editor:
                     self.key_action[event.key]()
                 elif pygame.key.get_mods() & pygame.KMOD_CTRL:
                     # handle the keyboard shortcuts
-                    shortcuts = {pygame.K_x: self.clipboard_cut,
-                                 pygame.K_c: self.clipboard_copy,
-                                 pygame.K_v: self.clipboard_paste,
-                                 pygame.K_a: self.select_all,
-                                 pygame.K_z: self.undo,
-                                 }
-                    if event.key in shortcuts:
-                        shortcuts[event.key]()
+                    if event.key in self.ctrl_shortcuts:
+                        self.ctrl_shortcuts[event.key]()
                 else:
                     # handle all the printable characters
                     if event.unicode != '' and event.unicode in printable:
