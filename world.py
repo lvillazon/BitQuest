@@ -210,15 +210,18 @@ class World:
         # OLD RENDER METHOD: self.scenery.draw_background(display, self.camera.scroll())
         self.scenery.draw(self.camera.scroll())
 
+        # draw the 'midground' blocks behind the characters
+        self.blocks.update_midground(display, self.camera.scroll())
+
         # move and render the player sprite
         self.player.update(display, self.camera.scroll())
 
         # move and render the dog
         self.dog.update(display, self.camera.scroll())
 
-        # draw the foreground scenery on top of the characters
-        self.blocks.update(display, self.camera.scroll())
-        # self.scenery.draw_foreground(display)
+        # draw the 'foreground' blocks in front of the characters
+        # this is just foliage and other cosmetic stuff
+        self.blocks.update_foreground(display, self.camera.scroll())
 
         # update the input window and editor, if necessary
         # the input window takes precedence if both are open

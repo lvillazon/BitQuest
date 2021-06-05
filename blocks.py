@@ -861,19 +861,36 @@ class BlockMap:
         # make sure grid turns on/off with the editor
         self.show_grid = self.map_edit_mode
 
-    def update(self, surface, scroll):
-        """ draw any blocks that are on-screen """
-
+    def is_on_screen(self, grid_coords, scroll):
         # calculate the upper and lower bounds of the visible screen
         # so that we don't waste time drawing blocks that are off screen
         min_visible_block_x = scroll[X] // BLOCK_SIZE
         max_visible_block_x = (min_visible_block_x
                                + DISPLAY_SIZE[X] // BLOCK_SIZE
                                + 1)
+        return min_visible_block_x <= grid_coords[X] <= max_visible_block_x
+
+    def update_foreground(self, surface, scroll):
+        """ draw blocks that appear in front of the character sprites """
+        for coord in self.foreground_blocks:
+            if self.is_on_screen(coord, scroll):
+                b = self.foreground_blocks[coord]
+                # fade out the foreground blocks when editing the midground
+                if (self.map_edit_mode and
+                        self.current_layer != self.foreground_blocks):
+                    b.image.set_alpha(100)
+                else:
+                    b.image.set_alpha(255)
+                surface.blit(b.image,
+                             (b.x - scroll[X],
+                              b.y - scroll[Y]))
+
+    def update_midground(self, surface, scroll):
+        """ draw any blocks that are behind the character sprites """
 
         # draw each tile in its current location
         for coord in self.midground_blocks:
-            if min_visible_block_x <= coord[X] <= max_visible_block_x:
+            if self.is_on_screen(coord, scroll):
                 b = self.midground_blocks[coord]
                 # fade out the midground blocks when editing the foreground
                 if (self.map_edit_mode and
@@ -899,19 +916,6 @@ class BlockMap:
                             if b in self.movers[m].blocks:
                                 self.highlight_block(surface, b,
                                                      COLOUR_MOVING_BLOCK)
-
-        for coord in self.foreground_blocks:
-            if min_visible_block_x <= coord[X] <= max_visible_block_x:
-                b = self.foreground_blocks[coord]
-                # fade out the foreground blocks when editing the midground
-                if (self.map_edit_mode and
-                        self.current_layer != self.foreground_blocks):
-                    b.image.set_alpha(100)
-                else:
-                    b.image.set_alpha(255)
-                surface.blit(b.image,
-                             (b.x - scroll[X],
-                              b.y - scroll[Y]))
 
         # give any moving blocks a chance to update
         # if any are currently moving, we set busy to true, so that
