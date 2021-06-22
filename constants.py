@@ -4,6 +4,7 @@ Global constants for BitQuest
 VERSION = "0.2"  # 0.x = beta testing phase
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
 SHOW_COLLIDERS = False  # draws outline around object colliders
+SHOW_LOGIN_MENU = False  # displays the intial menu screen before play
 X = 0  # index values into a variety of positional tuples
 Y = 1
 
@@ -15,6 +16,7 @@ MENU_FONT_FILE = "assets/Vanilla.ttf"
 # asset files
 CHARACTER_SPRITE_FILE = 'assets/new_character.png'
 DOG_SPRITE_FILE = 'assets/bit basic1.png'
+ROBOT_SPRITE_FILE = 'assets/robots.png'
 EDITOR_ICON_FILE = 'assets/editor icons.png'
 BLOCK_TILE_DICTIONARY_FILE = 'assets/BitQuest_tileset.txt'
 BLOCK_TILESET_FILE = 'assets/block tiles.png'
@@ -29,6 +31,7 @@ REWIND_HOVER_ICON_FILE = 'assets/rewind_hover.png'
 PLAY_ICON_FILE = 'assets/play.png'
 PLAY_HOVER_ICON_FILE = 'assets/play_hover.png'
 PLAY_DISABLED_ICON_FILE = 'assets/play_disabled.png'
+PUZZLE_FILE = 'assets/puzzles.txt'
 
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console

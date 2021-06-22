@@ -3,12 +3,32 @@ import dis  # built-in python disassembler - used for tokenising
 import inspect
 import operator
 import sys
-import time
 import types
 
 from console_messages import console_msg
 from constants import CONSOLE_VERBOSE
 
+def convert_to_lines(text):
+    """ convert the raw editor characters into lines of source code
+     so that they can be saved/parsed etc conveniently"""
+    console_msg("Converting to lines...", 8)
+    source = []
+    line_number = 0
+    while line_number < len(text):
+        # join the chars on this line into a single string
+        # and remove trailing whitespace
+        line = ''.join(text[line_number]).rstrip()
+        # check for a continuation character (\)
+        while line and line.rstrip()[-1] == '\\':
+            line_number += 1
+            # remove continuation char and join lines
+            line = line.rstrip('\\') + \
+                ''.join(text[line_number]).lstrip()
+            console_msg("continuation line=" + line, 8)
+        source.append(line)
+        line_number += 1
+    console_msg("...done", 8)
+    return source
 
 def is_a_number(p):
     # check for numeric parameters
@@ -101,10 +121,10 @@ class VirtualMachineError(Exception):
 
 
 class VirtualMachine:
-    def __init__(self, world):
-        self.world = world  # link back to the state of the game world
+    def __init__(self, robot):
+        self.world = robot.world  # link back to the state of the game world
         self.run_enabled = True
-        self.BIT = world.dog  # shortcut to the game state of the dog character
+        self.robot = robot  # the Robot instance that is running this program
         self.source = []
         self.frames = []  # the call stack of frames
         self.frame = None  # current frame
@@ -117,8 +137,8 @@ class VirtualMachine:
         self.running = False  # true when a program is executing
         # functions that replace the standard python functions
         self.overridden_builtins = {
-            'print': self.BIT.say,
-            'input': self.BIT.input,
+            'print': self.robot.say,
+            'input': self.robot.input,
         }
         # getters and setters for all the programmable world variables
         self.world_variables = {
@@ -215,15 +235,15 @@ class VirtualMachine:
                     if self.compile_time_error:
                         msg = str(self.compile_time_error)
                         errors.append(msg)
-                        self.BIT.error(msg, type="Syntax error:")
+                        self.robot.error(msg, type="Syntax error:")
                     if self.run_time_error:
                         msg = str(self.run_time_error)
                         errors.append(msg)
-                        self.BIT.error(msg, type="Run-time error:")
+                        self.robot.error(msg, type="Run-time error:")
                     if self.last_exception:
                         msg = str(self.last_exception[1])
                         errors.append(msg)
-                        self.BIT.error(msg, type="Run-time error:")
+                        self.robot.error(msg, type="Run-time error:")
                     return False, errors
                 else:
                     self.running = False
@@ -407,7 +427,7 @@ class VirtualMachine:
                     # raise VirtualMachineError(
                     #    "unsupported bytecode type: %s" % byte_name
                     # )
-                    console_msg("BIT doesn't recognise the bytecode" + byte_name, 0)
+                    console_msg("BZZT! Cannot recognise the bytecode" + byte_name, 0)
                     stack_unwind_reason = 'quit'
             else:
                 stack_unwind_reason = bytecode_fn(*argument)
@@ -545,7 +565,7 @@ class VirtualMachine:
                 msg = "Unrecognised bytecode: " + unrecognised[0]
             else:
                 msg = "Undefined compilation error"
-            self.BIT.error(msg, type="Compiler error:")
+            self.robot.error(msg, type="Compiler error:")
 
         return success, msg
 

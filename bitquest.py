@@ -21,7 +21,9 @@ console_msg('Started. Version ' + VERSION, 0)
 
 # set environment variables to request the window manager to position the top left of the game window
 import os
-position = 0, 30  # setting y to 0 will place the title bar off the screen
+DEFAULT = 0, 30  # used for single monitor display - put window in top left
+DEVON_OFFICE = -1250, 780  # centred on laptop display
+position = DEVON_OFFICE
 os.environ['SDL_VIDEO_WINDOW_POS'] = str(position[0]) + "," + str(position[1])
 
 pygame.init()
@@ -33,7 +35,7 @@ screen = pygame.display.set_mode(WINDOW_SIZE)
 display = pygame.Surface(DISPLAY_SIZE)
 
 game_world = None
-game_menu = menu.Menu(screen, bypass=True)
+game_menu = menu.Menu(screen, bypass=not SHOW_LOGIN_MENU)
 game_menu.display()
 
 if not game_menu.quit():

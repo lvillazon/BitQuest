@@ -1,6 +1,7 @@
 import pygame
 
 import button_tray
+import interpreter
 from console_messages import console_msg
 from constants import *
 from editor import Editor
@@ -71,8 +72,9 @@ class CodeWindow(Editor):
         """save source code to a default filename"""
         # TODO add save dialogue to change name/folder
         with open(USER_PROGRAM_FILE, 'w') as file:
+#            for line in interpreter.convert_to_lines(self.text):
             for line in self.convert_to_lines():
-                file.write(line + '\n')
+                    file.write(line + '\n')
 
     def load_program(self):
         """load source code from a default filename"""
@@ -87,24 +89,27 @@ class CodeWindow(Editor):
                     line.pop()
                 self.text.append(line)
 
-    def run_program(self):
-        """ pass the text in the editor to the interpreter"""
-        # run_enabled is set false on each run
-        # and cleared using the reset button
-        if self.python_interpreter.run_enabled:
-            p = self.python_interpreter
-            p.load(self.convert_to_lines())
-            # false because level is not complete yet
-            result, errors = p.compile()
-            if result is False:  # check for syntax errors
-                # TODO display these using in-game dialogs
-                if p.compile_time_error:
-                    error_msg = p.compile_time_error['error']
-                    error_line = p.compile_time_error['line']
-                    console_msg('BIT found a SYNTAX ERROR:', 5)
-                    msg = error_msg + " on line " + str(error_line)
-                    console_msg(msg, 5)
-            else:
-                result, errors = p.run()  # set the program going
-            # save this attempt, regardless of whether it has errors or not
-            self.session.save_run(self.convert_to_lines(), errors)
+    # def run_program(self):
+    #     """ pass the text in the editor to the interpreter"""
+    #     # run_enabled is set false on each run
+    #     # and cleared using the reset button
+    #     if self.python_interpreter.run_enabled:
+    #         p = self.python_interpreter
+    #         #p.load(interpreter.convert_to_lines(self.text))
+    #         p.load(self.convert_to_lines())
+    #         # false because level is not complete yet
+    #         result, errors = p.compile()
+    #         if result is False:  # check for syntax errors
+    #             # TODO display these using in-game dialogs
+    #             if p.compile_time_error:
+    #                 error_msg = p.compile_time_error['error']
+    #                 error_line = p.compile_time_error['line']
+    #                 console_msg('BIT found a SYNTAX ERROR:', 5)
+    #                 msg = error_msg + " on line " + str(error_line)
+    #                 console_msg(msg, 5)
+    #         else:
+    #             result, errors = p.run()  # set the program going
+    #         # save this attempt, regardless of whether it has errors or not
+    #         #self.session.save_run(interpreter.convert_to_lines(self.text), errors)
+    #         self.session.save_run(self.convert_to_lines(), errors)
+    #

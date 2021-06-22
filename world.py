@@ -11,8 +11,7 @@ import blocks
 import characters
 import code_editor
 import input_dialog
-import interpreter
-#import renderer
+import puzzle
 import scenery
 from camera import Camera
 from console_messages import console_msg
@@ -102,11 +101,11 @@ class World:
                                         CHARACTER_SPRITE_FILE,
                                         (16, 20))
         console_msg("player sprite initialised", 1)
-        self.dog = characters.Dog(self,
-                                  'dog',
-                                  DOG_SPRITE_FILE,
-                                  (16, 16),
-                                  )
+        self.dog = characters.Robot(self,
+                                    'dog',
+                                    DOG_SPRITE_FILE,
+                                    (16, 16),
+                                    )
         console_msg("BIT sprite initialised", 1)
         self.player.set_position(self.blocks.get_player_start(self.puzzle))
         self.dog.set_position(self.blocks.get_dog_start(self.puzzle))
@@ -122,16 +121,23 @@ class World:
             pygame.scrap.init()
         console_msg("Clipboard initialised", 2)
 
-        self.python_interpreter = interpreter.VirtualMachine(self)
-        console_msg("Interpreter initialised", 2)
-
         self.editor = code_editor.CodeWindow(screen, 300,
                                              self.code_font,
-                                             self.python_interpreter,
+                                             self.dog.get_interpreter(),
                                              self.session)
         input_height = self.code_font.get_linesize() * 3
         self.input = input_dialog.InputDialog(screen, input_height, self.code_font)
         console_msg("Editors initialised", 2)
+
+        # load puzzles for this level
+        puzzle.load_puzzles(1, self)
+
+        # initialise info signposts
+        self.signposts = Signposts(self.code_font,
+                                   self.editor.get_fg_color(),
+                                   self.editor.get_bg_color())
+        console_msg("Info panels initialised", 7)
+
 
         self.playing = True  # true when we are playing a level (not a menu)
         self.frame_draw_time = 1
@@ -322,7 +328,7 @@ class World:
                                  special_flags=BLEND_RGB_MULT
                                  )
         # play button
-        if self.python_interpreter.run_enabled:
+        if self.dog.get_interpreter().run_enabled:
             if self.play_button_rect.collidepoint(pygame.mouse.get_pos()):
                 self.screen.blit(self.play_hover_icon, PLAY_ICON_POS)
             else:
@@ -348,9 +354,9 @@ class World:
             if not self.rewinding and pygame.mouse.get_pressed(num_buttons=5)[0]:
                 # Rewind everything to the start of the level
                 self.rewind_level()
-                self.python_interpreter.run_enabled = True
+                self.dog.get_interpreter().run_enabled = True
         elif self.play_button_rect.collidepoint(*pygame.mouse.get_pos()):
-            if (self.python_interpreter.run_enabled and
+            if (self.dog.get_interpreter().run_enabled and
                     pygame.mouse.get_pressed(num_buttons=5)[0]):
                 # stop the player in their tracks
                 # to prevent glitch exploits that allow players to jump gaps
@@ -380,7 +386,7 @@ class World:
     def complete_level(self, name):
         self.session.save_checkpoint_reached(name)
         self.puzzle += 1
-        self.python_interpreter.run_enabled = True
+        self.dog.get_interpreter().run_enabled = True
 
     def show_editor(self):
         # only show editor when it is completely hidden
