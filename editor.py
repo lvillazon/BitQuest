@@ -63,24 +63,30 @@ class Editor:
         self.active = False
         self.run_enabled = False
         self.key_action = {}
+        self.ctrl_shortcuts = {pygame.K_x: self.clipboard_cut,
+                               pygame.K_c: self.clipboard_copy,
+                               pygame.K_v: self.clipboard_paste,
+                               pygame.K_a: self.select_all,
+                               pygame.K_z: self.undo,
+                               }
 
         console_msg("Editor row width =" + str(self.row_width), 8)
 
-    # def reset(self):
-    #     # sets some parameters back to their initial values
-    #     self.text = [[]]
-    #     # undo history is a list where each element is a copy of self.text
-    #     self.history = []
-    #     # absolute line number of the cursor
-    #     self.cursor_line = 0
-    #     # character position of the cursor within the current line
-    #     self.cursor_col = 0
-    #     self.selecting = False  # True when currently marking a block of text
-    #     # cursor coords of the start and end of the marked block
-    #     self.selection_start = (0, 0)
-    #     self.selection_end = (0, 0)
-    #     self.deleting_block = False
-    #     self.v_scroll = 0  # line offset to allow text to be scrolled
+    def reset(self):
+        # sets some parameters back to their initial values
+        self.text = [[]]
+        # undo history is a list where each element is a copy of self.text
+        self.history = []
+        # absolute line number of the cursor
+        self.cursor_line = 0
+        # character position of the cursor within the current line
+        self.cursor_col = 0
+        self.selecting = False  # True when currently marking a block of text
+        # cursor coords of the start and end of the marked block
+        self.selection_start = (0, 0)
+        self.selection_end = (0, 0)
+        self.deleting_block = False
+        self.v_scroll = 0  # line offset to allow text to be scrolled
 
     def show(self):
         pygame.key.set_repeat(500, 50)
@@ -472,14 +478,8 @@ class Editor:
                     self.key_action[event.key]()
                 elif pygame.key.get_mods() & pygame.KMOD_CTRL:
                     # handle the keyboard shortcuts
-                    shortcuts = {pygame.K_x: self.clipboard_cut,
-                                 pygame.K_c: self.clipboard_copy,
-                                 pygame.K_v: self.clipboard_paste,
-                                 pygame.K_a: self.select_all,
-                                 pygame.K_z: self.undo,
-                                 }
-                    if event.key in shortcuts:
-                        shortcuts[event.key]()
+                    if event.key in self.ctrl_shortcuts:
+                        self.ctrl_shortcuts[event.key]()
                 else:
                     # handle all the printable characters
                     if event.unicode != '' and event.unicode in printable:

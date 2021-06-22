@@ -1,0 +1,11 @@
+# 2-digit-level: (name, instructions, data, solution)
+<PUZZLE>
+1
+test
+print the numbers 0 to {data[0]} inclusive, each on a separate line
+[(5, 20)]
+<SOLUTION>
+for i in range({data[0]}+1:
+    print(i)
+</SOLUTION>
+</PUZZLE>
