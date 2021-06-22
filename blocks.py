@@ -7,6 +7,7 @@ from console_messages import console_msg
 from constants import *
 import sprite_sheet
 import triggers
+from signposts import Signposts
 
 ALPHA = (255, 255, 255)
 
@@ -147,7 +148,7 @@ class Block:
         self.type = ''
         self.name = ''
         self.image = None
-        self.setType(block_type)
+        self.set_type(block_type)
         self.movement = [0, 0]
 
     @staticmethod
@@ -169,7 +170,7 @@ class Block:
     def right(self):
         return self.x + BLOCK_SIZE
 
-    def setType(self, block_type):
+    def set_type(self, block_type):
         """use the ASCII character passed as type to indicate which tile"""
         self.type = block_type
 
@@ -182,10 +183,10 @@ class Block:
         else:
             console_msg("UNRECOGNISED BLOCK CODE:" + block_type, 3)
 
-    def copyTile(self, other_block):
+    def copy_tile(self, other_block):
         """ Makes this block use the same tile(s) as other_block
         without changing its position """
-        self.setType(other_block.type)
+        self.set_type(other_block.type)
 
     def get_grid_position(self):
         return int(self.x / BLOCK_SIZE), int(self.y / BLOCK_SIZE)
@@ -215,6 +216,16 @@ class Block:
             return True
         else:
             return False
+
+
+def is_on_screen(grid_coords, scroll):
+    # calculate the upper and lower bounds of the visible screen
+    # so that we don't waste time drawing blocks that are off screen
+    min_visible_block_x = scroll[X] // BLOCK_SIZE
+    max_visible_block_x = (min_visible_block_x
+                           + DISPLAY_SIZE[X] // BLOCK_SIZE
+                           + 1)
+    return min_visible_block_x <= grid_coords[X] <= max_visible_block_x
 
 
 class BlockMap:
@@ -331,6 +342,10 @@ class BlockMap:
         # with the puzzle number as the key
         self.puzzle_info = {}
 
+        # initialise all the attributes that are assigned in load_grid
+        # (just to prevent PyCharm complaining)
+        self.signposts = None
+
         # build the layer dictionaries from the level map
         self.load_grid(level=1)
         # set the default starting tile for the editor
@@ -439,31 +454,7 @@ class BlockMap:
                 b = self.get_palette_block(pygame.mouse.get_pos())
 
             if b:  # avoid setting the cursor block to None
-                self.cursor_block.copyTile(b)
-
-    def get_clicked_signpost(self, mouse_pos):
-        """ returns the id of the signpost at the mouse cursor,
-        or None if there wasn't one
-        """
-        self.cursor_to_mouse(mouse_pos)
-        b = self.get_block(self.current_layer, *self.cursor)
-        if mode == 'add':
-            if b:
-                self.selected_blocks.append(b)
-        elif mode == 'set':
-            self.selected_blocks = [b]
-        elif mode == 'pick':
-            # acts like an eye-drop tool, copying the block tile at
-            # the cursor and setting this as the current block that will be
-            # used for subsequent block placement
-            # if the cursor is over the map, use the current block,
-            # but if the cursor is over the palette, use the palette block
-            # instead
-            if self.get_palette_block(pygame.mouse.get_pos()):
-                b = self.get_palette_block(pygame.mouse.get_pos())
-
-            if b:  # avoid setting the cursor block to None
-                self.cursor_block.copyTile(b)
+                self.cursor_block.copy_tile(b)
 
     def get_palette_block(self, mouse_pos):
         """ return a block object corresponding to the tile on the palette
@@ -622,7 +613,10 @@ class BlockMap:
             "      block group number, each on their own line.\n" \
             "   6. This lists the names of each puzzle on the level,\n" \
             "      and the (x,y) coordinates for the player and dog start " \
-            "positions.\n"
+            "positions.\n" \
+            "   7. This lists all info signposts as:\n" \
+            "      x, y coords of the top left of the signpost, title, body text.\n"
+
         delimiter = "###\n"
         with open(file_name, 'w') as file:
             file.write(preamble)  # section 1
@@ -674,6 +668,16 @@ class BlockMap:
                 file.write(str(self.puzzle_info[p][2]))  # dog
                 file.write('\n')
             file.write(delimiter)
+
+            # section 7
+            file.write("# signposts\n")
+            for p in self.signposts.all_posts:
+                file.write(str(p.grid_positions[0]) + ', ')
+                file.write("'" + p.title + "', ")
+                file.write("'" + p.body + "'")
+                file.write('\n')
+            file.write(delimiter)
+
         console_msg("done", 1)
 
     def load_grid(self, level=1):
@@ -823,6 +827,28 @@ class BlockMap:
                 )
             i += 1
 
+        # signposts are not included on the block map directly
+        # but are read in from this section and then inserted into the block map
+        # each record is (x,y) coords of the top, left of the signpost 4x4 block
+        # followed by the title, then a list of strings for the body,
+        # each one representing a new line
+        self.signposts = Signposts(self.world.code_font)
+        i += 1  # skip over the ### section delimiter
+        console_msg("Signpost info:", 8)
+        while i < len(level_data) and level_data[i] != '###':
+            if level_data[i][0] != "#":  # comment lines are ignored
+                values = eval(level_data[i])
+                console_msg(values, 8)
+                (x, y) = values[0]  # get top_left coords of the signpost
+                self.signposts.add_signpost((x, y), values[1], values[2])
+                # add the blocks that visually represent the signpost to the block map
+                self.midground_blocks[(x, y)] = Block(self.tile_images, 'f', (x, y))
+                self.midground_blocks[(x+1, y)] = Block(self.tile_images, 'g', (x+1, y))
+                self.midground_blocks[(x, y+1)] = Block(self.tile_images, 'F', (x, y+1))
+                self.midground_blocks[(x+1, y+1)] = Block(self.tile_images, 'G', (x + 1, y+1))
+            i += 1
+        console_msg("Info panels initialised", 7)
+
     @staticmethod
     def get_block(block_dict, x, y):
         """returns the block at grid coord x,y"""
@@ -861,19 +887,27 @@ class BlockMap:
         # make sure grid turns on/off with the editor
         self.show_grid = self.map_edit_mode
 
-    def update(self, surface, scroll):
-        """ draw any blocks that are on-screen """
+    def update_foreground(self, surface, scroll):
+        """ draw blocks that appear in front of the character sprites """
+        for coord in self.foreground_blocks:
+            if is_on_screen(coord, scroll):
+                b = self.foreground_blocks[coord]
+                # fade out the foreground blocks when editing the midground
+                if (self.map_edit_mode and
+                        self.current_layer != self.foreground_blocks):
+                    b.image.set_alpha(100)
+                else:
+                    b.image.set_alpha(255)
+                surface.blit(b.image,
+                             (b.x - scroll[X],
+                              b.y - scroll[Y]))
 
-        # calculate the upper and lower bounds of the visible screen
-        # so that we don't waste time drawing blocks that are off screen
-        min_visible_block_x = scroll[X] // BLOCK_SIZE
-        max_visible_block_x = (min_visible_block_x
-                               + DISPLAY_SIZE[X] // BLOCK_SIZE
-                               + 1)
+    def update_midground(self, surface, scroll):
+        """ draw any blocks that are behind the character sprites """
 
         # draw each tile in its current location
         for coord in self.midground_blocks:
-            if min_visible_block_x <= coord[X] <= max_visible_block_x:
+            if is_on_screen(coord, scroll):
                 b = self.midground_blocks[coord]
                 # fade out the midground blocks when editing the foreground
                 if (self.map_edit_mode and
@@ -899,19 +933,6 @@ class BlockMap:
                             if b in self.movers[m].blocks:
                                 self.highlight_block(surface, b,
                                                      COLOUR_MOVING_BLOCK)
-
-        for coord in self.foreground_blocks:
-            if min_visible_block_x <= coord[X] <= max_visible_block_x:
-                b = self.foreground_blocks[coord]
-                # fade out the foreground blocks when editing the midground
-                if (self.map_edit_mode and
-                        self.current_layer != self.foreground_blocks):
-                    b.image.set_alpha(100)
-                else:
-                    b.image.set_alpha(255)
-                surface.blit(b.image,
-                             (b.x - scroll[X],
-                              b.y - scroll[Y]))
 
         # give any moving blocks a chance to update
         # if any are currently moving, we set busy to true, so that

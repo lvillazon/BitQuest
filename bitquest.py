@@ -41,7 +41,6 @@ game_menu.display()
 if not game_menu.quit():
     # create the world
     game_world = world.World(screen, display, game_menu.session)
-    console_msg("World initialisation complete", 1)
 
     # set it in motion
     while not game_menu.quit():

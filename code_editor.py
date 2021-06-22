@@ -29,7 +29,7 @@ class CodeWindow(Editor):
                            pygame.K_TAB: self.tab,
                            pygame.K_F5: self.run_program,
                            }
-        # add an extra 2 shortcut keys that only apply to the code window
+        # add 2 new shortcuts for loading and saving programs
         self.ctrl_shortcuts[pygame.K_s] = self.save_program
         self.ctrl_shortcuts[pygame.K_o] = self.load_program
 

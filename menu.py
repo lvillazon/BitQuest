@@ -149,7 +149,7 @@ class Menu:
         # render a string on the screen, centred horizontally
 
         # work out the x position to centre-justify the text
-        x = (self.screen.get_width() - font.size(text)[X]) / 2
+        x = (self.screen.get_rendered_text_width() - font.size(text)[X]) / 2
 
         if shadow:
             line = font.render(text, True, (0, 0, 0))
@@ -175,7 +175,7 @@ class Menu:
             self.input_dialog.update()
             self.input_dialog.draw()
             dialog_pos = (
-                (self.screen.get_width() - self.input_dialog.width) / 2,
+                (self.screen.get_rendered_text_width() - self.input_dialog.width) / 2,
                 self.items_y_pos - self.input_dialog.height - 50
             )
             dialog_area = pygame.Rect(

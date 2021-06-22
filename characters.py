@@ -11,7 +11,7 @@ import sprite_sheet
 from interpreter import VirtualMachine
 from particles import Jet
 from console_messages import console_msg
-from text_panel import TextPanel
+from text_panel import SpeechBubble
 
 
 class Character:
@@ -358,18 +358,31 @@ class Robot(Character):
         return result
 
     def clear_speech_bubble(self):
-        if self.speech_bubble != None:
-            self.speech_bubble.clear()
+        self.speech_bubble = None
+        self.speaking = False
 
     # def old_clear_speech_bubble(self):
     #     self.text = []
     #     self.text_size = [0,0]
     #     self.speaking = False
 
+    # def create_speech_bubble(self, text, fg_col, bg_col):
+    #     # show a speak-bubble above the character with the text in it
+    #     self.speech_bubble = SpeechBubble(text, fg_col, bg_col, self.world.code_font)
+    #     self.speaking = True
+
     def create_speech_bubble(self, text, fg_col, bg_col):
         # show a speak-bubble above the character with the text in it
-        self.speech_bubble = TextPanel(text, fg_col, bg_col, self.world.code_font)
-        self.speaking = True
+        new_text = str(text)
+        # make sure speech bubble has at least 1 character width
+        # non-printing chars or empty strings make the bubble look weird
+        if (self.world.code_font.size(new_text)[X]
+            < self.world.code_font.size(" ")[X]):
+            new_text = new_text + " "
+        if self.speech_bubble:
+            self.speech_bubble.append(new_text)
+        else:
+            self.speech_bubble = SpeechBubble(text, fg_col, bg_col, self.world.code_font)
 
     def get_speech_bubble(self):
         return self.speech_bubble.rendered()
@@ -378,7 +391,7 @@ class Robot(Character):
         # position the tip of the speak bubble at the middle
         # of the top edge of the sprite box
         # the -8 is a fudge factor to put the speech bubble just above the sprite
-        position = [self.location.x, self.location.y - self.speech_bubble.get_height() / SCALING_FACTOR - 8]
+        position = [self.location.x, self.location.y - self.speech_bubble.get_rendered_text_height() / SCALING_FACTOR - 8]
         return position
 
     def update(self, surface, scroll):

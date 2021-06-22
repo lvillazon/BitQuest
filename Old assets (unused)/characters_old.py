@@ -375,11 +375,11 @@ class Character:
         bubble_rect = pygame.Rect((0, 0), (
             (self.text_size[X]
              + TEXT_MARGIN * 2
-             + BALLOON_THICKNESS * 2
+             + BORDER_THICKNESS * 2
              + BUBBLE_MARGIN),
             (self.text_size[Y]
              + TEXT_MARGIN * 2
-             + BALLOON_THICKNESS * 2
+             + BORDER_THICKNESS * 2
              + BUBBLE_MARGIN * 2)
             ))
         self.bubble = pygame.Surface(bubble_rect.size)
@@ -389,19 +389,19 @@ class Character:
         # create a rectangle with clipped corners for the speech bubble
         # (rounded corners aren't available until pygame 2.0)
         bubble_points = (
-            (BALLOON_THICKNESS, bubble_rect.size[Y] - BALLOON_THICKNESS),  # A
-            (BUBBLE_MARGIN + BALLOON_THICKNESS,
-             bubble_rect.size[Y] - BUBBLE_MARGIN*2),                       # B
-            (BUBBLE_MARGIN + BALLOON_THICKNESS,
-             BUBBLE_MARGIN),                                               # C
-            (BUBBLE_MARGIN*2, 0),                                          # D
-            (bubble_rect.size[X] - BUBBLE_MARGIN, 0),                      # E
-            (bubble_rect.size[X] - BALLOON_THICKNESS,
-             BUBBLE_MARGIN),                                               # F
-            (bubble_rect.size[X] - BALLOON_THICKNESS,
-             bubble_rect.size[Y] - BUBBLE_MARGIN*3),                       # G
+            (BORDER_THICKNESS, bubble_rect.size[Y] - BORDER_THICKNESS),  # A
+            (BUBBLE_MARGIN + BORDER_THICKNESS,
+             bubble_rect.size[Y] - BUBBLE_MARGIN * 2),  # B
+            (BUBBLE_MARGIN + BORDER_THICKNESS,
+             BUBBLE_MARGIN),  # C
+            (BUBBLE_MARGIN*2, 0),  # D
+            (bubble_rect.size[X] - BUBBLE_MARGIN, 0),  # E
+            (bubble_rect.size[X] - BORDER_THICKNESS,
+             BUBBLE_MARGIN),  # F
+            (bubble_rect.size[X] - BORDER_THICKNESS,
+             bubble_rect.size[Y] - BUBBLE_MARGIN * 3),  # G
             (bubble_rect.size[X] - BUBBLE_MARGIN,
-             bubble_rect.size[Y] - BUBBLE_MARGIN*2),                       # H
+             bubble_rect.size[Y] - BUBBLE_MARGIN*2),  # H
             (BUBBLE_MARGIN*3, bubble_rect.size[Y] - BUBBLE_MARGIN*2),      # I
         )
         pygame.draw.polygon(self.bubble,
@@ -411,7 +411,7 @@ class Character:
         pygame.draw.polygon(self.bubble,
                             self.speech_bubble_fg,
                             bubble_points,
-                            BALLOON_THICKNESS)
+                            BORDER_THICKNESS)
         # draw the lines of text, working upwards from the most recent,
         # until the bubble is full
         output_line = len(self.text) - 1
@@ -423,7 +423,7 @@ class Character:
         while line_y_pos >= TEXT_MARGIN and output_line >= 0:
             line = self.world.code_font.render(self.text[output_line],
                                                True, color)
-            line_x_pos = BUBBLE_MARGIN + TEXT_MARGIN + BALLOON_THICKNESS
+            line_x_pos = BUBBLE_MARGIN + TEXT_MARGIN + BORDER_THICKNESS
             self.bubble.blit(line, (line_x_pos, line_y_pos))
             output_line -= 1
             line_y_pos -= self.speech_bubble_size[Y]

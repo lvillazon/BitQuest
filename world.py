@@ -67,6 +67,17 @@ class World:
         # game world.
         self.game_origin = [0, 0]
 
+        # load fonts
+        if pygame.font.get_init() is False:
+            pygame.font.init()
+            console_msg("Font system initialised", 2)
+        # we're not using the built-in SysFont any more
+        # so that the TTF file can be bundled to run on other PCs
+        self.code_font = pygame.font.Font(CODE_FONT_FILE, 18)
+        console_msg("Deja Vu Sans Mono font loaded", 3)
+        self.grid_font = pygame.font.Font(GRID_FONT_FILE, 8)
+        console_msg("Pixel font loaded", 3)
+
         # load puzzle blocks
         self.blocks = blocks.BlockMap(self,
                                       BLOCK_TILE_DICTIONARY_FILE,
@@ -106,16 +117,6 @@ class World:
         self.repeat_lock = False
 
         # intialise the python interpreter and editor
-        if pygame.font.get_init() is False:
-            pygame.font.init()
-            console_msg("Font system initialised", 2)
-        # we're not using the built-in SysFont any more
-        # so that the TTF file can be bundled to run on other PCs
-        self.code_font = pygame.font.Font(CODE_FONT_FILE, 18)
-        console_msg("Deja Vu Sans Mono font loaded", 3)
-        self.grid_font = pygame.font.Font(GRID_FONT_FILE, 8)
-        console_msg("Pixel font loaded", 3)
-
         if pygame.scrap.get_init() is False:
             pygame.scrap.init()
         console_msg("Clipboard initialised", 2)
@@ -136,6 +137,7 @@ class World:
                                    self.editor.get_fg_color(),
                                    self.editor.get_bg_color())
         console_msg("Info panels initialised", 7)
+
 
         self.playing = True  # true when we are playing a level (not a menu)
         self.frame_draw_time = 1
@@ -208,15 +210,18 @@ class World:
         # OLD RENDER METHOD: self.scenery.draw_background(display, self.camera.scroll())
         self.scenery.draw(self.camera.scroll())
 
+        # draw the 'midground' blocks behind the characters
+        self.blocks.update_midground(display, self.camera.scroll())
+
         # move and render the player sprite
         self.player.update(display, self.camera.scroll())
 
         # move and render the dog
         self.dog.update(display, self.camera.scroll())
 
-        # draw the foreground scenery on top of the characters
-        self.blocks.update(display, self.camera.scroll())
-        # self.scenery.draw_foreground(display)
+        # draw the 'foreground' blocks in front of the characters
+        # this is just foliage and other cosmetic stuff
+        self.blocks.update_foreground(display, self.camera.scroll())
 
         # update the input window and editor, if necessary
         # the input window takes precedence if both are open
@@ -283,7 +288,7 @@ class World:
             position[Y] = (position[Y] - self.camera.scroll_y()) * SCALING_FACTOR + self.game_origin[Y]
             self.screen.blit(self.dog.get_speech_bubble(), position)
 
-        self.signposts.display_open_signs(self.screen, self.camera.scroll())
+        self.blocks.signposts.update_open_signs(self.screen, self.camera.scroll(), self.game_origin)
 
         # draw the swirling dust - DEBUG disabled due to looking bad
         # self.dust_storm.update(self.screen, self.game_origin[Y], scroll)
@@ -570,8 +575,8 @@ class World:
         # currently just the rewind and play button
         self.check_buttons()
 
-        # check if any signposts were clicked
+        # check if any signposts or info panels were clicked
         # button 0 is left click
         if pygame.mouse.get_pressed(num_buttons=5)[0]:
-            self.signposts.check_for_signpost_at(pygame.mouse.get_pos(),
-                                                 self.camera.scroll())
+            self.blocks.signposts.check_signpost_at(pygame.mouse.get_pos(),
+                                                    self.camera.scroll())

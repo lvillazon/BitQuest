@@ -70,6 +70,7 @@ class Editor:
                                pygame.K_z: self.undo,
                                }
 
+
         console_msg("Editor row width =" + str(self.row_width), 8)
 
     def reset(self):

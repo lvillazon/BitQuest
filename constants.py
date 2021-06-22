@@ -74,13 +74,16 @@ CAMERA_X_OFFSET = int(DISPLAY_SIZE[X] / 2) - CHARACTER_WIDTH * 5  # position cam
 # the extra 10 means the display is not lined up exactly on the grid
 CAMERA_Y_OFFSET = DISPLAY_SIZE[Y] - CHARACTER_HEIGHT * 2 - 10
 
-# speech bubble constants
+# speech bubble & info panel constants
 MAX_BUBBLE_TEXT_LINES = 10  # 10 lines maximum in a speech bubble
 BUBBLE_MARGIN = 8  # 10-pixel border around text in the speech bubble
 TEXT_MARGIN = 4  # pixel gap between the sides of the speech bubble and text
-BALLOON_THICKNESS = 3  # line thickness around speech bubbles
+BORDER_THICKNESS = 3  # line thickness around speech bubbles & info panels
+BALLOON_CORNER_RADIUS = 10
 SPEECH_EXPIRY_TIME = 3000  # number of ms before the text begins to disappear
 SPEECH_EXPIRY_RATE = 1000  # ms between each line of text disappearing
+CROSS_THICKNESS = 2  # line thickness for the close button 'X'
+DROP_SHADOW = 6  # used on info panels
 
 # Block map constants
 PALETTE_SCALE = 2  # the palette is scaled less than the normal level
