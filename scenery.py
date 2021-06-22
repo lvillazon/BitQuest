@@ -74,7 +74,7 @@ class Scenery:
         surface.blit(tile,
                      (scenery_x,
                       self.GROUND_LEVEL_OFFSET - scroll[Y]))
-        if scenery_x < -self.tile_width + surface.get_width():
+        if scenery_x < -self.tile_width + surface.get_rendered_text_width():
             surface.blit(tile,
                          (scenery_x + self.tile_width,
                           self.GROUND_LEVEL_OFFSET - scroll[Y]))

@@ -9,6 +9,8 @@ each section ends with ### on its own line:
       block group number, each on their own line.
    6. This lists the names of each puzzle on the level,
       and the (x,y) coordinates for the player and dog start positions.
+   7. This lists all info signposts as:
+      x, y coords of the top left of the signpost, title, body text.
 ###
                                                                                                                                 222222                             
                                                                                                                                 2    1                             
@@ -17,8 +19,8 @@ each section ends with ### on its own line:
                                                                                  1                1              1 1 1 1        2222 1                             
                          Pp                                                      1               =1              1=1=1=1             1                             
                          []            ZX                      ZX                1   ZX         =11   ZX         1111111   ZX   222222   ZX            2           
-                         []            CV                      CV                1   CV        =111   CV               1   CV         Pp CV            2           
-   =                    =Bb            NM              =       NM              =   = NM       =1111   NM               1   NM         B] NM            2           
+          fg             []            CV                      CV                1   CV        =111   CV               1   CV         Pp CV            2           
+   =      FG            =Bb            NM              =       NM              =   = NM       =1111   NM               1   NM         B] NM            2           
 9Ppw90qw90qw90qw90qw90qw9  90qw990qw9909090qw90dddda  u90qw90qw1190qw90qw90qw90qw390ww933331111   232222211111112211222222211112222222Bb222222222222222222222222222
 1[]4123456785678567856781  456788123481234567891234    12345678123456         111                                                     [b                           
  []                                                8ua8                       111                                                                                  
@@ -91,4 +93,8 @@ each section ends with ### on its own line:
 3, 'The Staircase', (88, 6), (87, 8)
 4, 'The Choice', (105, 6), (104, 8)
 5, 'The Spiral', (126, 6), (125, 8)
+###
+# signposts
+(10, 7), 'Puzzle 1', ['test']
+(13, 7), 'Puzzle 2', ['This is a much longer description to test how that looks.', 'line 2', 'line 3', 'line 4', 'line 5', 'line 6', 'and, finally, here is line 7']
 ###

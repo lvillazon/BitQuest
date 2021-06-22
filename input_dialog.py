@@ -12,12 +12,13 @@ class InputDialog(Editor):
         self.title = "Input"
         self.color_modes[0] = (BLACK, SKY_BLUE)
         # define the permitted actions for special keys
-        self.keyboard_input.register_key_press('RETURN', self.return_input)
-        self.keyboard_input.register_key_press('BACKSPACE', self.backspace)
-        self.keyboard_input.register_key_press('DELETE', self.delete)
-        self.keyboard_input.register_key_press('LEFT', self.cursor_left)
-        self.keyboard_input.register_key_press('RIGHT', self.cursor_right)
-        self.keyboard_input.register_key_press('TAB', self.tab)
+        self.key_action = {pygame.K_RETURN: self.return_input,
+                           pygame.K_BACKSPACE: self.backspace,
+                           pygame.K_DELETE: self.delete,
+                           pygame.K_LEFT: self.cursor_left,
+                           pygame.K_RIGHT: self.cursor_right,
+                           pygame.K_TAB: self.tab,
+                           }
 
     def print_line_number(self, n, row):
         # override to suppress line numbers
