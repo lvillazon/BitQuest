@@ -13,6 +13,7 @@ import code_editor
 import input_dialog
 import puzzle
 import scenery
+import sentry
 from camera import Camera
 from console_messages import console_msg
 from constants import *
@@ -123,19 +124,19 @@ class World:
 
         self.editor = code_editor.CodeWindow(screen, 300,
                                              self.code_font,
-                                             self.dog.get_interpreter(),
+                                             self.dog,
                                              self.session)
         input_height = self.code_font.get_linesize() * 3
         self.input = input_dialog.InputDialog(screen, input_height, self.code_font)
         console_msg("Editors initialised", 2)
 
+        # load robot sentries for this level
+        self.sentries = sentry.load_sentries(self, level=1)
         # load puzzles for this level
-        puzzle.load_puzzles(1, self)
+#        puzzle.load_puzzles(1, self)
 
         # initialise info signposts
-        self.signposts = Signposts(self.code_font,
-                                   self.editor.get_fg_color(),
-                                   self.editor.get_bg_color())
+        self.signposts = Signposts(self.code_font)
         console_msg("Info panels initialised", 7)
 
 
@@ -197,7 +198,7 @@ class World:
     def update(self, focus):
         """update all the game world stuff
         focus is the character that the camera follows
-        This is the dog when a program is running, otherwise the player"""
+        This is the dog when a program is running on BIT, otherwise the player"""
 
         display = self.display  # for brevity
 
@@ -209,7 +210,6 @@ class World:
         # render the background
         # OLD RENDER METHOD: self.scenery.draw_background(display, self.camera.scroll())
         self.scenery.draw(self.camera.scroll())
-
         # draw the 'midground' blocks behind the characters
         self.blocks.update_midground(display, self.camera.scroll())
 
@@ -218,6 +218,10 @@ class World:
 
         # move and render the dog
         self.dog.update(display, self.camera.scroll())
+
+        # draw all the robot sentries
+        for s in self.sentries:
+            s.update(display, self.camera.scroll())
 
         # draw the 'foreground' blocks in front of the characters
         # this is just foliage and other cosmetic stuff
@@ -287,6 +291,14 @@ class World:
             position[X] = (position[X] - self.camera.scroll_x()) * SCALING_FACTOR + self.game_origin[X]
             position[Y] = (position[Y] - self.camera.scroll_y()) * SCALING_FACTOR + self.game_origin[Y]
             self.screen.blit(self.dog.get_speech_bubble(), position)
+
+        # do the same for any sentries
+        for s in self.sentries:
+            if s.speaking:
+                position = s.speech_position()
+                position[X] = (position[X] - self.camera.scroll_x()) * SCALING_FACTOR + self.game_origin[X]
+                position[Y] = (position[Y] - self.camera.scroll_y()) * SCALING_FACTOR + self.game_origin[Y]
+                self.screen.blit(s.get_speech_bubble(), position)
 
         self.blocks.signposts.update_open_signs(self.screen, self.camera.scroll(), self.game_origin)
 
@@ -364,7 +376,10 @@ class World:
                 self.player.moving_right = False
                 self.player.update(self.display, self.camera.scroll())
                 # run user program
-                self.editor.run_program()
+                # DEBUG self.editor.run_program()
+                # DEBUG test robot sentry program instead
+                for s in self.sentries:
+                    s.run_program()
 
     def rewind_level(self):
         console_msg("Rewinding!", 8)

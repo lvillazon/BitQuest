@@ -6,6 +6,8 @@ from math import copysign
 import pygame
 import contextlib
 import io
+
+import interpreter
 from constants import *
 import sprite_sheet
 from interpreter import VirtualMachine
@@ -277,9 +279,11 @@ class Ghostly(Character):
 class Robot(Character):
     """ Not affected by gravity,
         Has a rocket animation when in the air
-        Can display speech bubbles"""
-    def __init__(self, world, name, sprite_file, size):
-        super().__init__(world, name, sprite_file, size)
+        Can display speech bubbles
+        Can run programs"""
+    def __init__(self, world, name, sprite_file, size_in_pixels, height_in_blocks=1):
+        super().__init__(world, name, sprite_file, size_in_pixels)
+        self.height_in_blocks = height_in_blocks
         self.collidable = True
         self.set_trigger_test(world.blocks.trigger_test)
         self.set_collision_test(world.blocks.collision_test)
@@ -288,6 +292,7 @@ class Robot(Character):
         self.speech_bubble = None
         self.python_interpreter = VirtualMachine(self)
         console_msg(name + " command interpreter initialised", 2)
+        self.source_code = []
 
         self.jets = []  # the particle streams that appear when flying
         # create 2 jets, 1 for each leg
@@ -383,6 +388,7 @@ class Robot(Character):
             self.speech_bubble.append(new_text)
         else:
             self.speech_bubble = SpeechBubble(text, fg_col, bg_col, self.world.code_font)
+        self.speaking = True
 
     def get_speech_bubble(self):
         return self.speech_bubble.rendered()
@@ -415,7 +421,7 @@ class Robot(Character):
         # turn on the jets if there isn't a solid block underneath
         if self.world.blocks.get_block(
                 self.world.blocks.midground_blocks,
-                self.gridX(), self.gridY()+1) is None:
+                self.gridX(), self.gridY() + self.height_in_blocks) is None:
            self.jets[0].turn_on()
            self.jets[1].turn_on()
         else:
@@ -443,8 +449,7 @@ class Robot(Character):
         # and cleared using the reset button
         if self.python_interpreter.run_enabled:
             p = self.python_interpreter  # for brevity
-            #p.load(interpreter.convert_to_lines(self.text))
-            p.load(self.convert_to_lines())
+            p.load(interpreter.convert_to_lines(self.get_source_code()))
             result, errors = p.compile()
             if result is False:  # check for syntax errors
                 # TODO display these using in-game dialogs
@@ -456,7 +461,11 @@ class Robot(Character):
                     console_msg(msg, 5)
             else:
                 result, errors = p.run()  # set the program going
-            # save this attempt, regardless of whether it has errors or not
-            #self.session.save_run(interpreter.convert_to_lines(self.text), errors)
-            self.session.save_run(self.convert_to_lines(), errors)
+            return result, errors
+        return False, "RUN NOT ENABLED"
 
+    def get_source_code(self):
+        return self.source_code
+
+    def set_source_code(self, statement_list):
+        self.source_code = statement_list

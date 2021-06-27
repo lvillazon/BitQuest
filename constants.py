@@ -31,7 +31,12 @@ REWIND_HOVER_ICON_FILE = 'assets/rewind_hover.png'
 PLAY_ICON_FILE = 'assets/play.png'
 PLAY_HOVER_ICON_FILE = 'assets/play_hover.png'
 PLAY_DISABLED_ICON_FILE = 'assets/play_disabled.png'
-PUZZLE_FILE = 'assets/puzzles.txt'
+PUZZLE_FILE = 'assets/robot_puzzles.txt'
+SENTRY_FILE = 'assets/robot_puzzles.txt'
+
+# XML stuff for files
+SENTRY_START = '<SENTRY>'
+SENTRY_END = '</SENTRY>'
 
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console

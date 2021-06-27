@@ -23,7 +23,7 @@ console_msg('Started. Version ' + VERSION, 0)
 import os
 DEFAULT = 0, 30  # used for single monitor display - put window in top left
 DEVON_OFFICE = -1250, 780  # centred on laptop display
-position = DEVON_OFFICE
+position = DEFAULT
 os.environ['SDL_VIDEO_WINDOW_POS'] = str(position[0]) + "," + str(position[1])
 
 pygame.init()

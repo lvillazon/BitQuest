@@ -1,0 +1,9 @@
+# Each robot sentry has a name and grid coordinate location
+<SENTRY>
+XX9
+1
+(70, 8)
+# display program
+print('bzzt!')
+print('I AM ROBOT XX9')
+</SENTRY>

@@ -8,12 +8,12 @@ from editor import Editor
 
 
 class CodeWindow(Editor):
-    def __init__(self, screen, height, code_font, p, session):
+    def __init__(self, screen, height, code_font, hosted_on, session):
         super().__init__(screen, height, code_font)
         # increase the margin to allow for the line numbers
         self.left_margin += self.char_width * 3
         self.title = "Code"
-        self.python_interpreter = p
+        self.robot = hosted_on  # code editors are attached to specific robots - currently just BIT
         self.session = session
         # define the permitted actions for special keys
         self.key_action = {pygame.K_ESCAPE: self.hide,
@@ -88,6 +88,12 @@ class CodeWindow(Editor):
                 if line[-1] == '\n':  # strip carriage return from each line
                     line.pop()
                 self.text.append(line)
+
+    def run_program(self):
+        self.robot.set_source_code(self.text)
+        success, errors = self.robot.run_program()
+        # save this attempt, regardless of whether it had errors or not
+        self.session.save_run(interpreter.convert_to_lines(self.text), errors)
 
     # def run_program(self):
     #     """ pass the text in the editor to the interpreter"""
