@@ -1,9 +1,12 @@
 # Each robot sentry has a name and grid coordinate location
 <SENTRY>
-XX9
-1
-(70, 8)
-# display program
+name = 'XX9'
+id = 1
+position = (70, 8)
+display_program = [
 print('bzzt!')
 print('I AM ROBOT XX9')
+]
+validation_program = [
+]
 </SENTRY>

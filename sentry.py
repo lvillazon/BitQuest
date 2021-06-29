@@ -1,3 +1,4 @@
+import file_parser
 from characters import Robot
 from console_messages import console_msg
 from constants import ROBOT_SPRITE_FILE, SENTRY_FILE, SENTRY_START
@@ -25,9 +26,15 @@ class Sentry(Robot):
     def set_puzzle(self, instructions):
         pass
 
+    def get_source_code(self):
+        # override method from Robot, to allow code to stay as a list of strings
+        return ['print("ho")']
+
 def load_sentries(world, level):
     # load all the sentries for a given level from the file
     file_name = SENTRY_FILE
+    print(file_parser.parse_file(SENTRY_FILE))
+
     with open(file_name, 'r') as file:
         lines = file.readlines()  # read the whole file into a string array
     i = 0

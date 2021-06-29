@@ -449,7 +449,7 @@ class Robot(Character):
         # and cleared using the reset button
         if self.python_interpreter.run_enabled:
             p = self.python_interpreter  # for brevity
-            p.load(interpreter.convert_to_lines(self.get_source_code()))
+            p.load(self.get_source_code())
             result, errors = p.compile()
             if result is False:  # check for syntax errors
                 # TODO display these using in-game dialogs
@@ -465,7 +465,9 @@ class Robot(Character):
         return False, "RUN NOT ENABLED"
 
     def get_source_code(self):
-        return self.source_code
+        # convert code from a list of lists of chars (as supplied by code editor)
+        # to a list of strings (as required by the interpreter)
+        return interpreter.convert_to_lines(self.source_code)
 
     def set_source_code(self, statement_list):
         self.source_code = statement_list
