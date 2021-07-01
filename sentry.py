@@ -32,24 +32,17 @@ class Sentry(Robot):
 
 def load_sentries(world, level):
     # load all the sentries for a given level from the file
-    file_name = SENTRY_FILE
-    print(file_parser.parse_file(SENTRY_FILE))
 
-    with open(file_name, 'r') as file:
-        lines = file.readlines()  # read the whole file into a string array
-    i = 0
+    print(file_parser.parse_file(SENTRY_FILE))  # DEBUG
 
-    while i < len(lines):
-        while i < len(lines) and lines[i][:-1] != SENTRY_START:  # look for the start of a sentry definition
-            i += 1
-        if i < len(lines):
-            all_sentries = []
-            name = lines[i+1][:-1]  # strip trailing CRLF
-            sentry_level = eval(lines[i+2])
-            position = eval(lines[i+3])
-            display_program = []
-            if sentry_level == level:  # only create the sentries for this game level
-                s = Sentry(world, position, name)
-                all_sentries.append(s)
-            i += 3  # skip on to next sentry
+
+    all_sentries = []
+    name = lines[i+1][:-1]  # strip trailing CRLF
+    sentry_level = eval(lines[i+2])
+    position = eval(lines[i+3])
+    display_program = []
+    if sentry_level == level:  # only create the sentries for this game level
+        s = Sentry(world, position, name)
+        all_sentries.append(s)
+    i += 3  # skip on to next sentry
     return all_sentries

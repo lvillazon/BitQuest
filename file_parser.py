@@ -24,6 +24,7 @@ def parse_section(lines):
     parsed = {}
     i = 0
     while i < len(lines):
+        print("parsing line:", lines[i])
         # ignore any line beginning with #
         if not lines[i].lstrip().startswith('#'):
             # handle <section> </section>
@@ -39,20 +40,21 @@ def parse_section(lines):
                 # recursively call the parser to build the dict
                 parsed[section_name] = parse_section(section)
 
-            # simple case: identifier = value
+            # value assignment
             elif '=' in lines[i]:
                 expression = lines[i].split('=', 1)
-                parsed[expression[0].strip()] = eval(expression[1].strip())
-
-            # even simpler case: [ or ] on their own, start and end a list
-            # called source, where each element is a line of robot source code
-            elif lines[i].strip() == '[':
-                i += 1
-                new_list = []
-                while i < len(lines) and lines[i].strip() != ']':
-                    new_list.append(lines[i].rstrip())  # don't lstrip, since we need to preserve indents
+                # simple case - no opening brace at the end, just: identifier = value
+                if not expression[1].rstrip().endswith('['):
+                    parsed[expression[0].strip()] = eval(expression[1].strip())
+                else:
+                    # for more complex assignment, read in each line until a closing ]
+                    # then eval the whole thing
                     i += 1
-                parsed['source'] = new_list
+                    new_list = []
+                    while i < len(lines) and lines[i].strip() != ']':
+                        new_list.append(lines[i].rstrip())  # don't lstrip, since we need to preserve indents
+                        i += 1
+                    parsed[expression[0].strip()] = new_list
         i += 1
     return parsed
 
@@ -84,7 +86,24 @@ def parse_file(file_name):
     """
     with open(file_name, 'r') as file:
         lines = file.readlines()  # read the whole file into a string array
-        return parse_section(lines)
+        parsed_data = []
+        # look for the start of a section
+        i = 0
+        while i < len(lines):
+            # ignore any line beginning with #
+            if not lines[i].lstrip().startswith('#'):
+                if is_section_start(lines[i]):
+                    # copy all the lines of this section into a sublist
+                    section_name = get_section_name(lines[i])
+                    section = []
+                    i += 1
+                    while i < len(lines) and not is_section_end(lines[i], section_name):
+                        section.append(lines[i])
+                        i += 1
+                    # call the parser to build the dict
+                    parsed_data.append(parse_section(section))
+            i += 1
+        return parsed_data
 
     #     while i < len(lines) and lines[i][:-1] != SENTRY_START:  # look for the start of a sentry definition
     #         i += 1

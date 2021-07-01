@@ -10,3 +10,6 @@ print('I AM ROBOT XX9')
 validation_program = [
 ]
 </SENTRY>
+<SENTRY>
+name = 'test'
+</SENTRY>
