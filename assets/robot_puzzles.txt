@@ -1,13 +1,18 @@
 # Each robot sentry has a name and grid coordinate location
 <SENTRY>
 name = 'XX9'
-id = 1
+level = 1
 position = (70, 8)
-display_program = [
-print('bzzt!')
-print('I AM ROBOT XX9')
+init = [
 ]
-validation_program = [
+display = [
+print('Hello. I am robot XX9')
+print('To proceed, print the numbers 1 to 5,')
+print('Each on a separate line.')
+]
+validate = [
+for i in range(1, 6):
+    print(i)
 ]
 </SENTRY>
 <SENTRY>

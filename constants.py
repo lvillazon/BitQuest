@@ -1,10 +1,10 @@
 """
 Global constants for BitQuest
 """
-VERSION = "0.2"  # 0.x = beta testing phase
+VERSION = "0.3"  # 0.x = beta testing phase
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
 SHOW_COLLIDERS = False  # draws outline around object colliders
-SHOW_LOGIN_MENU = False  # displays the intial menu screen before play
+SHOW_LOGIN_MENU = False  # displays the initial menu screen before play
 X = 0  # index values into a variety of positional tuples
 Y = 1
 
@@ -80,7 +80,7 @@ CAMERA_X_OFFSET = int(DISPLAY_SIZE[X] / 2) - CHARACTER_WIDTH * 5  # position cam
 CAMERA_Y_OFFSET = DISPLAY_SIZE[Y] - CHARACTER_HEIGHT * 2 - 10
 
 # speech bubble & info panel constants
-MAX_BUBBLE_TEXT_LINES = 10  # 10 lines maximum in a speech bubble
+MAX_BUBBLE_TEXT_LINES = 15  # 10 lines maximum in a speech bubble
 BUBBLE_MARGIN = 8  # 10-pixel border around text in the speech bubble
 TEXT_MARGIN = 4  # pixel gap between the sides of the speech bubble and text
 BORDER_THICKNESS = 3  # line thickness around speech bubbles & info panels

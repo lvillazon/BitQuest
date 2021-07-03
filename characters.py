@@ -201,7 +201,7 @@ class Character:
         # now check if the character's own movement causes a collision
         # we update the Y coordinate first, to make sure that player
         # momentum won't carry them over a gap of a single block
-        # this is necessary to prevent glitch exploits where player mash
+        # this is necessary to prevent glitch exploits where players mash
         # buttons to allow them to skip over gaps and short-circuit levels.
         rectangle.y += movement[Y]
         hit_list = self.collision_test(rectangle)
@@ -222,6 +222,13 @@ class Character:
             elif movement[X] < 0 and rectangle.left < block.right():
                 rectangle.left = block.right()
                 collision_directions['left'] = True
+
+        # check for collisions with sentries
+        for s in self.world.sentries:
+            if movement[X] > 0 and s.gridX() == self.gridX()+1:
+                rectangle.right = s.left()
+                collision_directions['right'] = True
+                print("colliding with", s.name)
 
         return rectangle, collision_directions
 
@@ -321,6 +328,11 @@ class Robot(Character):
             self.take_off_animation.append((0, 0))
             # self.take_off_animation.append((0, -8*i/32))
 
+    def clear_output(self):
+        # blanks the speech bubble, if present
+        if self.speech_bubble:
+            self.speech_bubble.clear()
+
     def get_interpreter(self):
         return self.python_interpreter;
 
@@ -365,16 +377,6 @@ class Robot(Character):
     def clear_speech_bubble(self):
         self.speech_bubble = None
         self.speaking = False
-
-    # def old_clear_speech_bubble(self):
-    #     self.text = []
-    #     self.text_size = [0,0]
-    #     self.speaking = False
-
-    # def create_speech_bubble(self, text, fg_col, bg_col):
-    #     # show a speak-bubble above the character with the text in it
-    #     self.speech_bubble = SpeechBubble(text, fg_col, bg_col, self.world.code_font)
-    #     self.speaking = True
 
     def create_speech_bubble(self, text, fg_col, bg_col):
         # show a speak-bubble above the character with the text in it

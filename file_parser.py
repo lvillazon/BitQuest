@@ -24,7 +24,6 @@ def parse_section(lines):
     parsed = {}
     i = 0
     while i < len(lines):
-        print("parsing line:", lines[i])
         # ignore any line beginning with #
         if not lines[i].lstrip().startswith('#'):
             # handle <section> </section>

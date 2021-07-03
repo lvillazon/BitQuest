@@ -27,10 +27,10 @@ class Menu:
         self.items = ["Play", "Options", "Quit:"]
         self.selected_item = -1  # start off with nothing selected
         self.session = None
+        self._bypass = bypass
 
-        if bypass:
+        if self._bypass:
             self.session = Session("dummy_user", "dummy_class")
-            self._return_to_game = True
         else:
             # load the fonts
             if pygame.font.get_init() is False:
@@ -42,7 +42,7 @@ class Menu:
             self.menu_title_bg_font = pygame.font.Font(MENU_FONT_FILE, 50)
             self.menu_font = pygame.font.Font(MENU_FONT_FILE, 32)
             self.menu_input_font = pygame.font.Font(CODE_FONT_FILE, 32)
-            console_msg("Menu font loaded", 3)
+            console_msg("Menu fonts loaded", 3)
             self.input_dialog = MenuInputDialog(self.screen,
                                 "Input",
                                 self.menu_input_font)
@@ -58,8 +58,8 @@ class Menu:
 
     def display(self):
         """ draw the menu and handle input """
-
-        while not self._quit and not self._return_to_game:
+        self._return_to_game = False
+        while not self._bypass and not self._quit and not self._return_to_game:
             # render the background
             self.screen.fill(COLOUR_MENU_BG)
 
@@ -149,7 +149,7 @@ class Menu:
         # render a string on the screen, centred horizontally
 
         # work out the x position to centre-justify the text
-        x = (self.screen.get_rendered_text_width() - font.size(text)[X]) / 2
+        x = (self.screen.get_width() - font.size(text)[X]) / 2
 
         if shadow:
             line = font.render(text, True, (0, 0, 0))
@@ -175,7 +175,7 @@ class Menu:
             self.input_dialog.update()
             self.input_dialog.draw()
             dialog_pos = (
-                (self.screen.get_rendered_text_width() - self.input_dialog.width) / 2,
+                (self.screen.get_width() - self.input_dialog.width) / 2,
                 self.items_y_pos - self.input_dialog.height - 50
             )
             dialog_area = pygame.Rect(

@@ -1,48 +1,121 @@
+import pygame
+
 import file_parser
 from characters import Robot
 from console_messages import console_msg
-from constants import ROBOT_SPRITE_FILE, SENTRY_FILE, SENTRY_START
-
+from constants import *
+from utility_functions import screen_to_grid
 
 class Sentry(Robot):
     # robot sentries used to present more complex puzzles
-    def __init__(self, world, location, name='sentry'):
+    def __init__(self, world,
+                 name,
+                 location,
+                 programs):
         super().__init__(world,
                          name,
                          ROBOT_SPRITE_FILE,
                          (16, 28),
                          2)
         self.set_position(location)
-        # DEBUG convert source to a list of chars,
-        # so that it can be handled the same as the editor code
-        source = 'print("hi")'
-        self.source_code = []
-        line = []
-        for char in source:
-            line.append(char)
-        self.source_code.append(line)
-        console_msg("robot source loaded",0)
+        # assign the source code for the robots programs
+        self.programs = {}
+        self.programs = programs
+        self.active_program = self.programs['init']  # default to this one
+        self.output = []
 
     def set_puzzle(self, instructions):
         pass
 
+    def run_program(self, program_name):
+        # allows the sentry to switch between several available programs
+        self.active_program = self.programs[program_name]
+        # force the enabled flag because sentries can run their code
+        # at any time, not just once per puzzle attempt
+        self.python_interpreter.run_enabled = True
+        self.clear_speech_bubble()
+        self.output = []
+        super().run_program()
+
     def get_source_code(self):
         # override method from Robot, to allow code to stay as a list of strings
-        return ['print("ho")']
+        return self.active_program
+
+    def is_at(self, screen_coords, scroll):
+        # returns True if the sentry is located at this position on the screen
+        # this is used to detect mouse clicks
+        x = (self.location.x - scroll[X]) * SCALING_FACTOR
+        y = (self.location.y - scroll[Y]) * SCALING_FACTOR
+        w = self.size[X] * SCALING_FACTOR
+        h = self.size[Y] * SCALING_FACTOR
+        collision_rect = pygame.Rect((x, y), (w, h))
+        if collision_rect.collidepoint(screen_coords):
+            return True
+        else:
+            return False
+
+    def is_challenge_complete(self, dog):
+        # checks the most recent output from BIT against the results
+        # of its own validation program
+        if self.programs['validate']:
+            self.run_program('validate')
+            if len(self.output) != len(dog.speech_bubble.text):
+                valid = False
+            else:
+                valid = True
+                for i in range(len(self.output)):
+                    if self.output[i] != dog.speech_bubble.text[i].rstrip():
+                        valid = False
+            if valid:
+                self.say("Correct!")
+            else:
+                self.say("Incorrect! I expected:")
+                for line in self.output:
+                    self.say(line)
+
+    def say(self, *t):
+        # override say so that the validate method can intercept the output
+        # and compare to the player's code, before displaying the results
+        if (self.active_program == self.programs['validate'] and
+                self.python_interpreter.running):
+            self.output.append(str(*t))
+            print(self.output)
+        else:
+            super().say(*t)
 
 def load_sentries(world, level):
     # load all the sentries for a given level from the file
 
-    print(file_parser.parse_file(SENTRY_FILE))  # DEBUG
-
+    sentry_data = file_parser.parse_file(SENTRY_FILE)
+    print(sentry_data)  # DEBUG
 
     all_sentries = []
-    name = lines[i+1][:-1]  # strip trailing CRLF
-    sentry_level = eval(lines[i+2])
-    position = eval(lines[i+3])
-    display_program = []
-    if sentry_level == level:  # only create the sentries for this game level
-        s = Sentry(world, position, name)
-        all_sentries.append(s)
-    i += 3  # skip on to next sentry
+    for data in sentry_data:
+        # use default values for any missing fields in data
+        if 'name' not in data:
+            data['name'] = 'sentry'
+        if 'level' not in data:
+            data['level'] = -1,
+        if 'position' not in data:
+            data['position'] = (0, 0)
+        data['programs'] = {'init': [], 'display': [], 'validate': []}
+        if 'init' in data:
+            data['programs']['init'] = data['init']
+        if 'display' in data:
+            data['programs']['display'] = data['display']
+        if 'validate' in data:
+            data['programs']['validate'] = data['validate']
+
+        # only create the sentries for this game level
+        # or those for whom no level was specified
+        if data['level'] == level or data['level'] == -1:
+            console_msg("creating sentry...", 7)
+            print(data['name'])
+            s = Sentry(world,
+                       data['name'],
+                       data['position'],
+                       data['programs'],
+                       )
+            all_sentries.append(s)
+            console_msg('sentry ' + data['name'] + ' created', 7)
     return all_sentries

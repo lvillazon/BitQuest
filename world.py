@@ -133,12 +133,11 @@ class World:
         # load robot sentries for this level
         self.sentries = sentry.load_sentries(self, level=1)
         # load puzzles for this level
-#        puzzle.load_puzzles(1, self)
+        #        puzzle.load_puzzles(1, self)
 
         # initialise info signposts
         self.signposts = Signposts(self.code_font)
         console_msg("Info panels initialised", 7)
-
 
         self.playing = True  # true when we are playing a level (not a menu)
         self.frame_draw_time = 1
@@ -376,10 +375,19 @@ class World:
                 self.player.moving_right = False
                 self.player.update(self.display, self.camera.scroll())
                 # run user program
-                # DEBUG self.editor.run_program()
-                # DEBUG test robot sentry program instead
-                for s in self.sentries:
-                    s.run_program()
+                success = self.editor.run_program()
+        else:
+            # check if any sentries have been clicked
+            for s in self.sentries:
+                if (s.is_at(pygame.mouse.get_pos(), self.camera.scroll()) and
+                        pygame.mouse.get_pressed(num_buttons=5)[0] and
+                        not s.python_interpreter.running):
+                    s.run_program('display')
+
+    def validate_attempt(self):
+        # TODO only check sentries that are within some predefined 'listening' range
+        for s in self.sentries:
+            s.is_challenge_complete(self.dog)
 
     def rewind_level(self):
         console_msg("Rewinding!", 8)
@@ -388,6 +396,9 @@ class World:
         self.player.set_position(self.blocks.get_player_start(self.puzzle))
         self.dog.set_position(self.blocks.get_dog_start(self.puzzle))
         self.dog.clear_speech_bubble()
+        # reset all robot sentries for this level
+        for s in self.sentries:
+            s.run_program('init')
 
     def end_of_level_display(self):
         # display end of level message
@@ -466,7 +477,7 @@ class World:
                 K_0, K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9
             ]
             for k in level_shortcuts:
-                if pressed[k]:
+                if pressed[k] and not self.rewinding:
                     self.puzzle = level_shortcuts.index(k)
                     self.rewind_level()
 
