@@ -225,10 +225,28 @@ class Character:
 
         # check for collisions with sentries
         for s in self.world.sentries:
-            if movement[X] > 0 and s.gridX() == self.gridX()+1:
-                rectangle.right = s.left()
-                collision_directions['right'] = True
-                print("colliding with", s.name)
+            if s.blocking:
+                if (movement[X] > 0 and
+                    s.gridX() == self.gridX()+1 and
+                    abs(s.gridY() - self.gridY()) <= 1):
+                    rectangle.right = s.location.x
+                    collision_directions['right'] = True
+                elif (movement[X] < 0 and
+                      s.gridX() == self.gridX()-1 and
+                      abs(s.gridY() - self.gridY()) <= 1):
+                    rectangle.left = s.location.x + s.size[X]
+                    collision_directions['left'] = True
+                elif (movement[Y] > 0 and
+                      s.gridY() == self.gridY()+1 and
+                      s.gridX() == self.gridX()):
+                    rectangle.bottom = s.location.y
+                    collision_directions['down'] = True
+                elif (movement[Y] < 0 and
+                      s.gridY() == self.gridY()-2 and
+                      s.gridX() == self.gridX()):
+                    rectangle.bottom= s.location.y + s.size[Y] + BLOCK_SIZE*2  # never actually tested this since it doesn't currently occur in game
+                    collision_directions['down'] = True
+
 
         return rectangle, collision_directions
 
@@ -300,6 +318,7 @@ class Robot(Character):
         self.python_interpreter = VirtualMachine(self)
         console_msg(name + " command interpreter initialised", 2)
         self.source_code = []
+        self.output = []
 
         self.jets = []  # the particle streams that appear when flying
         # create 2 jets, 1 for each leg
@@ -328,10 +347,13 @@ class Robot(Character):
             self.take_off_animation.append((0, 0))
             # self.take_off_animation.append((0, -8*i/32))
 
-    def clear_output(self):
+    def clear_all_output(self):
         # blanks the speech bubble, if present
+        # and also the internal record of the program output
         if self.speech_bubble:
             self.speech_bubble.clear()
+            self.speaking = False
+        self.output=[]
 
     def get_interpreter(self):
         return self.python_interpreter;
@@ -355,6 +377,7 @@ class Robot(Character):
         with contextlib.redirect_stdout(f):
             print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still use the end= keyword
             speech = f.getvalue()
+            self.output.append(str(*t))
         self.create_speech_bubble(speech,
                                  self.world.editor.get_fg_color(),
                                  self.world.editor.get_bg_color())
@@ -450,6 +473,7 @@ class Robot(Character):
         # run_enabled is set false on each run
         # and cleared using the reset button
         if self.python_interpreter.run_enabled:
+            self.clear_all_output()
             p = self.python_interpreter  # for brevity
             p.load(self.get_source_code())
             result, errors = p.compile()

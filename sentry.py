@@ -23,6 +23,7 @@ class Sentry(Robot):
         self.programs = programs
         self.active_program = self.programs['init']  # default to this one
         self.output = []
+        self.blocking = True
 
     def set_puzzle(self, instructions):
         pass
@@ -33,8 +34,8 @@ class Sentry(Robot):
         # force the enabled flag because sentries can run their code
         # at any time, not just once per puzzle attempt
         self.python_interpreter.run_enabled = True
-        self.clear_speech_bubble()
-        self.output = []
+#        self.clear_speech_bubble()
+#        self.output = []
         super().run_program()
 
     def get_source_code(self):
@@ -59,18 +60,20 @@ class Sentry(Robot):
         # of its own validation program
         if self.programs['validate']:
             self.run_program('validate')
-            if len(self.output) != len(dog.speech_bubble.text):
+            if len(self.output) != len(dog.output):
                 valid = False
             else:
                 valid = True
                 for i in range(len(self.output)):
-                    if self.output[i] != dog.speech_bubble.text[i].rstrip():
+                    if self.output[i] != dog.output[i].rstrip():
                         valid = False
             if valid:
                 self.say("Correct!")
+                self.blocking = False
             else:
+                expected = self.output.copy()
                 self.say("Incorrect! I expected:")
-                for line in self.output:
+                for line in expected:
                     self.say(line)
 
     def say(self, *t):

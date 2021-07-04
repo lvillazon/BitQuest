@@ -13,6 +13,9 @@ class TextPanel:
         self.fg_color = fg_color
         self.bg_color = bg_color
 
+    def clear(self):
+        self.text = []
+
     def get_rendered_text_width(self):
         # return width of the longest line
         max = 0
@@ -66,24 +69,27 @@ class TextPanel:
         return s
 
     def rendered(self):
-        panel = self.draw_panel(self.fg_color, self.bg_color)
+        if self.text:
+            panel = self.draw_panel(self.fg_color, self.bg_color)
 
-        # draw the lines of text, working upwards from the most recent,
-        # until the bubble is full
-        outline = self.get_outline_rect()
-        output_line = len(self.text) - 1
-        line_y_pos = (outline.size[Y]
-                      - BUBBLE_MARGIN
-                      - TEXT_MARGIN
-                      - self.font_size[Y])  # self.get_rendered_text_height())
-        color = self.fg_color
-        while line_y_pos >= TEXT_MARGIN and output_line >= 0:
-            line = self.font.render(self.text[output_line], True, color)
-            line_x_pos = BUBBLE_MARGIN + TEXT_MARGIN + BORDER_THICKNESS
-            panel.blit(line, (line_x_pos, line_y_pos))
-            output_line -= 1
-            line_y_pos -= self.font_size[Y]  #self.get_rendered_text_height()
-        return panel
+            # draw the lines of text, working upwards from the most recent,
+            # until the bubble is full
+            outline = self.get_outline_rect()
+            output_line = len(self.text) - 1
+            line_y_pos = (outline.size[Y]
+                          - BUBBLE_MARGIN
+                          - TEXT_MARGIN
+                          - self.font_size[Y])  # self.get_rendered_text_height())
+            color = self.fg_color
+            while line_y_pos >= TEXT_MARGIN and output_line >= 0:
+                line = self.font.render(self.text[output_line], True, color)
+                line_x_pos = BUBBLE_MARGIN + TEXT_MARGIN + BORDER_THICKNESS
+                panel.blit(line, (line_x_pos, line_y_pos))
+                output_line -= 1
+                line_y_pos -= self.font_size[Y]  #self.get_rendered_text_height()
+            return panel
+        else:
+            return None
 
 
 class SpeechBubble(TextPanel):

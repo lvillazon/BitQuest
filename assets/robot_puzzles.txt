@@ -16,5 +16,7 @@ for i in range(1, 6):
 ]
 </SENTRY>
 <SENTRY>
-name = 'test'
+name = 'XX3'
+level = 1
+position = (92, 3)
 </SENTRY>

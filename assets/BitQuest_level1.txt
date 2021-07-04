@@ -95,6 +95,6 @@ each section ends with ### on its own line:
 5, 'The Spiral', (126, 6), (125, 8)
 ###
 # signposts
-(10, 7), 'Puzzle 1', ['test']
+(10, 7), 'Puzzle 1', ['Welcome to BITQuest!', 'A & D move left & right']
 (13, 7), 'Puzzle 2', ['This is a much longer description to test how that looks.', 'line 2', 'line 3', 'line 4', 'line 5', 'line 6', 'and, finally, here is line 7']
 ###
