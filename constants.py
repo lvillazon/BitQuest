@@ -4,7 +4,7 @@ Global constants for BitQuest
 VERSION = "0.3"  # 0.x = beta testing phase
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
 SHOW_COLLIDERS = False  # draws outline around object colliders
-SHOW_LOGIN_MENU = False  # displays the initial menu screen before play
+SHOW_LOGIN_MENU = True  # displays the initial menu screen before play
 X = 0  # index values into a variety of positional tuples
 Y = 1
 
@@ -37,6 +37,9 @@ SENTRY_FILE = 'assets/robot_puzzles.txt'
 # XML stuff for files
 SENTRY_START = '<SENTRY>'
 SENTRY_END = '</SENTRY>'
+
+# Robot Sentry constants
+SENTRY_LISTENING_RANGE = 5
 
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console
@@ -124,3 +127,4 @@ COLOUR_MAP_EDITOR_BOXES = (0xc2, 0xc2, 0xa3)
 COLOUR_GRID_LINES = (0, 0, 0)
 COLOUR_MAP_EDIT_TEXT = (0, 0, 0)
 COLOUR_MAP_CURSOR = (255, 255, 255)
+

@@ -287,6 +287,8 @@ class World:
         # overlay any speech bubbles and info windows at the native resolution
         if self.dog.speaking:
             position = self.dog.speech_position()
+            if self.dog.facing_right:
+                position[X] += BLOCK_SIZE  # to put the callout spike next to his mouth
             position[X] = (position[X] - self.camera.scroll_x()) * SCALING_FACTOR + self.game_origin[X]
             position[Y] = (position[Y] - self.camera.scroll_y()) * SCALING_FACTOR + self.game_origin[Y]
             self.screen.blit(self.dog.get_speech_bubble(), position)
@@ -385,9 +387,11 @@ class World:
                     s.run_program('display')
 
     def validate_attempt(self):
-        # TODO only check sentries that are within some predefined 'listening' range
-        for s in self.sentries:
-            s.is_challenge_complete(self.dog)
+        if self.dog.speaking:
+            for s in self.sentries:
+                # only check sentries that are within 'listening' range
+                if abs(s.gridX() - self.dog.gridX()) <= SENTRY_LISTENING_RANGE:
+                    s.is_challenge_complete(self.dog)
 
     def rewind_level(self):
         console_msg("Rewinding!", 8)

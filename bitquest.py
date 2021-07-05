@@ -23,7 +23,7 @@ console_msg('Started. Version ' + VERSION, 0)
 import os
 DEFAULT = 0, 30  # used for single monitor display - put window in top left
 DEVON_OFFICE = -1250, 780  # centred on laptop display
-position = DEVON_OFFICE  # DEFAULT
+position = DEFAULT
 os.environ['SDL_VIDEO_WINDOW_POS'] = str(position[0]) + "," + str(position[1])
 
 pygame.init()
@@ -54,7 +54,9 @@ if not game_menu.quit():
             else:
                 game_world.update(game_world.player)
         else:
-            game_menu.display()
+            # the return value from the menu determines whether
+            # we keep playing or quit
+            game_world.playing = game_menu.display()
 
 # tidy up and quit
 pygame.quit()

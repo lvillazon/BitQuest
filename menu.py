@@ -24,7 +24,7 @@ class Menu:
         self.title_size = 28
         self.items_y_pos = 370
         self.title = "Main Menu"
-        self.items = ["Play", "Options", "Quit:"]
+        self.items = ["Play", "Quit"]  # TODO include 'options'
         self.selected_item = -1  # start off with nothing selected
         self.session = None
         self._bypass = bypass
@@ -125,11 +125,11 @@ class Menu:
                         self.selected_item += 1
                 elif pressed[K_RETURN]:
                     # activate the selected option
-                    if self.selected_item == 0:
+                    if self.items[self.selected_item] == 'Play':
                         self.play()
-                    elif self.selected_item == 1:
+                    elif self.items[self.selected_item] == 'Options':
                         self.options()
-                    elif self.selected_item == 2:
+                    elif self.items[self.selected_item] == 'Quit':
                         self._quit = True
                 else:
                     self.repeat_lock = False  # reset, since no key pressed
@@ -142,6 +142,8 @@ class Menu:
                     self._quit = True
 
             self.clock.tick(60)  # lock the framerate to 60fps
+
+        return self._return_to_game
 
     def display_text(self, text, font, y,
                      colour=COLOUR_MENU_TEXT,

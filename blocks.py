@@ -674,7 +674,7 @@ class BlockMap:
             for p in self.signposts.all_posts:
                 file.write(str(p.grid_positions[0]) + ', ')
                 file.write("'" + p.title + "', ")
-                file.write("'" + p.body + "'")
+                file.write(str(p.body))
                 file.write('\n')
             file.write(delimiter)
 

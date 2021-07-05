@@ -2,7 +2,8 @@
 <SENTRY>
 name = 'XX9'
 level = 1
-position = (70, 8)
+# sentry positioned off the map for now
+position = (999, 8)
 init = [
 ]
 display = [
@@ -14,9 +15,3 @@ validate = [
 for i in range(1, 6):
     print(i)
 ]
-</SENTRY>
-<SENTRY>
-name = 'XX3'
-level = 1
-position = (92, 3)
-</SENTRY>
