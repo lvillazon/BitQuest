@@ -1,17 +1,41 @@
 # Each robot sentry has a name and grid coordinate location
 <SENTRY>
 name = 'XX9'
-level = 1
-# sentry positioned off the map for now
-position = (999, 8)
+level = 2
+# tutorial sentry
+position = (13, 7)
 init = [
+import random
+print('I am setting my data to a random number')
+x = random.randint(1, 10)
+print(x)
+data = x
 ]
 display = [
 print('Hello. I am robot XX9')
-print('To proceed, print the numbers 1 to 5,')
-print('Each on a separate line.')
+print('My number is', data)
+print('What is my number?')
 ]
 validate = [
-for i in range(1, 6):
-    print(i)
+print(data)
 ]
+</SENTRY>
+<SENTRY>
+name = 'A1'
+level = 2
+# test sentry
+position = (47, 7)
+init = [
+import random
+data = random.randint(10, 20)
+]
+display = [
+print('Hello. I am robot A1')
+print("Take the number in 'data'")
+print('and add 3')
+print('What do you get?')
+]
+validate = [
+print(data + 3)
+]
+</SENTRY>

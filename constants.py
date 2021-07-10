@@ -1,10 +1,13 @@
 """
-Global constants for BitQuest
+Global config constants for BitQuest
 """
-VERSION = "0.3"  # 0.x = beta testing phase
+# TODO read this in from a file - using file_parser?
+
+VERSION = "0.4"  # 0.x = beta testing phase
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
 SHOW_COLLIDERS = False  # draws outline around object colliders
-SHOW_LOGIN_MENU = True  # displays the initial menu screen before play
+SHOW_LOGIN_MENU = False  # displays the initial menu screen before play
+ALLOW_COPY_PASTE = True
 X = 0  # index values into a variety of positional tuples
 Y = 1
 

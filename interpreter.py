@@ -146,10 +146,11 @@ class VirtualMachine:
             'bit_y': (self.world.get_bit_y, self.world.set_bit_y),
             'me_x': (self.world.get_player_x, self.world.set_player_x),
             'me_y': (self.world.get_player_y, self.world.set_player_y),
+            'data': (self.world.get_data, self.world.set_data)
         }
         # read/write variables need special treatment,
         # so we track them separately
-        self.writable_names = ['bit_x', 'bit_y']
+        self.writable_names = ['bit_x', 'bit_y']#, 'data']
 
     def load(self, source):
         # set the source code to interpret
@@ -177,6 +178,8 @@ class VirtualMachine:
             w = self.world_variables[v]  # for brevity
             target_value = frame.global_names[v]
             current_value = w[GET]()
+            if v=='data':
+                w[SET](self.robot, target_value)
             # the dog coords are the only variables that are read/write
             # so we only wait for these to sync up with the real world
             # Waiting for all variables causes the interpreter to stall
@@ -195,9 +198,9 @@ class VirtualMachine:
                     # we guarantee to update once per bytecode,
                     # but if the world is busy (eg moving blocks, keep calling
                     # update until it isn't
-                    self.world.update(self.world.dog)
+                    self.world.update(self.robot)
                     while self.world.busy():
-                        self.world.update(self.world.dog)
+                        self.world.update(self.robot)
 
                     current_value = w[GET]()
                     if current_value == target_value:
@@ -272,6 +275,7 @@ class VirtualMachine:
                 'bit_y': self.world.bit_y,
                 'me_x': self.world.player_x,
                 'me_y': self.world.player_y,
+                'data': self.world.data,
             }
         local_names.update(callargs)
         frame = Frame(code, global_names, local_names, self.frame)
@@ -446,9 +450,9 @@ class VirtualMachine:
             # we guarantee to update once per bytecode,
             # but if the world is busy (eg moving blocks, keep calling
             # update until it isn't
-            self.world.update(self.world.dog)
+            self.world.update(self.robot)
             while self.world.busy():
-                self.world.update(self.world.dog)
+                self.world.update(self.robot)
             # makes sure game variables in the program affect the world
             self.sync_world_variables(frame)
 
@@ -657,6 +661,10 @@ class VirtualMachine:
         a, b = self.popn(2)
         self.push(self.COMPARE_OPERATORS[opnum](a, b))
 
+    def byte_DUP_TOP(self):
+        # duplicate the reference on the top of the stack
+        self.push(self.top())
+
     def byte_FOR_ITER(self, jump):
         iter_object = self.top()
         try:
@@ -840,3 +848,9 @@ class VirtualMachine:
         'NOT': operator.not_,
         'INVERT': operator.inv,
     }
+
+    def byte_UNPACK_SEQUENCE(self, count):
+        # Unpacks TOS into count individual values, which are put onto the stack right-to-left
+        values = self.pop()
+        for v in reversed(values):
+            self.push(v)

@@ -26,11 +26,12 @@ https://github.com/pygame/pygame/issues/1722
 
 
 class World:
-    def __init__(self, screen, display, session):
+    def __init__(self, screen, display, session, level=2):
         console_msg('Initialising world.', 0)
         self.screen = screen
         self.display = display
         self.session = session
+        self.level = level
 
         # load play/rewind icon images
         self.rewinding = False
@@ -56,8 +57,7 @@ class World:
         self.run_enabled = True
 
         # load scenery layers
-        self.scenery = scenery.Scenery(self.display,
-                                       'Day', 'Field')
+        self.scenery = scenery.Scenery(self.display, self.level)
 
         self.camera = Camera()
 
@@ -80,10 +80,7 @@ class World:
         console_msg("Pixel font loaded", 3)
 
         # load puzzle blocks
-        self.blocks = blocks.BlockMap(self,
-                                      BLOCK_TILE_DICTIONARY_FILE,
-                                      BLOCK_TILESET_FILE,
-                                      self.camera)
+        self.blocks = blocks.BlockMap(self, self.camera, self.level)
         console_msg("Map loaded", 1)
 
         self.puzzle = 0  # TODO: load current progress from log file
@@ -118,10 +115,6 @@ class World:
         self.repeat_lock = False
 
         # intialise the python interpreter and editor
-        if pygame.scrap.get_init() is False:
-            pygame.scrap.init()
-        console_msg("Clipboard initialised", 2)
-
         self.editor = code_editor.CodeWindow(screen, 300,
                                              self.code_font,
                                              self.dog,
@@ -129,11 +122,6 @@ class World:
         input_height = self.code_font.get_linesize() * 3
         self.input = input_dialog.InputDialog(screen, input_height, self.code_font)
         console_msg("Editors initialised", 2)
-
-        # load robot sentries for this level
-        self.sentries = sentry.load_sentries(self, level=1)
-        # load puzzles for this level
-        #        puzzle.load_puzzles(1, self)
 
         # initialise info signposts
         self.signposts = Signposts(self.code_font)
@@ -143,6 +131,13 @@ class World:
         self.frame_draw_time = 1
         self.frame_counter = 0
         self.clock = pygame.time.Clock()
+
+        # load robot sentries for this level
+        self.sentries = sentry.load_sentries(self, self.level)
+        # initialise all sentries
+        for s in self.sentries:
+            s.run_program('init')
+
 
     def get_bit_x(self):
         return self.dog.gridX()
@@ -178,6 +173,25 @@ class World:
     player_x = property(get_player_x, set_player_x)
     player_y = property(get_player_y, set_player_y)
 
+    def get_data(self):
+        print('Looking up data for nearest robot sentry')
+        return self.get_next_sentry().get_data()
+
+    def set_data(self, robot, value):
+        print('setting data for', robot.name, 'to', value)
+        robot.set_data(value)
+
+    data = property(get_data, set_data)
+
+    def get_next_sentry(self):
+        # returns the next undefeated sentry
+        i = 0
+        while self.sentries[i].defeated:
+            i += 1
+
+        print("current sentry is", self.sentries[i].name)
+        return self.sentries[i]
+
     def busy(self):
         """ returns true if there is anything happening that must complete
         before the interpreter continues running the player's code.
@@ -212,15 +226,16 @@ class World:
         # draw the 'midground' blocks behind the characters
         self.blocks.update_midground(display, self.camera.scroll())
 
+        # draw all the robot sentries
+        # they are drawn before the player/dog so that they will remain behind them
+        for s in self.sentries:
+            s.update(display, self.camera.scroll())
+
         # move and render the player sprite
         self.player.update(display, self.camera.scroll())
 
         # move and render the dog
         self.dog.update(display, self.camera.scroll())
-
-        # draw all the robot sentries
-        for s in self.sentries:
-            s.update(display, self.camera.scroll())
 
         # draw the 'foreground' blocks in front of the characters
         # this is just foliage and other cosmetic stuff
@@ -284,6 +299,12 @@ class World:
                                      - self.input.height)
             self.screen.blit(self.input.surface, input_dialog_position)
 
+        # draw the grid overlay next so it is on top of all blocks
+        if self.blocks.show_grid:
+            self.blocks.draw_grid(self.screen, self.game_origin)
+        # previously, the grid took the colour from the editor choice
+        #                                  self.editor.get_fg_color())
+
         # overlay any speech bubbles and info windows at the native resolution
         if self.dog.speaking:
             position = self.dog.speech_position()
@@ -293,7 +314,7 @@ class World:
             position[Y] = (position[Y] - self.camera.scroll_y()) * SCALING_FACTOR + self.game_origin[Y]
             self.screen.blit(self.dog.get_speech_bubble(), position)
 
-        # do the same for any sentries
+        # do the same for any sentries that are speaking
         for s in self.sentries:
             if s.speaking:
                 position = s.speech_position()
@@ -305,12 +326,6 @@ class World:
 
         # draw the swirling dust - DEBUG disabled due to looking bad
         # self.dust_storm.update(self.screen, self.game_origin[Y], scroll)
-
-        # draw the grid overlay next so it is on top of all blocks
-        if self.blocks.show_grid:
-            self.blocks.draw_grid(self.screen, self.game_origin)
-        # previously, the grid took the colour from the editor choice
-        #                                  self.editor.get_fg_color())
 
         # draw the map editor info panel and block palette
         if self.blocks.map_edit_mode:
@@ -366,6 +381,8 @@ class World:
             # button 0 is left click
             if not self.rewinding and pygame.mouse.get_pressed(num_buttons=5)[0]:
                 # Rewind everything to the start of the level
+                self.dog.stop()
+                self.dog.get_interpreter().halt()
                 self.rewind_level()
                 self.dog.get_interpreter().run_enabled = True
         elif self.play_button_rect.collidepoint(*pygame.mouse.get_pos()):
@@ -396,6 +413,9 @@ class World:
     def rewind_level(self):
         console_msg("Rewinding!", 8)
         self.rewinding = True
+        # wait for any moving blocks to finish
+        while self.blocks.busy:
+            self.update(self.player)
         self.blocks.reset()
         self.player.set_position(self.blocks.get_player_start(self.puzzle))
         self.dog.set_position(self.blocks.get_dog_start(self.puzzle))
@@ -495,7 +515,7 @@ class World:
 
                 if pressed[K_F9]:
                     console_msg("Saving map...", 1, line_end='')
-                    self.blocks.save_grid()
+                    self.blocks.save_grid(self.level)
                     console_msg("done", 1)
                 elif pressed[K_RIGHT]:
                     self.blocks.cursor_right()

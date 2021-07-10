@@ -55,8 +55,7 @@ class CodeWindow(Editor):
                 if button_result == button_tray.RUN:
                     self.run_program()
                 elif button_result == button_tray.STOP:
-                    console_msg("Execution halted.", 1)
-                    self.python_interpreter.halt()
+                    self.robot.halt_program()
                 elif button_result == button_tray.LOAD:
                     self.load_program()
                 elif button_result == button_tray.SAVE:

@@ -230,7 +230,7 @@ def is_on_screen(grid_coords, scroll):
 
 class BlockMap:
 
-    def __init__(self, world, tile_dictionary_file, tileset_file, camera):
+    def __init__(self, world, camera, level=1):
         """ The level maps are defined using text files that use
         ASCII symbols to represent each tile type.
         For example a complete pillar is
@@ -240,7 +240,7 @@ class BlockMap:
         """
         self.world = world  # link back to the world game state
         self.camera = camera  # link to the game camera, so we can access the scroll value
-        self.level = 0  # placeholder; load_grid sets this
+        self.level = level
 
         # The tile dictionary is used to convert the ASCII tile symbols
         # used in the map file to the images for the tiles themselves.
@@ -254,7 +254,7 @@ class BlockMap:
         #      The list is normally just one element long
         #      but triggers will have extra elements for animation frames
 
-        with open(tile_dictionary_file, 'r') as file:
+        with open(BLOCK_TILE_DICTIONARY_FILE, 'r') as file:
             lines = file.readlines()
             tile_dict = {}
             for file_line in lines:
@@ -282,7 +282,7 @@ class BlockMap:
                                        grid_size - GRID_LINE_WIDTH,
                                        grid_size - GRID_LINE_WIDTH)
 
-        self.tile_sheet = sprite_sheet.SpriteSheet(tileset_file)
+        self.tile_sheet = sprite_sheet.SpriteSheet(BLOCK_TILESET_FILE)
 
         # store blocks in a dict indexed by grid position
         # this gives way better performance than a simple list
@@ -347,7 +347,7 @@ class BlockMap:
         self.signposts = None
 
         # build the layer dictionaries from the level map
-        self.load_grid(level=1)
+        self.load_grid(self.level)
         # set the default starting tile for the editor
         # self.current_editor_tile = self.editor_palette[0]
         self.cursor_block = Block(self.tile_images,
@@ -1136,7 +1136,7 @@ class BlockMap:
                 self.current_layer.pop((self.cursor[X], self.cursor[Y]))
         else:
             if existing_block:
-                existing_block.setType(self.cursor_block.type)
+                existing_block.set_type(self.cursor_block.type)
             else:
                 # create new block that is a clone of the currently
                 # selected block shown in the edit info box

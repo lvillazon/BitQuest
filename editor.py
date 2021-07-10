@@ -69,7 +69,17 @@ class Editor:
                                pygame.K_a: self.select_all,
                                pygame.K_z: self.undo,
                                }
-
+        # initialise the clipboard
+        if pygame.scrap.get_init() is False:
+            pygame.scrap.init()
+        console_msg("Clipboard status: " + str(pygame.scrap.get_init()), 2)
+        # get the correct type for the clipboard text
+        # this seems to vary from version to version of pygame
+        self.clipboard_type = None  # default results in disabled clipboard
+        for t in pygame.scrap.get_types():
+            if "text" in t:  # trust that this means it is a valid text type
+                self.clipboard_type = t
+                console_msg("Clipboard type set to " + t, 6)
 
         console_msg("Editor row width =" + str(self.row_width), 8)
 
@@ -164,20 +174,25 @@ class Editor:
         else:
             self.delete_selected_text()
 
+    def normalise_selection(self):
+        # makes sure that selection_start comes before selection_end
+        # if the text has been selected from the bottom and selecting up
+        # then the start and end will need to be swapped
+        start_pos = (self.selection_start[Y] * self.row_width
+                     + self.selection_start[X])
+        end_pos = (self.selection_end[Y] * self.row_width
+                   + self.selection_end[X])
+        if start_pos > end_pos:
+            temp = self.selection_start
+            self.selection_start = self.selection_end
+            self.selection_end = temp
+
     def delete_selected_text(self):
         if (self.selection_start != self.selection_end and
                 self.text):
             console_msg("Deleting selection", 8, line_end='')
             # make sure the selection start is the top left of the block
-            start_pos = (self.selection_start[Y] * self.row_width
-                         + self.selection_start[X])
-            end_pos = (self.selection_end[Y] * self.row_width
-                       + self.selection_end[X])
-            if start_pos > end_pos:
-                temp = self.selection_start
-                self.selection_start = self.selection_end
-                self.selection_end = temp
-
+            self.normalise_selection()
             self.save_history()
             # prevent backspace() from also trying to delete the block
             self.deleting_block = True
@@ -376,11 +391,36 @@ class Editor:
             self.add_keystroke(i, undo=False)
 
     def clipboard_cut(self):
-        console_msg("CUT", 8)
-        self.save_history()
+        if ALLOW_COPY_PASTE:
+            # only cut if there is a selection and we are in the middle of deleting,
+            if (not self.deleting_block and
+                    self.selection_start != self.selection_end):
+                self.clipboard_copy()
+                self.backspace()
+                console_msg("CUT", 8)
+                self.save_history()
+
+    def get_selected_text(self):
+        # save the current cursor position, so we can restore it afterwards
+        old_cursor = (self.cursor_col, self.cursor_line)
+        self.normalise_selection()
+        # move the cursor to the start of the selection
+        self.cursor_col, self.cursor_line = self.selection_start
+        # copy each character to a buffer
+        buffer = []
+        while (self.cursor_col, self.cursor_line) != self.selection_end:
+            if self.cursor_col < len(self.text[self.cursor_line]):
+                buffer.append(self.text[self.cursor_line][self.cursor_col])
+            self.cursor_right()
+        # restore cursor pos
+        self.cursor_col, self.cursor_line = old_cursor
+        return ''.join(buffer)
 
     def clipboard_copy(self):
-        console_msg("COPY", 8)
+        if ALLOW_COPY_PASTE:
+            # convert the text to generic byte sequence for the clipboard
+            pygame.scrap.put(self.clipboard_type, bytes(self.get_selected_text(), 'utf-8'))
+            console_msg("COPY", 8)
 
     def clipboard_paste(self):
         """ paste the clipboard contents into the editor window
@@ -390,18 +430,20 @@ class Editor:
         Text pasted from pycharm (and possibly IDLE too?) is encoded as HTML
         but this seems to paste ok for now
         """
-        console_msg("PASTE, 8")
-        self.save_history()
-        # strip trailing nulls
-        clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT) \
-            .decode("utf-8", errors='ignore').replace('\0', '')
+        if ALLOW_COPY_PASTE and self.clipboard_type is not None:
+            console_msg("PASTE, 8")
+            self.save_history()
+            clipboard = pygame.scrap.get(self.clipboard_type)
+            if clipboard:
+                # strip trailing nulls
+                clipboard_text = clipboard.decode("utf-8", errors='ignore').replace('\0', '')
 
-        for char in clipboard_text:
-            # paste the chars in the keyboard, 1 at a time
-            if char is chr(13):
-                self.carriage_return(undo=False, pasting=True)
-            elif chr(32) <= char <= chr(126):  # only allow ASCII
-                self.add_keystroke(char, undo=False)
+                for char in clipboard_text:
+                    # paste the chars in the keyboard, 1 at a time
+                    if char is chr(13):
+                        self.carriage_return(undo=False, pasting=True)
+                    elif chr(32) <= char <= chr(126):  # only allow ASCII
+                        self.add_keystroke(char, undo=False)
 
     def start_selecting(self):
         self.selecting = True

@@ -1,19 +1,32 @@
 import os
 import pygame
+
+from console_messages import console_msg
 from constants import *
 
 class Scenery:
     GROUND_LEVEL_OFFSET = -112  # offset for background layers
 
-    def __init__(self, surface, time_of_day, landscape):
+    def __init__(self, surface, level_number):
         self.surface = surface
+        time_of_day, landscape = self.get_level_description(level_number)
         self.scenery_layers = self.load_scenery('assets', time_of_day,
                                                 landscape)
         self.tile_width = self.scenery_layers[0]['tile'].get_rect().size[X]
 
+    def get_level_description(self, level):
+        # map level numbers to scenery types
+        # these are used to look up the correct files for the background
+        if level == 1:
+            return 'Day', 'Field'
+        elif level == 2:
+            return 'Day', 'Desert'
+        else:
+            console_msg("Invalid level number:" + str(level), 0)
+            return None, None
+
     def load_scenery(self, folder, time_of_day, landscape):
         scenery = []
-        # build the folder name for this set of scenery images
         path = '{0}/{1}/{2} {1}/'.format(folder, time_of_day, landscape)
         file_count = len(os.listdir(path))
         for i in range(file_count):

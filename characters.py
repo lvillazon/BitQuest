@@ -271,6 +271,12 @@ class Character:
     def gridY(self):
         return round(self.location[Y] / BLOCK_SIZE)
 
+    def stop(self):
+        self.moving_up = False
+        self.moving_down = False
+        self.moving_left = False
+        self.moving_right = False
+
 
 class Person(Character):
     """ can only run left and right, and is subject to gravity """
@@ -377,7 +383,8 @@ class Robot(Character):
         with contextlib.redirect_stdout(f):
             print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still use the end= keyword
             speech = f.getvalue()
-            self.output.append(str(*t))
+            for value in t:
+                self.output.append(str(value))
         self.create_speech_bubble(speech,
                                  self.world.editor.get_fg_color(),
                                  self.world.editor.get_bg_color())
@@ -490,6 +497,10 @@ class Robot(Character):
             return result, errors
         return False, "RUN NOT ENABLED"
 
+    def halt_program(self):
+        console_msg("Execution halted.", 1)
+        self.python_interpreter.halt()
+
     def get_source_code(self):
         # convert code from a list of lists of chars (as supplied by code editor)
         # to a list of strings (as required by the interpreter)
@@ -497,3 +508,15 @@ class Robot(Character):
 
     def set_source_code(self, statement_list):
         self.source_code = statement_list
+
+    def get_data(self):
+        # stub, since BIT does not have a data field
+        # this is overridden for the sentry objects
+        return 0
+
+    def set_data(self, value):
+        # stub, since BIT does not have a data field
+        # this is overridden for the sentry objects
+        pass
+
+    data = property(get_data, set_data)

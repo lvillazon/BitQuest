@@ -85,8 +85,11 @@ class Session:
                 file.write(self.open_tag + "/USER_PROGRAM" + self.close_tag)
             if errors:
                 file.write(self.open_tag + "ERROR" + self.close_tag)
-                for line in errors:
-                    file.write(line + NEW_LINE)
+                if isinstance(errors, list):
+                    file.write(NEW_LINE.join(errors))
+                else:
+                    file.write(errors)
+                file.write(NEW_LINE)
                 file.write(self.open_tag + "/ERROR" + self.close_tag)
             file.write(self.section_delimiter)
 

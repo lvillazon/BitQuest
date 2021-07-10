@@ -24,19 +24,25 @@ class Sentry(Robot):
         self.active_program = self.programs['init']  # default to this one
         self.output = []
         self.blocking = True
+#        self.standing_left_frame = self.move_left_frames[0]
+#        self.standing_right_frame = self.move_left_frames[1]
+        self.facing_right = False
+        self.testdata = -99
+        self.defeated = False
 
     def set_puzzle(self, instructions):
         pass
 
     def run_program(self, program_name):
-        # allows the sentry to switch between several available programs
-        self.active_program = self.programs[program_name]
-        # force the enabled flag because sentries can run their code
-        # at any time, not just once per puzzle attempt
-        self.python_interpreter.run_enabled = True
-#        self.clear_speech_bubble()
-#        self.output = []
-        super().run_program()
+        if not self.defeated:
+            # allows the sentry to switch between several available programs
+            self.active_program = self.programs[program_name]
+            # force the enabled flag because sentries can run their code
+            # at any time, not just once per puzzle attempt
+            self.python_interpreter.run_enabled = True
+    #        self.clear_speech_bubble()
+    #        self.output = []
+            super().run_program()
 
     def get_source_code(self):
         # override method from Robot, to allow code to stay as a list of strings
@@ -70,6 +76,8 @@ class Sentry(Robot):
             if valid:
                 self.say("Correct!")
                 self.blocking = False
+                self.facing_right = True  # select the frame to show he is standing aside
+                self.defeated = True
             else:
                 expected = self.output.copy()
                 self.say("Incorrect! I expected:")
@@ -81,10 +89,22 @@ class Sentry(Robot):
         # and compare to the player's code, before displaying the results
         if (self.active_program == self.programs['validate'] and
                 self.python_interpreter.running):
-            self.output.append(str(*t))
+            for value in t:
+                self.output.append(str(value))
             print(self.output)
         else:
             super().say(*t)
+
+
+    def get_data(self):
+        print('Looking up data for robot sentry')
+        return self.testdata
+
+    def set_data(self, value):
+        print('setting data to', value)
+        self.testdata = value
+
+
 
 def load_sentries(world, level):
     # load all the sentries for a given level from the file
