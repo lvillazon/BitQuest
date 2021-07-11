@@ -12,7 +12,7 @@ data = random.choice(words)
 display = [
 print("Hello. I am robot XX9")
 print("To proceed, you must")
-print("guess my top secret")
+print("print my top secret")
 print("password.")
 print("This is stored in the")
 print("variable 'data'.")
@@ -136,6 +136,9 @@ print("number I am thinking")
 print("of, but repeat it that")
 print("many times, each on a")
 print("different line?")
+print("eg:")
+print("2")
+print("2")
 ]
 validate = [
 for i in range(data):

@@ -24,10 +24,11 @@ class Menu:
         self.title_size = 28
         self.items_y_pos = 370
         self.title = "Main Menu"
-        self.items = ["Play", "Quit"]  # TODO include 'options'
+        self.items = ["Level 1", "Level 2", "Level 3", "Quit"]  # TODO include 'options'
         self.selected_item = -1  # start off with nothing selected
         self.session = None
         self._bypass = bypass
+        self.level = 0  # default, invalid level number
 
         if self._bypass:
             self.session = Session("dummy_user", "dummy_class")
@@ -125,8 +126,9 @@ class Menu:
                         self.selected_item += 1
                 elif pressed[K_RETURN]:
                     # activate the selected option
-                    if self.items[self.selected_item] == 'Play':
-                        self.play()
+                    if "Level" in self.items[self.selected_item]:
+                        self.level = int(self.items[self.selected_item][-1])
+                        self.play();
                     elif self.items[self.selected_item] == 'Options':
                         self.options()
                     elif self.items[self.selected_item] == 'Quit':

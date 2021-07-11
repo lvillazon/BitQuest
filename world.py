@@ -26,7 +26,7 @@ https://github.com/pygame/pygame/issues/1722
 
 
 class World:
-    def __init__(self, screen, display, session, level=2):
+    def __init__(self, screen, display, session, level=1):
         console_msg('Initialising world.', 0)
         self.screen = screen
         self.display = display
@@ -174,11 +174,9 @@ class World:
     player_y = property(get_player_y, set_player_y)
 
     def get_data(self):
-        print('Looking up data for nearest robot sentry')
         return self.get_next_sentry().get_data()
 
     def set_data(self, robot, value):
-        print('setting data for', robot.name, 'to', value)
         robot.set_data(value)
 
     data = property(get_data, set_data)
@@ -188,8 +186,6 @@ class World:
         i = 0
         while self.sentries[i].defeated:
             i += 1
-
-        print("current sentry is", self.sentries[i].name)
         return self.sentries[i]
 
     def busy(self):
@@ -212,9 +208,10 @@ class World:
         """update all the game world stuff
         focus is the character that the camera follows
         This is the dog when a program is running on BIT, otherwise the player"""
+        if isinstance(focus, sentry.Sentry):
+            focus = self.player
 
         display = self.display  # for brevity
-
         frame_start_time = time.time_ns()  # used to calculate fps
 
         # track the camera with the focus character, but with a bit of lag

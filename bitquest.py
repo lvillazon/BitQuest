@@ -36,7 +36,8 @@ display = pygame.Surface(DISPLAY_SIZE)
 
 game_world = None
 game_menu = menu.Menu(screen, bypass=not SHOW_LOGIN_MENU)
-game_menu.display()
+level = game_menu.display()
+print("level", level)
 
 if not game_menu.quit():
     # create the world
@@ -48,6 +49,9 @@ if not game_menu.quit():
         # so we don't want to do it here as well, because it will just slow the
         # intepreter down
         if game_world.playing:
+            if game_menu.level != game_world.level:
+                # recreate the entire world to switch to the new level
+                game_world = world.World(screen, display, game_menu.session, game_menu.level)
             # keep the camera focussed on BIT while he is doing something
             if game_world.dog.busy:
                 game_world.update(game_world.dog)

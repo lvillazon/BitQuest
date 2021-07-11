@@ -97,11 +97,10 @@ class Sentry(Robot):
 
 
     def get_data(self):
-        print('Looking up data for robot sentry')
         return self.testdata
 
     def set_data(self, value):
-        print('setting data to', value)
+        console_msg('setting ' + self.name + ' data to ' + str(value))
         self.testdata = value
 
 

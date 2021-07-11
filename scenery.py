@@ -21,6 +21,8 @@ class Scenery:
             return 'Day', 'Field'
         elif level == 2:
             return 'Day', 'Desert'
+        elif level == 3:
+            return 'Day', 'Hills'
         else:
             console_msg("Invalid level number:" + str(level), 0)
             return None, None

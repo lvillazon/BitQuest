@@ -1,0 +1,70 @@
+Level data is split into 6 sections,
+each section ends with ### on its own line:
+   1. This section is for comments only and is ignored.
+   2. The midground section shows the arrangements of collidable blocks 
+      and triggers.
+   3. Foreground layer is drawn on top of the player and doesn't collide.
+   4. The next section defines the blocks that move when triggered.
+   5. This section defines the trigger locations, as x, y and
+      block group number, each on their own line.
+   6. This lists the names of each puzzle on the level,
+      and the (x,y) coordinates for the player and dog start positions.
+   7. This lists all info signposts as:
+      x, y coords of the top left of the signpost, title, body text.
+###
+                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                 u
+                                 ZX                                              ZX                                             ZX                                              ZX                                              ZX               o          
+          fg                     CV fg                    fg                     CV fg                   fg                     CV fg                    fg                     CV fg                    fg                     CV fg            i          
+   =      FG                     NM FG                    FG                     NM FG                   FG                     NM FG                    FG                     NM FG                    FG                     NM FG            o          
+9Pp123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678         
+1[]                                                                                                                                                                                                                                                         
+ []                                                                                                                                                                                                                                                         
+###
+                                                                                                                                                                                                                                                            
+
+
+                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                  9qw90qw90w9
+                                                                                                                                                                                                                                                  12345678123
+                                                                                                                                                                                                                                                  23456781234
+                                                                                                                                                                                                                                                  34567812345
+123                                                                                                                                                                                                                                               45678123456
+8122345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123
+                                                                                                                                                                                                                                                            
+###
+# movers
+1, [(1, 9), (2, 11), (2, 9), (2, 10), (1, 10), (1, 11), ]
+###
+# triggers
+'flagpole', 'Introduction', (33, 8)
+'flagpole', 'P2', (81, 8)
+'flagpole', 'P3', (128, 8)
+'flagpole', 'P4', (176, 8)
+'flagpole', 'P5', (224, 8)
+'pressure plate', True, (3, 8), [(1, (0, -3)), ]
+###
+# puzzle start positions
+0, 'Introduction', (6, 6), (8, 8)
+1, 'P2', (83, 6), (87, 8)
+2, 'P3', (130, 6), (134, 8)
+3, 'P4', (178, 6), (182, 8)
+4, 'P5', (226, 6), (230, 8)
+###
+# signposts
+(10, 7), 'Welcome traveller!', ['A: left', 'D: right', 'W: look up', 'S: look down']
+(36, 7), 'Puzzle 1 complete', ['text']
+(58, 7), 'Hint 1', ['text']
+(84, 7), 'Puzzle 2 complete', ['text']
+(105, 7), 'Hint 2', ['text']
+(131, 7), 'Puzzle 3 complete', ['text']
+(153, 7), 'Hint 3', ['text']
+(179, 7), 'Puzzle 4 complete', ['text']
+(201, 7), 'Hint 4', ['text']
+(227, 7), 'Puzzle 5 complete', ['text']
+###
