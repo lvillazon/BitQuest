@@ -8,6 +8,7 @@ CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
 SHOW_COLLIDERS = False  # draws outline around object colliders
 SHOW_LOGIN_MENU = False  # displays the initial menu screen before play
 ALLOW_COPY_PASTE = True
+BYPASS_SENTRIES = False  # setting True, makes sentries non-collidable, for testing
 X = 0  # index values into a variety of positional tuples
 Y = 1
 
@@ -42,7 +43,7 @@ SENTRY_START = '<SENTRY>'
 SENTRY_END = '</SENTRY>'
 
 # Robot Sentry constants
-SENTRY_LISTENING_RANGE = 5
+SENTRY_LISTENING_RANGE = 15
 
 # editor constants
 DEBUG = False  # when true enables extra debug messages in the console

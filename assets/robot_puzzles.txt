@@ -6,15 +6,18 @@ level = 2
 position = (13, 7)
 init = [
 import random
-print('I am setting my data to a random number')
-x = random.randint(1, 10)
-print(x)
-data = x
+words = ['fish', 'banana', 'open', 'password', 'robot', 'secret', 'weird', 'aha!', 'letmein', 'igiveup', 'dinosaur']
+data = random.choice(words)
 ]
 display = [
-print('Hello. I am robot XX9')
-print('My number is', data)
-print('What is my number?')
+print("Hello. I am robot XX9")
+print("To proceed, you must")
+print("guess my top secret")
+print("password.")
+print("This is stored in the")
+print("variable 'data'.")
+print("Oops! I didn't mean")
+print("to tell you that!")
 ]
 validate = [
 print(data)
@@ -23,11 +26,11 @@ print(data)
 <SENTRY>
 name = 'A1'
 level = 2
-# test sentry
+# Add 3 to data
 position = (47, 7)
 init = [
 import random
-data = random.randint(10, 20)
+data = random.randint(1, 100)
 ]
 display = [
 print('Hello. I am robot A1')
@@ -39,3 +42,104 @@ validate = [
 print(data + 3)
 ]
 </SENTRY>
+<SENTRY>
+name = 'Q19'
+level = 2
+# say opposite of a colour
+position = (95, 7)
+init = [
+import random
+colours = ['red', 'green', 'yellow', 'blue', 'black', 'white']
+data = random.choice(colours)
+]
+display = [
+print("The password is the")
+print("opposite of my favourite")
+print("colour.")
+print("red/green are opposites,")
+print("so are yellow/blue and")
+print("black/white.")
+]
+validate = [
+if data == 'red':
+    print('green')
+if data == 'green':
+    print('red')
+if data == 'yellow':
+    print('blue')
+if data == 'blue':
+    print('yellow')
+if data == 'black':
+    print('white')
+if data == 'white':
+    print('black')
+]
+
+</SENTRY>
+<SENTRY>
+name = 'ZR14'
+level = 2
+# greater or less than
+position = (142, 7)
+init = [
+import random
+data = random.randint(1,10)
+]
+display = [
+print("If the number I am")
+print("thinking of is greater")
+print("than 5, the password")
+print("is 'hello',")
+print("otherwise, it is")
+print("'goodbye'")
+]
+validate = [
+if data > 5:
+    print('hello')
+else:
+    print('goodbye')
+]
+</SENTRY>
+<SENTRY>
+name = 'BB9'
+level = 2
+# fave colour + robot
+position = (190, 7)
+init = [
+import random
+colours = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
+data = random.choice(colours)
+]
+display = [
+print("The password is")
+print("my favourite colour")
+print("with 'robot' after it")
+print("eg 'red robot'")
+]
+validate = [
+print(data, 'robot')
+]
+</SENTRY>
+<SENTRY>
+name = 'KL50'
+level = 2
+# Extension exercise
+position = (238, 7)
+init = [
+import random
+data = random.randint(1, 10)
+]
+display = [
+print("Extension!")
+print("Can you print out the")
+print("number I am thinking")
+print("of, but repeat it that")
+print("many times, each on a")
+print("different line?")
+]
+validate = [
+for i in range(data):
+    print(data)
+]
+</SENTRY>
+

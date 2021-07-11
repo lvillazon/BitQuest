@@ -23,12 +23,12 @@ class Sentry(Robot):
         self.programs = programs
         self.active_program = self.programs['init']  # default to this one
         self.output = []
-        self.blocking = True
 #        self.standing_left_frame = self.move_left_frames[0]
 #        self.standing_right_frame = self.move_left_frames[1]
         self.facing_right = False
         self.testdata = -99
-        self.defeated = False
+        self.defeated = BYPASS_SENTRIES  # normally set True, but False for testing
+        self.blocking = not self.defeated
 
     def set_puzzle(self, instructions):
         pass

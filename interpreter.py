@@ -728,6 +728,14 @@ class VirtualMachine:
         list = self.frame.stack[-count]  # peek without popping
         list.append(val)
 
+    def byte_LIST_EXTEND(self, count):
+        # added LPV v0.4
+        # Calls list.extend(TOS1[-i], TOS). Used to build lists.
+        val = self.pop()
+        this_list = self.pop()
+        this_list.extend(val)
+        self.push(this_list)
+
     def byte_LOAD_CONST(self, const):
         # add a literal to the stack
         self.push(const)
