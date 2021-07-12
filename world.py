@@ -174,7 +174,11 @@ class World:
     player_y = property(get_player_y, set_player_y)
 
     def get_data(self):
-        return self.get_next_sentry().get_data()
+        s = self.get_next_sentry()
+        if s:
+            return s.get_data()
+        else:
+            return None
 
     def set_data(self, robot, value):
         robot.set_data(value)
@@ -184,9 +188,12 @@ class World:
     def get_next_sentry(self):
         # returns the next undefeated sentry
         i = 0
-        while self.sentries[i].defeated:
+        while i < len(self.sentries) and self.sentries[i].defeated:
             i += 1
-        return self.sentries[i]
+        if i < len(self.sentries):
+            return self.sentries[i]
+        else:
+            return None
 
     def busy(self):
         """ returns true if there is anything happening that must complete

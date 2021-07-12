@@ -158,8 +158,11 @@ class Flagpole(Trigger):
             self.world.complete_level(self.name)
             self.activated = True
         elif self.activated:
+            # TEST
             # teleport the dog to this location
-            self.world.dog.set_position(self.blocks[0].get_grid_position())
+            # used to make things easier for level 2
+            # so you don't need to get BIT to catch up all the time
+            # self.world.dog.set_position(self.blocks[0].get_grid_position())
             # update the animation frame for the waving effect
             if self.flap_count > 0:
                 self.frame_number = self.frame_number + .1

@@ -600,14 +600,22 @@ class VirtualMachine:
     def binaryOperator(self, op):
         # handles all the operations that take the form 'a [op] b', eg 2 + 4
         a, b = self.popn(2)
-        self.push(self.INPLACE_OPERATORS[op](a, b))
+#        self.push(self.INPLACE_OPERATORS[op](a, b))
+# TEST: CAN I REALLY HAVE MISSED THIS BUG???
+# the line above is being test swapped with the line below
+# this is to fix a subtle bug in list indexing, that surely would have manifested before now
+        self.push(self.BINARY_OPERATORS[op](a, b))
 
     def inplaceOperator(self, op):
         # handles all the in-place operators
         # that perform a = a [op] b, eg a += 1
         a, b = self.popn(2)
 
-        self.push(self.BINARY_OPERATORS[op](a, b))
+#        self.push(self.BINARY_OPERATORS[op](a, b))
+    # TEST: CAN I REALLY HAVE MISSED THIS BUG???
+    # the line above is being test swapped with the line below
+    # this is to fix a subtle bug in list indexing, that surely would have manifested before now
+        self.push(self.INPLACE_OPERATORS[op](a, b))
 
     def byte_BUILD_CONST_KEY_MAP(self, size):
         keys = self.pop()
@@ -724,6 +732,8 @@ class VirtualMachine:
         self.push(val)
 
     def byte_LIST_APPEND(self, count):
+        # Calls list.append(TOS[-i], TOS).
+        # Used to implement list comprehensions.
         val = self.pop()
         list = self.frame.stack[-count]  # peek without popping
         list.append(val)
@@ -731,10 +741,12 @@ class VirtualMachine:
     def byte_LIST_EXTEND(self, count):
         # added LPV v0.4
         # Calls list.extend(TOS1[-i], TOS). Used to build lists.
+        #TODO figure out why LIST_EXTEND needs self.stack
+        # but LIST_APPEND uses self.frame.stack
+        # I don't think I'm implementing frames properly
         val = self.pop()
-        this_list = self.pop()
-        this_list.extend(val)
-        self.push(this_list)
+        list = self.stack[-count]  # peek without popping
+        list.extend(val)
 
     def byte_LOAD_CONST(self, const):
         # add a literal to the stack

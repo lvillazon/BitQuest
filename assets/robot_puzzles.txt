@@ -43,10 +43,54 @@ print(data + 3)
 ]
 </SENTRY>
 <SENTRY>
+name = 'BB9'
+level = 2
+# fave colour + robot
+position = (95, 7)
+init = [
+import random
+colours = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
+data = random.choice(colours)
+]
+display = [
+print("The password is")
+print("my favourite colour")
+print("with 'robot' after it")
+print("eg 'red robot'")
+]
+validate = [
+print(data, 'robot')
+]
+</SENTRY>
+<SENTRY>
+name = 'ZR14'
+level = 2
+# greater or less than
+position = (142, 7)
+init = [
+import random
+data = random.randint(1,10)
+]
+display = [
+print("If the number I am")
+print("thinking of is greater")
+print("than 5, the password")
+print("is 'hello',")
+print("otherwise, it is")
+print("'goodbye'")
+]
+validate = [
+if data > 5:
+    print('hello')
+else:
+    print('goodbye')
+]
+</SENTRY>
+<SENTRY>
 name = 'Q19'
 level = 2
 # say opposite of a colour
-position = (95, 7)
+position = (190, 7)
 init = [
 import random
 colours = ['red', 'green', 'yellow', 'blue', 'black', 'white']
@@ -77,50 +121,6 @@ if data == 'white':
 
 </SENTRY>
 <SENTRY>
-name = 'ZR14'
-level = 2
-# greater or less than
-position = (142, 7)
-init = [
-import random
-data = random.randint(1,10)
-]
-display = [
-print("If the number I am")
-print("thinking of is greater")
-print("than 5, the password")
-print("is 'hello',")
-print("otherwise, it is")
-print("'goodbye'")
-]
-validate = [
-if data > 5:
-    print('hello')
-else:
-    print('goodbye')
-]
-</SENTRY>
-<SENTRY>
-name = 'BB9'
-level = 2
-# fave colour + robot
-position = (190, 7)
-init = [
-import random
-colours = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
-data = random.choice(colours)
-]
-display = [
-print("The password is")
-print("my favourite colour")
-print("with 'robot' after it")
-print("eg 'red robot'")
-]
-validate = [
-print(data, 'robot')
-]
-</SENTRY>
-<SENTRY>
 name = 'KL50'
 level = 2
 # Extension exercise
@@ -143,6 +143,37 @@ print("2")
 validate = [
 for i in range(data):
     print(data)
+]
+</SENTRY>
+<SENTRY>
+name = 'mEGaTroN 9000'
+level = 3
+# Extension exercise
+position = (13, 7)
+init = [
+import random
+data = random.randint(1, 99)
+]
+display = [
+print("I am the mEGaTroN 900")
+print("I am thinking of a number from")
+print("1 to 99. To defeat me, you must")
+print("say this number in words.")
+print("eg: twenty three")
+print("or eleven")
+]
+validate = [
+unit_words=['','one','two','three','four','five','six','seven','eight', 'nine']
+tens_words=['', '', 'twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety']
+teens_words=['ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen']
+units = data % 10
+tens = data // 10
+if tens == 0:
+    print(unit_words[units])
+elif tens == 1:
+    print(teens_words[units])
+else:
+    print(tens_words[tens],unit_words[units])
 ]
 </SENTRY>
 
