@@ -6,11 +6,12 @@ level = 2
 position = (13, 7)
 init = [
 import random
-words = ['fish', 'banana', 'open', 'password', 'robot', 'secret', 'weird', 'aha!', 'letmein', 'igiveup', 'dinosaur']
+words = ['fish', 'banana', 'open', 'password', 'robot', 'secret', 'weird',
+ 'aha!', 'letmein', 'igiveup', 'dinosaur', 'peanut', 'crepuscular']
 data = random.choice(words)
 ]
 display = [
-print("Hello. I am robot XX9")
+print("Hello. I am robot XX9.")
 print("To proceed, you must")
 print("print my top secret")
 print("password.")
@@ -30,12 +31,12 @@ level = 2
 position = (47, 7)
 init = [
 import random
-data = random.randint(1, 100)
+data = random.randint(17, 100)
 ]
 display = [
-print('Hello. I am robot A1')
+print('Hello. I am robot A1.')
 print("Take the number in 'data'")
-print('and add 3')
+print('and add 3.')
 print('What do you get?')
 ]
 validate = [
@@ -46,13 +47,15 @@ print(data + 3)
 name = 'BB9'
 level = 2
 # fave colour + robot
-position = (95, 7)
+position = (95, 8)
 init = [
 import random
-colours = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
+colours = ['yellow', 'indigo', 'violet', 'crimson', 'cerulean', 'ochre',
+'mauve', 'olive', 'beige', 'teal', 'ivory', 'cyan', 'lilac']
 data = random.choice(colours)
 ]
 display = [
+print('Hello. I am robot BB9.')
 print("The password is")
 print("my favourite colour")
 print("with 'robot' after it")
@@ -72,6 +75,7 @@ import random
 data = random.randint(1,10)
 ]
 display = [
+print('Hello. I am robot ZR14.')
 print("If the number I am")
 print("thinking of is greater")
 print("than 5, the password")
@@ -97,6 +101,7 @@ colours = ['red', 'green', 'yellow', 'blue', 'black', 'white']
 data = random.choice(colours)
 ]
 display = [
+print('Hello. I am robot Q19.')
 print("The password is the")
 print("opposite of my favourite")
 print("colour.")
@@ -127,9 +132,10 @@ level = 2
 position = (238, 7)
 init = [
 import random
-data = random.randint(1, 10)
+data = random.randint(7, 17)
 ]
 display = [
+print('Hello. I am robot KL50.')
 print("Extension!")
 print("Can you print out the")
 print("number I am thinking")
@@ -152,10 +158,10 @@ level = 3
 position = (13, 7)
 init = [
 import random
-data = random.randint(1, 99)
+data = random.randint(11, 99)
 ]
 display = [
-print("I am the mEGaTroN 900")
+print("I am the mEGaTroN 900.")
 print("I am thinking of a number from")
 print("1 to 99. To defeat me, you must")
 print("say this number in words.")
@@ -163,9 +169,12 @@ print("eg: twenty three")
 print("or eleven")
 ]
 validate = [
-unit_words=['','one','two','three','four','five','six','seven','eight', 'nine']
-tens_words=['', '', 'twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety']
-teens_words=['ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen']
+unit_words=['','one','two','three','four','five',
+'six','seven','eight', 'nine']
+tens_words=['', '', 'twenty','thirty','forty','fifty',
+'sixty','seventy','eighty','ninety']
+teens_words=['ten','eleven','twelve','thirteen','fourteen','fifteen',
+'sixteen','seventeen','eighteen','nineteen']
 units = data % 10
 tens = data // 10
 if tens == 0:

@@ -4,6 +4,8 @@ import file_parser
 from characters import Robot
 from console_messages import console_msg
 from constants import *
+import io
+import contextlib
 from utility_functions import screen_to_grid
 
 class Sentry(Robot):
@@ -43,6 +45,7 @@ class Sentry(Robot):
     #        self.clear_speech_bubble()
     #        self.output = []
             super().run_program()
+            print(self.output)
 
     def get_source_code(self):
         # override method from Robot, to allow code to stay as a list of strings
@@ -87,16 +90,20 @@ class Sentry(Robot):
     def say(self, *t):
         # override say so that the validate method can intercept the output
         # and compare to the player's code, before displaying the results
-        if (self.active_program == self.programs['validate'] and
-                self.python_interpreter.running):
-            for value in t:
-                self.output.append(str(value))
-            print(self.output)
-        else:
-            super().say(*t)
+        if not self.defeated:
+            if (self.active_program == self.programs['validate'] and
+                    self.python_interpreter.running):
+
+                f = io.StringIO()
+                with contextlib.redirect_stdout(f):
+                    print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still use the end= keyword
+                    speech = f.getvalue()
+                    self.output.append(speech)
+            else:
+                super().say(*t)
 
 
-    def get_data(self):
+    def get_data(self):  # TESTING
         return self.testdata
 
     def set_data(self, value):

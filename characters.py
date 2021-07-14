@@ -383,8 +383,8 @@ class Robot(Character):
         with contextlib.redirect_stdout(f):
             print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still use the end= keyword
             speech = f.getvalue()
-            for value in t:
-                self.output.append(str(value))
+            self.output.append(speech)
+
         self.create_speech_bubble(speech,
                                  self.world.editor.get_fg_color(),
                                  self.world.editor.get_bg_color())

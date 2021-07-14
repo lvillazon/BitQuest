@@ -426,6 +426,7 @@ class World:
         self.dog.clear_speech_bubble()
         # reset all robot sentries for this level
         for s in self.sentries:
+            s.clear_all_output()
             s.run_program('init')
 
     def end_of_level_display(self):
