@@ -12,15 +12,15 @@ each section ends with ### on its own line:
    7. This lists all info signposts as:
       x, y coords of the top left of the signpost, title, body text.
 ###
-111111111111111111111111                                                                                                                                                                                                                                     
-1                      1                                                                                                                                                                                                                                     
-1                      1                                                                                                                                                                                                                                     
-1                      1                                                                                                                                                                                                                          fg         
-1                      1                                                                                                                                                                                                                          FG         
-1                      1                                                                                                                                                                                                                         u           
-1                 ZX   1                                                ZX                                             ZX                                              ZX                                              ZX               o
-1         fg      CV   1 1 fg                    fg                     CV fg                   fg                     CV fg                    fg                     CV fg                    fg                     CV fg            i
-1  =      FG      NM   1 1 FG                    FG                     NM FG                   FG                     NM FG                    FG                     NM FG                    FG                     NM FG            o
+1                                                                                                                                                                                                                                     
+1                                                                                                                                                                                                                                                            
+1                                                                                                                                                                                                                                                            
+1                                                                                                                                                                                                                                                 fg         
+1                                                                                                                                                                                                                                                 FG         
+1                                                                                                                                                                                                                                                u           
+1                 ZX                                                    ZX                                             ZX                                              ZX                                              ZX                        o
+1         fg      CV       fg                    fg                     CV fg                   fg                     CV fg                    fg                     CV fg                    fg                     CV fg                     i
+1  =      FG      NM       FG                    FG                     NM FG                   FG                     NM FG                    FG                     NM FG                    FG                     NM FG                     o
 9Pp113456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678123456781234567812345678          
 1[]                                                                                                                                                                                                                                                          
  []                                                                                                                                                                                                                                                          
@@ -46,13 +46,31 @@ each section ends with ### on its own line:
 1, [(1, 9), (2, 11), (2, 9), (2, 10), (1, 10), (1, 11), ]
 ###
 # triggers
-'flagpole', 'L3 Extension', (18,8)
+'flagpole', 'Introduction', (18,8)
+'flagpole', 'P2', (72,8)
+'flagpole', 'P3', (119,8)
+'flagpole', 'P4', (167,8)
+'flagpole', 'P5', (215,8)
 'pressure plate', True, (3, 8), [(1, (0, -3)), ]
 ###
 # puzzle start positions
 0, 'Introduction', (6, 6), (8, 8)
+1, 'P2', (43, 6), (45, 8)
+2, 'P3', (90, 6), (92, 8)
+3, 'P4', (136, 6), (138, 8)
+4, 'P5', (184, 6), (186, 8)
+5, 'P6', (234, 6), (236, 8)
 ###
 # signposts
-(10, 7), 'The Savanah', ['More puzzles coming soon.']
-(27, 7), 'AMAZING!!', ['If you completed this', 'puzzle fairly, see', 'Mr Villazon for', 'FIVE MERITS!']
+(10, 7), 'The Savanah', ['These puzzles', 'will test your', 'knowledge of', 'FOR loops.']
+(27, 7), 'Well done!', ['For each puzzle', 'you complete,', 'you will earn', 'TWO MERITS!']
+(49, 7), 'Keep up!', ['Remember to move', 'BIT into range', 'of the robots', 'before displaying', 'your answer.']
+(75, 7), 'Keep going', ["You're doing", 'GREAT!!']
+(96, 7), 'Remember', ['The puzzles change', 'each time you reset.', 'Click the robot', 'to read the new', 'instructions.']
+(122, 7), 'Keep going', ['Did I tell you', "you're AWESOME?"]
+(144, 7), 'WARNING', ['This one will be', 'slow for the robots', 'to calculate.', 'Be patient!']
+(170, 7), 'ALERT', ['You must be a', 'SERIOUS computer scientist!', 'Keep it up :-)']
+(192,7), 'HINT', ['Remember to create', 'an empty list', 'variable first.']
+(218, 7), 'YAY!', ['You have almost', 'reached the end!']
+(242,3), 'CONGRATULATIONS!', ['Winner winner', 'Chicken dinner!']
 ###

@@ -151,20 +151,133 @@ for i in range(data):
     print(data)
 ]
 </SENTRY>
+############################################################ LEVEL 3
 <SENTRY>
 name = 'mEGaTroN 9000'
 level = 3
-# Extension exercise
+# Simple for loop
 position = (13, 7)
+init = [
+import random
+data = random.randint(3, 12)
+]
+display = [
+print("I am the mEGaTroN 90.")
+print("To pass you must write")
+print("a LOOP to display the")
+print("numbers 1 to", data)
+print("each on a separate line.")
+]
+validate = [
+for i in range(1, data+1):
+  print(i)
+]
+</SENTRY>
+<SENTRY>
+name = 'omniBot 400'
+level = 3
+# count in steps
+position = (47, 7)
+init = [
+import random
+data = random.randint(12, 24)
+]
+display = [
+print('I am the omniBot 400.')
+print("To pass you must write")
+print("a LOOP that counts from")
+print("0 to", data, "in steps")
+print("of 3.")
+]
+validate = [
+for i in range(0, data, 3):
+  print(i)
+]
+</SENTRY>
+<SENTRY>
+name = 'killDrOId 906'
+level = 3
+# count down
+position = (95, 8)
+init = [
+import random
+data = random.randint(35, 42)
+]
+display = [
+print('I am killDrOId 906.')
+print("To pass you must write")
+print("a LOOP that counts DOWN")
+print("from", data, "to 30.")
+print("You must stop ON 30.")
+]
+validate = [
+for i in range(data, 29, -1):
+  print(i)
+]
+</SENTRY>
+<SENTRY>
+name = 'HAL 9001'
+level = 3
+# rolling sum
+position = (142, 7)
+init = [
+import random
+data = random.randint(25, 60)
+]
+display = [
+print('I am HAL9001.')
+print("To pass you must write")
+print("a LOOP that calculates")
+print("the SUM of numbers from")
+print("1 to", data, "and print")
+print("the result.")
+]
+validate = [
+answer = 0
+for i in range(data+1):
+  answer += i
+print(answer)
+]
+</SENTRY>
+<SENTRY>
+name = 'destructo 600'
+level = 3
+# add to a list
+position = (190, 7)
+init = [
+import random
+data = random.randint(6, 12)
+]
+display = [
+print('I am destructo 600.')
+print("To pass you must write")
+print("a LOOP that APPENDS")
+print("the numbers 0 to", data)
+print("to a list, and prints")
+print("the list at the end.")
+]
+validate = [
+result = []
+for i in range(data+1):
+  result.append(i)
+print(result)
+]
+
+</SENTRY>
+<SENTRY>
+name = 'ULTRON'
+level = 3
+# Extension exercise
+position = (238, 7)
 init = [
 import random
 data = random.randint(11, 99)
 ]
 display = [
-print("I am the mEGaTroN 900.")
+print('I am ULTRON.')
 print("I am thinking of a number from")
 print("1 to 99. To defeat me, you must")
-print("say this number in words.")
+print("say this number in WORDS.")
 print("eg: twenty three")
 print("or eleven")
 ]
@@ -185,4 +298,3 @@ else:
     print(tens_words[tens],unit_words[units])
 ]
 </SENTRY>
-
