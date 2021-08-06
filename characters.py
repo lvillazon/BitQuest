@@ -509,6 +509,12 @@ class Robot(Character):
     def set_source_code(self, statement_list):
         self.source_code = statement_list
 
+    def validate_attempt(self):
+        # in BitQuest, this is simply handed up to the World object
+        # for processing. But other implementations may handle validation
+        # directly
+        self.world.validate_attempt()
+
     def get_data(self):
         # stub, since BIT does not have a data field
         # this is overridden for the sentry objects

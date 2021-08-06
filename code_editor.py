@@ -93,7 +93,7 @@ class CodeWindow(Editor):
         success, errors = self.robot.run_program()
         # if the code compiled ok, we check next that output matched expected
         if success:
-            self.robot.world.validate_attempt()
+            self.robot.validate_attempt()
         # save this attempt, regardless of whether it had errors or not
         self.session.save_run(interpreter.convert_to_lines(self.text), errors)
 

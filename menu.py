@@ -1,6 +1,7 @@
 import pygame
 from pygame.locals import *
 import input_dialog
+import session
 from console_messages import console_msg
 from constants import *
 from session import Session
@@ -20,11 +21,11 @@ class Menu:
         self._return_to_game = False
         self.clock = pygame.time.Clock()
 
-        self.title_y_pos = 100
+        self.title_y_pos = 50
         self.title_size = 28
-        self.items_y_pos = 370
+        self.items_y_pos = 300
         self.title = "Main Menu"
-        self.items = ["Level 1", "Level 2", "Level 3", "Quit"]  # TODO include 'options'
+        self.items = ["Level 1", "Level 2", "Level 3", "View logs", "Quit"]  # TODO include 'options'
         self.selected_item = -1  # start off with nothing selected
         self.session = None
         self._bypass = bypass
@@ -131,6 +132,8 @@ class Menu:
                         self.play();
                     elif self.items[self.selected_item] == 'Options':
                         self.options()
+                    elif self.items[self.selected_item] == 'View logs':
+                        session.view_logs()
                     elif self.items[self.selected_item] == 'Quit':
                         self._quit = True
                 else:

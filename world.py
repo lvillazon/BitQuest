@@ -408,7 +408,7 @@ class World:
                     s.run_program('display')
 
     def validate_attempt(self):
-        if self.dog.speaking:
+        if self.dog.speaking:  # the 'answer' must be printed in order to count
             for s in self.sentries:
                 # only check sentries that are within 'listening' range
                 if abs(s.gridX() - self.dog.gridX()) <= SENTRY_LISTENING_RANGE:
