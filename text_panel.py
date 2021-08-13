@@ -68,9 +68,12 @@ class TextPanel:
         pygame.draw.rect(s, fg_color, outline, BORDER_THICKNESS)
         return s
 
-    def rendered(self):
+    def rendered(self, mirror=False):
         if self.text:
-            panel = self.draw_panel(self.fg_color, self.bg_color)
+            if mirror:
+                panel = self.draw_mirror_panel(self.fg_color, self.bg_color)
+            else:
+                panel = self.draw_panel(self.fg_color, self.bg_color)
 
             # draw the lines of text, working upwards from the most recent,
             # until the bubble is full
@@ -119,6 +122,15 @@ class SpeechBubble(TextPanel):
             self.text_size[X] = self.speech_bubble_size[X]
         if len(self.text) <= MAX_BUBBLE_TEXT_LINES:
             self.text_size[Y] += self.speech_bubble_size[Y]
+
+    def draw_mirror_panel(self, fg_color, bg_color):
+        # flip the panel so the callout spike points the other way
+        s = pygame.transform.flip(
+            self.draw_panel(fg_color, bg_color),
+            True, # xflip
+            False, # yflip
+        )
+        return s
 
 
 

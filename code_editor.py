@@ -8,8 +8,8 @@ from editor import Editor
 
 
 class CodeWindow(Editor):
-    def __init__(self, screen, height, code_font, hosted_on, session):
-        super().__init__(screen, height, code_font)
+    def __init__(self, screen, height, code_font, hosted_on, session, width=0):
+        super().__init__(screen, height, code_font, width)
         # increase the margin to allow for the line numbers
         self.left_margin += self.char_width * 3
         self.title = "Code"

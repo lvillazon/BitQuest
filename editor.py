@@ -17,10 +17,12 @@ CURSOR_LINE_WRAP = 2
 class Editor:
     # on-screen editor for writing programs
 
-    def __init__(self, screen, height, code_font):
+    def __init__(self, screen, height, code_font, width = 0):
         self.code_font = code_font
         self.screen = screen
-        self.width = screen.get_size()[X]
+        if width == 0:
+            self.width = screen.get_size()[X]
+        else: self.width = width
         self.height = height
         self.surface = pygame.Surface((self.width, self.height))
         self.side_gutter = 8  # pixel gap from the edge of the surface
