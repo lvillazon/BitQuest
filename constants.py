@@ -24,7 +24,7 @@ ROBOT_SPRITE_FILE = 'assets/robots.png'
 EDITOR_ICON_FILE = 'assets/editor icons.png'
 BLOCK_TILE_DICTIONARY_FILE = 'assets/BitQuest_tileset.txt'
 BLOCK_TILESET_FILE = 'assets/block tiles.png'
-LEVEL_MAP_FILE_STEM = 'assets/BitQuest_level'
+LEVEL_MAP_FILE_STEM = 'levels/BitQuest_level'
 LEVEL_MAP_FILE_EXTENSION = '.txt'
 USER_PROGRAM_FILE = 'assets/BitQuest_user_program.py'
 SAVE_FILES_FOLDER = 'logs/'
@@ -35,8 +35,9 @@ REWIND_HOVER_ICON_FILE = 'assets/rewind_hover.png'
 PLAY_ICON_FILE = 'assets/play.png'
 PLAY_HOVER_ICON_FILE = 'assets/play_hover.png'
 PLAY_DISABLED_ICON_FILE = 'assets/play_disabled.png'
-PUZZLE_FILE = 'assets/robot_puzzles.txt'
-SENTRY_FILE = 'assets/robot_puzzles.txt'
+PUZZLE_FILE = 'levels/robot_puzzles.txt'
+SENTRY_FILE = 'levels/robot_puzzles.txt'
+USERNAMES_FILE = 'users/users.txt'
 
 # XML stuff for files
 SENTRY_START = '<SENTRY>'
@@ -46,7 +47,7 @@ SENTRY_END = '</SENTRY>'
 SENTRY_LISTENING_RANGE = 15
 
 # editor constants
-DEBUG = False  # when true enables extra debug messages in the console
+DEBUG = True  # when true enables extra debug messages in the console
 MSG_VERBOSITY = 8  # 0-9, 0= no console messages, 9 = max
 ALLOW_MAP_EDITOR = False  # allows the game map to be edited with Ctrl-Shift-G
 SKY_BLUE = (0, 155, 255)
@@ -127,6 +128,8 @@ COLOUR_MOVER_OFFSET = (0, 255, 0)  # bright green
 COLOUR_MENU_BG = (0x5D, 0x8A, 0xA8)  # air-force blue
 COLOUR_MENU_TITLE = (0xFF, 0xBF, 0x00)  # amber
 COLOUR_MENU_TEXT = (0xFF, 0xBF, 0x00)  # amber
+COLOUR_MENU_USERNAME = (0x87, 0x3e, 0x23)  # amber
+COLOUR_MENU_CLASSNAME = (0, 0, 0)
 COLOUR_MAP_EDITOR_BOXES = (0xc2, 0xc2, 0xa3)
 COLOUR_GRID_LINES = (0, 0, 0)
 COLOUR_MAP_EDIT_TEXT = (0, 0, 0)

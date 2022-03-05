@@ -116,7 +116,8 @@ def load_sentries(world, level):
     # load all the sentries for a given level from the file
 
     sentry_data = file_parser.parse_file(SENTRY_FILE)
-    print(sentry_data)  # DEBUG
+    if DEBUG:
+        print(sentry_data)
 
     all_sentries = []
     for data in sentry_data:

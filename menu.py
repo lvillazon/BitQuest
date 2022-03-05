@@ -1,6 +1,9 @@
 import pygame
 from pygame.locals import *
+
+import file_parser
 import input_dialog
+from menu_list import MenuList
 from console_messages import console_msg
 from constants import *
 from session import Session
@@ -22,10 +25,11 @@ class Menu:
 
         self.title_y_pos = 100
         self.title_size = 28
-        self.items_y_pos = 370
-        self.title = "Main Menu"
-        self.items = ["Level 1", "Level 2", "Level 3", "Quit"]  # TODO include 'options'
-        self.selected_item = -1  # start off with nothing selected
+        self.items_y_pos = 350
+        self.title = "BIT Quest"
+        self.top_level_options = ["Sign out", "Level 1", "Level 2", "Level 3", "Quit"]  # TODO include 'options'
+        self.user_whitelist = self.load_users()
+#        self.selected_item = 0  # start off with the sign in option selected
         self.session = None
         self._bypass = bypass
         self.level = 0  # default, invalid level number
@@ -44,9 +48,6 @@ class Menu:
             self.menu_font = pygame.font.Font(MENU_FONT_FILE, 32)
             self.menu_input_font = pygame.font.Font(CODE_FONT_FILE, 32)
             console_msg("Menu fonts loaded", 3)
-            self.input_dialog = MenuInputDialog(self.screen,
-                                "Input",
-                                self.menu_input_font)
 
     def quit(self):
         return self._quit
@@ -64,86 +65,50 @@ class Menu:
             # render the background
             self.screen.fill(COLOUR_MENU_BG)
 
-            # display the title
-            self.display_text(self.title,
-                              self.menu_title_font,
-                              self.title_y_pos,
-                              COLOUR_MENU_TITLE,
-                              shadow=True
-                              )
-
-            # display the menu items
-            y_pos = self.items_y_pos
-            for i in range(len(self.items)):
-                if self.selected_item == i:
-                    shadow = True
-                else:
-                    shadow = False
-                self.display_text(self.items[i],
-                                  self.menu_font,
-                                  y_pos,
-                                  shadow = shadow)
-                y_pos += self.menu_font.get_linesize()*2
-
             # force user to log in, in order to proceed
-            # whitespace names are not allowed
             if self.session is None:
+                self.display_text("Sign in",
+                                  self.menu_title_font,
+                                  self.title_y_pos,
+                                  COLOUR_MENU_TITLE,
+                                  shadow=True
+                                  )
                 self.session = Session(*self.login())
-                self.selected_item = 0
+                # display the title
             else:
                 # display name and class
                 y_pos = self.items_y_pos - self.menu_font.get_linesize()*5
                 self.display_text(self.session.get_user_name(),
-                                  self.menu_input_font,
+                                  self.menu_font,
                                   y_pos,
-                                  COLOUR_MENU_TITLE,
+                                  COLOUR_MENU_USERNAME,
                                   shadow=False
                                   )
                 y_pos += self.menu_input_font.get_linesize()
                 self.display_text(self.session.get_class_name(),
                                   self.menu_input_font,
                                   y_pos,
-                                  COLOUR_MENU_TITLE,
+                                  COLOUR_MENU_CLASSNAME,
                                   shadow=False
                                   )
-            pygame.display.update()  # actually display
-
-            # keyboard input
-            pressed = pygame.key.get_pressed()
-            if pressed[K_ESCAPE]:
-                # TODO add a confirmation dialog
-                self._quit = True
-
-            # these actions do not auto repeat when held down
-            if not self.repeat_lock:
-                self.repeat_lock = True
-
-                if pressed[K_UP]:
-                    if self.selected_item > 0:
-                        self.selected_item -= 1
-                elif pressed[K_DOWN] or pressed[K_TAB]:
-                    if self.selected_item < len(self.items)-1:
-                        self.selected_item += 1
-                elif pressed[K_RETURN]:
-                    # activate the selected option
-                    if "Level" in self.items[self.selected_item]:
-                        self.level = int(self.items[self.selected_item][-1])
-                        self.play();
-                    elif self.items[self.selected_item] == 'Options':
-                        self.options()
-                    elif self.items[self.selected_item] == 'Quit':
-                        self._quit = True
-                else:
-                    self.repeat_lock = False  # reset, since no key pressed
-
-            # process all other events to clear the queue
-            for event in pygame.event.get():
-                if event.type == KEYUP:
-                    self.repeat_lock = False  # release the lock
-                if event.type == QUIT:
+                # display the main menu
+                self.display_text(self.title,
+                                  self.menu_title_font,
+                                  self.title_y_pos,
+                                  COLOUR_MENU_TITLE,
+                                  shadow=True
+                                  )
+                main_menu = MenuList(self.screen, 370, 300, self.menu_font, self.top_level_options, 2)
+                selection = main_menu.display()
+                if selection == 'Sign out':
+                    self.session = None
+                elif "Level" in selection:
+                    self.level = int(selection[-1])
+                    self.play();
+                elif selection == 'Options':
+                    self.options()
+                elif selection == 'Quit':
                     self._quit = True
-
-            self.clock.tick(60)  # lock the framerate to 60fps
 
         return self._return_to_game
 
@@ -164,12 +129,18 @@ class Menu:
 
     def login(self):
         """ enter username and class
-        eventually this could use text files to validate against known names"""
-        username = self.get_input("What is your name?")
-        class_name = self.get_input("What class are you in?")
+        uses a whitelist of student names read from a text file"""
 
-        # remove whitespace from both fields
-        return username.strip(), class_name.strip()
+        sign_in_menu = MenuList(self.screen, 280, 180, self.menu_input_font, self.user_whitelist)
+        user = sign_in_menu.display()
+        print(user)
+
+        # look up class name from the user_data list
+        user_class = "class not found!"
+        for u in self.user_data:
+            if u['firstname'] + ' ' + u['surname'] == user:
+                user_class = u['class']
+        return user, user_class
 
     def get_input(self, prompt):
         self.input_dialog.title = prompt
@@ -198,6 +169,20 @@ class Menu:
                 if event.type == KEYUP:
                     finished = True
         return self.input_dialog.convert_to_lines()[0]
+
+    def load_users(self):
+        # read usernames and class info from the file
+
+        self.user_data = file_parser.parse_file(USERNAMES_FILE, 'users')
+        if DEBUG:
+            print(self.user_data)
+
+        name_list = []
+        for user in self.user_data:
+            name_list.append(user['firstname'] + ' ' +
+                             user['surname'])
+        return name_list
+
 
 class MenuInputDialog(input_dialog.InputDialog):
     """ used for entering text options in menus"""

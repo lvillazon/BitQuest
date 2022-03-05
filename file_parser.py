@@ -58,8 +58,8 @@ def parse_section(lines):
     return parsed
 
 
-def parse_file(file_name):
-    """ given a file in this format:
+def parse_file(file_name, format = 'robots'):
+    """ the default format (robots), expects a file in this format:
             <SECTION>
             name = foo
             size = 16
@@ -74,7 +74,7 @@ def parse_file(file_name):
             value = 19
             </SECTION>
 
-        this function would return the following data structure:
+        and returns the following data structure:
             [
             {
             name: 'foo', size: 16, several_values: [1, 2, 3],
@@ -82,40 +82,48 @@ def parse_file(file_name):
             },
             {value: 19}
             ]
+
+        alternatively, if type is 'users', data can be supplied in this format (designed to be pasted from the tracker)
+        Bloggs, Fred, 7xy1
+        Perkins, Sue, 8Cp/w2
+
+        and returns the following data structure:
+        [
+        {surname: 'Bloggs', firstname: 'Fred', class: '7xy1', year: 7},
+        {surname: 'Perkins', firstname: 'Sue', class: '8Cp/w2', year: 8}
+        ]
     """
+    parsed_data = []
     with open(file_name, 'r') as file:
         lines = file.readlines()  # read the whole file into a string array
-        parsed_data = []
-        # look for the start of a section
-        i = 0
-        while i < len(lines):
-            # ignore any line beginning with #
-            if not lines[i].lstrip().startswith('#'):
-                if is_section_start(lines[i]):
-                    # copy all the lines of this section into a sublist
-                    section_name = get_section_name(lines[i])
-                    section = []
+        if format == 'robots':
+                # look for the start of a section
+                i = 0
+                while i < len(lines):
+                    # ignore any line beginning with #
+                    if not lines[i].lstrip().startswith('#'):
+                        if is_section_start(lines[i]):
+                            # copy all the lines of this section into a sublist
+                            section_name = get_section_name(lines[i])
+                            section = []
+                            i += 1
+                            while i < len(lines) and not is_section_end(lines[i], section_name):
+                                section.append(lines[i])
+                                i += 1
+                            # call the parser to build the dict
+                            parsed_data.append(parse_section(section))
                     i += 1
-                    while i < len(lines) and not is_section_end(lines[i], section_name):
-                        section.append(lines[i])
-                        i += 1
-                    # call the parser to build the dict
-                    parsed_data.append(parse_section(section))
-            i += 1
-        return parsed_data
+        elif format == 'users':
+            for data in lines:
+                if ',' in data:
+                    user_data = {}
+                    d2 = data.split(', ')
+                    user_data['surname'] = d2[0]
+                    d3 = d2[1].split('\t')
+                    user_data['firstname'] = d3[0]
+                    user_data['class'] = d3[1].strip()
+                    user_data['year'] = int(d3[1][0])
+                    parsed_data.append(user_data)
 
-    #     while i < len(lines) and lines[i][:-1] != SENTRY_START:  # look for the start of a sentry definition
-    #         i += 1
-    #     if i < len(lines):
-    #         all_sentries = []
-    #         name = lines[i+1][:-1]  # strip trailing CRLF
-    #         sentry_level = eval(lines[i+2])
-    #         position = eval(lines[i+3])
-    #         display_program = []
-    #         if sentry_level == level:  # only create the sentries for this game level
-    #             s = Sentry(world, position, name)
-    #             all_sentries.append(s)
-    #         i += 3  # skip on to next sentry
-    # return all_sentries
-
+    return parsed_data
 
