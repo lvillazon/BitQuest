@@ -115,7 +115,7 @@ def parse_file(file_name, format = 'robots'):
                     i += 1
         elif format == 'users':
             for data in lines:
-                if ',' in data:
+                if ',' in data:  # standard format is Surname, Firstname<tab>classcode
                     user_data = {}
                     d2 = data.split(', ')
                     user_data['surname'] = d2[0]
@@ -123,7 +123,20 @@ def parse_file(file_name, format = 'robots'):
                     user_data['firstname'] = d3[0]
                     user_data['class'] = d3[1].strip()
                     user_data['year'] = int(d3[1][0])
+                    if user_data['year'] == 1:
+                        print(d3)
+                        user_data['year'] = int(d3[1][1])+10  # allow for years 10 - 13 (unlikely, but possible)
                     parsed_data.append(user_data)
-
+                elif ' ' in data and '\t' in data:  # alternative format is Firstname Surname<tab>classcode
+                    user_data = {}
+                    d2 = data.split('\t')
+                    user_data['class'] = d2[1].strip()
+                    user_data['year'] = int(d2[1][0])
+                    d3 = d2[0].split(' ')
+                    user_data['firstname'] = d3[0]
+                    user_data['surname'] = ' '.join(d3[1:])  # allow for double-barrelled surnames
+                    if user_data['year'] == 1:
+                        user_data['year'] = int(d2[1][1])+10  # allow for years 10 - 13 (unlikely, but possible)
+                    parsed_data.append(user_data)
     return parsed_data
 

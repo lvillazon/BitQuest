@@ -82,7 +82,7 @@ class Menu:
                                   self.menu_font,
                                   y_pos,
                                   COLOUR_MENU_USERNAME,
-                                  shadow=False
+                                  shadow=True
                                   )
                 y_pos += self.menu_input_font.get_linesize()
                 self.display_text(self.session.get_class_name(),
@@ -98,7 +98,11 @@ class Menu:
                                   COLOUR_MENU_TITLE,
                                   shadow=True
                                   )
-                main_menu = MenuList(self.screen, 370, 300, self.menu_font, self.top_level_options, 2)
+                main_menu = MenuList(self.screen, 370, 300,
+                                     self.menu_font, self.menu_font,
+                                     self.top_level_options,
+                                     spacing=2,
+                                     filterable=False)
                 selection = main_menu.display()
                 if selection == 'Sign out':
                     self.session = None
@@ -131,7 +135,7 @@ class Menu:
         """ enter username and class
         uses a whitelist of student names read from a text file"""
 
-        sign_in_menu = MenuList(self.screen, 280, 180, self.menu_input_font, self.user_whitelist)
+        sign_in_menu = MenuList(self.screen, 280, 180, self.menu_font, self.menu_input_font, self.user_whitelist)
         user = sign_in_menu.display()
         print(user)
 
