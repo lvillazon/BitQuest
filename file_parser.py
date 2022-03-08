@@ -124,7 +124,6 @@ def parse_file(file_name, format = 'robots'):
                     user_data['class'] = d3[1].strip()
                     user_data['year'] = int(d3[1][0])
                     if user_data['year'] == 1:
-                        print(d3)
                         user_data['year'] = int(d3[1][1])+10  # allow for years 10 - 13 (unlikely, but possible)
                     parsed_data.append(user_data)
                 elif ' ' in data and '\t' in data:  # alternative format is Firstname Surname<tab>classcode

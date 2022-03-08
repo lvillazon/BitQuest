@@ -3,7 +3,7 @@ Global config constants for BitQuest
 """
 # TODO read this in from a file - using file_parser?
 
-VERSION = "0.5"  # 0.x = beta testing phase
+VERSION = "0.7"  # 0.x = beta testing phase
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
 SHOW_COLLIDERS = False  # draws outline around object colliders
 SHOW_LOGIN_MENU = True  # displays the initial menu screen before play
@@ -47,7 +47,7 @@ SENTRY_END = '</SENTRY>'
 SENTRY_LISTENING_RANGE = 15
 
 # editor constants
-DEBUG = True  # when true enables extra debug messages in the console
+DEBUG = False  # when true enables extra debug messages in the console
 MSG_VERBOSITY = 8  # 0-9, 0= no console messages, 9 = max
 ALLOW_MAP_EDITOR = False  # allows the game map to be edited with Ctrl-Shift-G
 SKY_BLUE = (0, 155, 255)

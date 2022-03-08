@@ -1,3 +1,5 @@
+import sys
+
 import pygame
 from pygame.locals import *
 from constants import *
@@ -127,7 +129,7 @@ class MenuList:
                         end_index = min(13, len(self.items))
 
                 elif event.type == QUIT:
-                    self._quit = True
+                    sys.exit()  # ends the program entirely if you click the close icon on the user login screen
 
             self.clock.tick(60)  # lock the framerate to 60fps
 

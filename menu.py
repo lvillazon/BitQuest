@@ -137,7 +137,6 @@ class Menu:
 
         sign_in_menu = MenuList(self.screen, 280, 180, self.menu_font, self.menu_input_font, self.user_whitelist)
         user = sign_in_menu.display()
-        print(user)
 
         # look up class name from the user_data list
         user_class = "class not found!"
