@@ -185,6 +185,18 @@ class World:
 
     data = property(get_data, set_data)
 
+    def get_secret_data(self):
+        s = self.get_next_sentry()
+        if s:
+            return s.get_secret_data()
+        else:
+            return None
+
+    def set_secret_data(self, robot, value):
+        robot.set_secret_data(value)
+
+    _secret_data = property(get_secret_data, set_secret_data)
+
     def get_next_sentry(self):
         # returns the next undefeated sentry
         i = 0
@@ -397,6 +409,7 @@ class World:
                 self.player.moving_left = False
                 self.player.moving_right = False
                 self.player.update(self.display, self.camera.scroll())
+
                 # run user program
                 success = self.editor.run_program()
         else:

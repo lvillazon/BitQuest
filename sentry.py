@@ -8,6 +8,7 @@ import io
 import contextlib
 from utility_functions import screen_to_grid
 
+
 class Sentry(Robot):
     # robot sentries used to present more complex puzzles
     def __init__(self, world,
@@ -25,26 +26,31 @@ class Sentry(Robot):
         self.programs = programs
         self.active_program = self.programs['init']  # default to this one
         self.output = []
-#        self.standing_left_frame = self.move_left_frames[0]
-#        self.standing_right_frame = self.move_left_frames[1]
+        #        self.standing_left_frame = self.move_left_frames[0]
+        #        self.standing_right_frame = self.move_left_frames[1]
         self.facing_right = False
         self.testdata = -99
+        self.secret_data = -999
         self.defeated = BYPASS_SENTRIES  # normally set True, but False for testing
         self.blocking = not self.defeated
+        self.executing = False  # true when running any program
 
     def set_puzzle(self, instructions):
         pass
 
     def run_program(self, program_name):
-        if not self.defeated:
+        if not self.defeated and program_name in self.programs:
+            self.executing = True
             # allows the sentry to switch between several available programs
             self.active_program = self.programs[program_name]
             # force the enabled flag because sentries can run their code
             # at any time, not just once per puzzle attempt
             self.python_interpreter.run_enabled = True
-    #        self.clear_speech_bubble()
-    #        self.output = []
+            #        self.clear_speech_bubble()
+            #        self.output = []
             super().run_program()
+            print("Sentry finished executing", program_name)
+            self.executing = False;
             print(self.output)
 
     def get_source_code(self):
@@ -96,20 +102,26 @@ class Sentry(Robot):
 
                 f = io.StringIO()
                 with contextlib.redirect_stdout(f):
-                    print(*t, end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still use the end= keyword
+                    print(*t,
+                          end='')  # TODO use a different way of suppressing ugly chars for carriage returns, that allows the user programs to still use the end= keyword
                     speech = f.getvalue()
                     self.output.append(speech)
             else:
                 super().say(*t)
 
-
     def get_data(self):  # TESTING
         return self.testdata
 
     def set_data(self, value):
-        console_msg('setting ' + self.name + ' data to ' + str(value))
+        console_msg('setting ' + self.name + ' secret data to ' + str(value))
         self.testdata = value
 
+    def get_secret_data(self):  # TESTING
+        return self.secret_data
+
+    def set_secret_data(self, value):
+        console_msg('setting ' + self.name + ' secret data to ' + str(value))
+        self.secret_data = value
 
 
 def load_sentries(world, level):
@@ -128,11 +140,13 @@ def load_sentries(world, level):
             data['level'] = -1,
         if 'position' not in data:
             data['position'] = (0, 0)
-        data['programs'] = {'init': [], 'display': [], 'validate': []}
+        data['programs'] = {'init': [], 'display': [], 'attempt': [], 'validate': []}
         if 'init' in data:
             data['programs']['init'] = data['init']
         if 'display' in data:
             data['programs']['display'] = data['display']
+        if 'attempt' in data:
+            data['programs']['attempt'] = data['attempt']
         if 'validate' in data:
             data['programs']['validate'] = data['validate']
 

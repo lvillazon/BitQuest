@@ -1,0 +1,188 @@
+# Each robot sentry has a name and grid coordinate location
+<SENTRY>
+name = 'XX9'
+level = 2
+# tutorial sentry
+position = (13, 7)
+init = [
+import random
+words = ['fish', 'banana', 'open', 'password', 'robot', 'secret', 'weird',
+ 'aha!', 'letmein', 'igiveup', 'dinosaur', 'peanut', 'crepuscular']
+data = random.choice(words)
+]
+display = [
+print("Hello. I am robot XX9.")
+print("To proceed, you must")
+print("print my top secret")
+print("password.")
+print("This is stored in the")
+print("variable 'data'.")
+print("Oops! I didn't mean")
+print("to tell you that!")
+]
+validate = [
+print(data)
+]
+</SENTRY>
+<SENTRY>
+name = 'A1'
+level = 2
+# Add 3 to data
+position = (47, 7)
+init = [
+import random
+data = random.randint(17, 100)
+]
+display = [
+print('Hello. I am robot A1.')
+print("Take the number in 'data'")
+print('and add 3.')
+print('What do you get?')
+]
+validate = [
+print(data + 3)
+]
+</SENTRY>
+<SENTRY>
+name = 'BB9'
+level = 2
+# fave colour + robot
+position = (95, 8)
+init = [
+import random
+colours = ['yellow', 'indigo', 'violet', 'crimson', 'cerulean', 'ochre',
+'mauve', 'olive', 'beige', 'teal', 'ivory', 'cyan', 'lilac']
+data = random.choice(colours)
+]
+display = [
+print('Hello. I am robot BB9.')
+print("The password is")
+print("my favourite colour")
+print("with 'robot' after it")
+print("eg 'red robot'")
+]
+validate = [
+print(data, 'robot')
+]
+</SENTRY>
+<SENTRY>
+name = 'ZR14'
+level = 2
+# greater or less than
+position = (142, 7)
+init = [
+import random
+data = random.randint(1,10)
+]
+display = [
+print('Hello. I am robot ZR14.')
+print("If the number I am")
+print("thinking of is greater")
+print("than 5, the password")
+print("is 'hello',")
+print("otherwise, it is")
+print("'goodbye'")
+]
+validate = [
+if data > 5:
+    print('hello')
+else:
+    print('goodbye')
+]
+</SENTRY>
+<SENTRY>
+name = 'Q19'
+level = 2
+# say opposite of a colour
+position = (190, 7)
+init = [
+import random
+colours = ['red', 'green', 'yellow', 'blue', 'black', 'white']
+data = random.choice(colours)
+]
+display = [
+print('Hello. I am robot Q19.')
+print("The password is the")
+print("opposite of my favourite")
+print("colour.")
+print("red/green are opposites,")
+print("so are yellow/blue and")
+print("black/white.")
+]
+validate = [
+if data == 'red':
+    print('green')
+if data == 'green':
+    print('red')
+if data == 'yellow':
+    print('blue')
+if data == 'blue':
+    print('yellow')
+if data == 'black':
+    print('white')
+if data == 'white':
+    print('black')
+]
+
+</SENTRY>
+<SENTRY>
+name = 'KL50'
+level = 2
+# Extension exercise
+position = (238, 7)
+init = [
+import random
+data = random.randint(7, 17)
+]
+display = [
+print('Hello. I am robot KL50.')
+print("Extension!")
+print("Can you print out the")
+print("number I am thinking")
+print("of, but repeat it that")
+print("many times, each on a")
+print("different line?")
+print("eg:")
+print("2")
+print("2")
+]
+validate = [
+for i in range(data):
+    print(data)
+]
+</SENTRY>
+<SENTRY>
+name = 'mEGaTroN 9000'
+level = 4
+# Extension exercise
+position = (13, 7)
+init = [
+import random
+data = random.randint(11, 99)
+]
+display = [
+print("I am the mEGaTroN 900.")
+print("I am thinking of a number from")
+print("1 to 99. To defeat me, you must")
+print("say this number in words.")
+print("eg: twenty three")
+print("or eleven")
+]
+validate = [
+unit_words=['','one','two','three','four','five',
+'six','seven','eight', 'nine']
+tens_words=['', '', 'twenty','thirty','forty','fifty',
+'sixty','seventy','eighty','ninety']
+teens_words=['ten','eleven','twelve','thirteen','fourteen','fifteen',
+'sixteen','seventeen','eighteen','nineteen']
+units = data % 10
+tens = data // 10
+if tens == 0:
+    print(unit_words[units])
+elif tens == 1:
+    print(teens_words[units])
+else:
+    print(tens_words[tens],unit_words[units])
+]
+</SENTRY>
+

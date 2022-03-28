@@ -146,7 +146,8 @@ class VirtualMachine:
             'bit_y': (self.world.get_bit_y, self.world.set_bit_y),
             'me_x': (self.world.get_player_x, self.world.set_player_x),
             'me_y': (self.world.get_player_y, self.world.set_player_y),
-            'data': (self.world.get_data, self.world.set_data)
+            'data': (self.world.get_data, self.world.set_data),
+            '_secret_data': (self.world.get_secret_data, self.world.set_secret_data),
         }
         # read/write variables need special treatment,
         # so we track them separately
@@ -179,6 +180,8 @@ class VirtualMachine:
             target_value = frame.global_names[v]
             current_value = w[GET]()
             if v=='data':
+                w[SET](self.robot, target_value)
+            elif v=='_secret_data':
                 w[SET](self.robot, target_value)
             # the dog coords are the only variables that are read/write
             # so we only wait for these to sync up with the real world
@@ -276,6 +279,7 @@ class VirtualMachine:
                 'me_x': self.world.player_x,
                 'me_y': self.world.player_y,
                 'data': self.world.data,
+                '_secret_data': self.world._secret_data,
             }
         local_names.update(callargs)
         frame = Frame(code, global_names, local_names, self.frame)

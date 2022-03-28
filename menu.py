@@ -10,7 +10,7 @@ from session import Session
 
 
 class Menu:
-    def __init__(self, screen, bypass = False):
+    def __init__(self, screen, bypass=False):
         """ displays the main menu and ensures that the user is logged in
         before proceeding. If bypass==True the menu creates a dummy
         session, used for testing."""

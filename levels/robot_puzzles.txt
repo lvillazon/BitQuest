@@ -5,155 +5,137 @@ level = 2
 # tutorial sentry
 position = (13, 7)
 init = [
-import random
-words = ['fish', 'banana', 'open', 'password', 'robot', 'secret', 'weird',
- 'aha!', 'letmein', 'igiveup', 'dinosaur', 'peanut', 'crepuscular']
-data = random.choice(words)
 ]
 display = [
 print("Hello. I am robot XX9.")
-print("To proceed, you must")
-print("print my top secret")
-print("password.")
-print("This is stored in the")
-print("variable 'data'.")
-print("Oops! I didn't mean")
-print("to tell you that!")
+print("To proceed, BIT must")
+print("answer this question:")
+print("What is 6 times 7?")
+]
+validate = [
+print(42)
+]
+</SENTRY>
+<SENTRY>
+name = 'A1'
+level = 2
+# correct datatype name
+position = (47, 7)
+init = [
+import random
+data = round(random.uniform(1.0, 20.0), 1)
+]
+display = [
+print('Hello. I am robot A1.')
+print('To proceed, BIT must')
+print('tell me the datatype')
+print('of this value:', data)
+]
+validate = [
+print('float')
+]
+</SENTRY>
+<SENTRY>
+name = 'BB9'
+level = 2
+# read password from variable
+position = (95, 8)
+init = [
+import random
+words = ['fish', 'banana', 'octopus', 'amazing', 'digital', 'impossible', 'weird',
+ 'aha!', 'letmein', 'igiveup', 'dinosaur', 'peanut', 'genius', 'narwhal', ]
+data = random.choice(words)
+
+]
+display = [
+print('Hello. I am robot BB9.')
+print("I have stored the password")
+print("In my variable called 'data'.")
+print("You don't know what it contains,")
+print("but BIT can read it. Ask him")
+print("to print it out.")
+print("Beware: the password changes each")
+print("time you reset the puzzle.")
 ]
 validate = [
 print(data)
 ]
 </SENTRY>
 <SENTRY>
-name = 'A1'
-level = 2
-# Add 3 to data
-position = (47, 7)
-init = [
-import random
-data = random.randint(17, 100)
-]
-display = [
-print('Hello. I am robot A1.')
-print("Take the number in 'data'")
-print('and add 3.')
-print('What do you get?')
-]
-validate = [
-print(data + 3)
-]
-</SENTRY>
-<SENTRY>
-name = 'BB9'
-level = 2
-# fave colour + robot
-position = (95, 8)
-init = [
-import random
-colours = ['yellow', 'indigo', 'violet', 'crimson', 'cerulean', 'ochre',
-'mauve', 'olive', 'beige', 'teal', 'ivory', 'cyan', 'lilac']
-data = random.choice(colours)
-]
-display = [
-print('Hello. I am robot BB9.')
-print("The password is")
-print("my favourite colour")
-print("with 'robot' after it")
-print("eg 'red robot'")
-]
-validate = [
-print(data, 'robot')
-]
-</SENTRY>
-<SENTRY>
 name = 'ZR14'
 level = 2
-# greater or less than
+# enter a single number
 position = (142, 7)
 init = [
 import random
-data = random.randint(1,10)
+data = random.randint(10,50)
 ]
 display = [
 print('Hello. I am robot ZR14.')
-print("If the number I am")
-print("thinking of is greater")
-print("than 5, the password")
-print("is 'hello',")
-print("otherwise, it is")
-print("'goodbye'")
+print("The PIN code is the number")
+print("stored in my variable 'data' + 6.")
+print("Ask BIT to print out the answer.")
 ]
 validate = [
-if data > 5:
-    print('hello')
-else:
-    print('goodbye')
+print(data + 6)
 ]
 </SENTRY>
 <SENTRY>
 name = 'Q19'
 level = 2
-# say opposite of a colour
+# is the number -ve, 0 or +ve?
 position = (190, 7)
 init = [
 import random
-colours = ['red', 'green', 'yellow', 'blue', 'black', 'white']
-data = random.choice(colours)
+data = random.randint(-1, 1)
 ]
 display = [
 print('Hello. I am robot Q19.')
-print("The password is the")
-print("opposite of my favourite")
-print("colour.")
-print("red/green are opposites,")
-print("so are yellow/blue and")
-print("black/white.")
+print("I have a number stored in my")
+print("variable 'data'. If it is less")
+print("than zero, BIT must say 'negative',")
+print("or 'positive' if it is greater,")
+print("or 'zero' if it is exactly zero.")
 ]
 validate = [
-if data == 'red':
-    print('green')
-if data == 'green':
-    print('red')
-if data == 'yellow':
-    print('blue')
-if data == 'blue':
-    print('yellow')
-if data == 'black':
-    print('white')
-if data == 'white':
-    print('black')
+if data <0:
+    print('negative')
+if data >0:
+    print('positive')
+if data ==0:
+    print('zero')
 ]
 
 </SENTRY>
 <SENTRY>
 name = 'KL50'
 level = 2
-# Extension exercise
-position = (238, 7)
+# is the number big?
+position = (237, 7)
 init = [
 import random
-data = random.randint(7, 17)
+if random.randint(1,2) == 2:
+    data = random.randint(1000, 9999)
+else:
+    data = random.randint(0, 9)
 ]
 display = [
 print('Hello. I am robot KL50.')
-print("Extension!")
-print("Can you print out the")
-print("number I am thinking")
-print("of, but repeat it that")
-print("many times, each on a")
-print("different line?")
-print("eg:")
-print("2")
-print("2")
+print("If the number I am thinking of")
+print("has at least 4 digits,")
+print("Say 'WOW!'")
+print("Either way, BIT must also")
+print("Tell me the number."))
 ]
 validate = [
-for i in range(data):
-    print(data)
+if data > 999:
+    print("WOW!")
+print(data)
 ]
 </SENTRY>
 <SENTRY>
 name = 'mEGaTroN 9000'
-level = 3
+level = 4
 # Extension exercise
 position = (13, 7)
 init = [

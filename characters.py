@@ -520,3 +520,15 @@ class Robot(Character):
         pass
 
     data = property(get_data, set_data)
+
+    def get_secret_data(self):
+        # stub, since BIT does not have a _secret_data field
+        # this is overridden for the sentry objects
+        return 0
+
+    def set_secret_data(self, value):
+        # stub, since BIT does not have a _secret_data field
+        # this is overridden for the sentry objects
+        pass
+
+    _secret_data = property(get_secret_data, set_secret_data)

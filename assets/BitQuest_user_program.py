@@ -1,1 +1,1 @@
-print(data, "ROBOT")
+print(data-999)
