@@ -454,6 +454,7 @@ class World:
     def complete_level(self, name):
         self.session.save_checkpoint_reached(name)
         self.puzzle += 1
+        self.session.set_current_level(self.blocks.get_puzzle_name(self.puzzle))
         self.dog.get_interpreter().run_enabled = True
 
     def show_editor(self):

@@ -3,7 +3,7 @@ Global config constants for BitQuest
 """
 # TODO read this in from a file - using file_parser?
 
-VERSION = "0.8"  # 0.x = beta testing phase
+VERSION = "0.9"  # 0.x = beta testing phase
 CONSOLE_VERBOSE = True  # when true enables extra debug messages in the console
 SHOW_COLLIDERS = False  # draws outline around object colliders
 SHOW_LOGIN_MENU = True  # displays the initial menu screen before play
